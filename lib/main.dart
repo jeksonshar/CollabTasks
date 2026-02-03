@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _tasks.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = _tasks[index];
         return ListTile(
