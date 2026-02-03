@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,6 +30,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> _tasks = [];
+  static const _tasksKey = 'tasks_list';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedTasks = prefs.getStringList(_tasksKey);
+    if (savedTasks != null) {
+      setState(() => _tasks.addAll(savedTasks));
+    }
+  }
+
+  Future<void> _saveTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_tasksKey, _tasks);
+  }
 
   Future<void> _showAddTaskDialog() async {
     // show own dialog, which itself owns a controller
@@ -43,6 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() => _tasks.add(result));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task added: "$result"')));
+
+    await _saveTasks();
   }
 
   Future<void> _showDeleteDialog(int index) async {
@@ -76,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final removed = _tasks[index];
     setState(() => _tasks.removeAt(index));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted: "$removed"')));
+
+    await _saveTasks();
   }
 
   @override
