@@ -39,8 +39,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
 
-        /// ValueListenableBuilder subscribes to the controller
-        /// and automatically reconfigures the button state
+        /**
+         * ValueListenableBuilder subscribes to the controller
+         * and automatically reconfigures the button state
+         */
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: _controller,
           builder: (context, value, child) {
