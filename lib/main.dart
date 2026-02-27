@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +27,19 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Safe Tasks (dialog owns controller)',
+        // ----- IMPORTANT: localization delegates -----
+        localizationsDelegates: const [
+          FlutterQuillLocalizations.delegate,           // <-- flutter_quill
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        // you can list needed locales explicitly or reuse the global supported list
+        supportedLocales: const [
+          Locale('en'),
+          Locale('ru'),
+          // can add others if needed
+        ],
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
 
 import '../dialogs/add_task_dialog.dart';
@@ -27,15 +30,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showAddTaskDialog() async {
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => const AddTaskDialog(),
+      builder: (context) => const AddTaskDialog(), // flutter_quill диалог
     );
+
     debugPrint('HomeScreen AddTaskDialog result = $result');
+
     if (result == null || result.trim().isEmpty) return;
     if (!mounted) return;
-    await Provider.of<TaskViewModel>(context, listen: false).addTask(result.trim());
-    debugPrint('HomeScreen AddTaskDialog result = $result');
+
+    // ---- Вариант A: сохраняем Delta JSON  ----
+    await Provider.of<TaskViewModel>(context, listen: false).addTask(result);
+    final plain = _deltaJsonToPlainText(result);
+
+    // // ---- Вариант B: сохраняем plain text (если модель ожидает обычный текст) ----
+    // final plain = _deltaJsonToPlainText(result);
+    // await Provider.of<TaskViewModel>(context, listen: false).addTask(plain);
+
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task added: "$result"')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task added: "$plain"')));
+  }
+
+  String _deltaJsonToPlainText(String deltaJson) {
+    try {
+      final doc = quill.Document.fromJson(jsonDecode(deltaJson) as List<dynamic>);
+      return doc.toPlainText().trim();
+    } catch (_) {
+      return deltaJson;
+    }
   }
 
   Future<void> _showDeleteDialog(int index) async {
@@ -44,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete task?'),
-        content: Text('Delete "${vm.tasks[index].text}"?'),
+        content: _buildTaskContent(vm.tasks[index].text),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -116,11 +137,42 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final item = vm.tasks[index];
         return ListTile(
-          title: Text(item.text),
+          title: _buildTaskContent(item.text),
           leading: const Icon(Icons.task_alt),
           onLongPress: () => _showDeleteDialog(index),
+          onTap: () => _showAddTaskDialog(),
         );
       },
     );
   }
+
+  Widget _buildTaskContent(String deltaJson) {
+      try {
+        final document = quill.Document.fromJson(
+          jsonDecode(deltaJson) as List<dynamic>,
+        );
+
+        final controller = quill.QuillController(
+          document: document,
+          selection: const TextSelection.collapsed(offset: 0),
+          readOnly: true,
+        );
+
+        return IgnorePointer(
+          // ignoring: true, // 👈 полностью отключает взаимодействие
+          child: quill.QuillEditor(
+            controller: controller,
+            focusNode: FocusNode(canRequestFocus: false),
+            scrollController: ScrollController(),
+            config: const quill.QuillEditorConfig(
+              expands: false,
+              padding: EdgeInsets.zero,
+              // enableInteractiveSelection: false, // 👈 убираем выделение
+            ),
+          ),
+        );
+      } catch (_) {
+        return Text(deltaJson);
+      }
+    }
 }
