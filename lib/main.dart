@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 
 import 'di/service_locator.dart';
+import 'l10n/app_localizations.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/view_models/task_view_model.dart';
 
@@ -29,17 +30,14 @@ class MyApp extends StatelessWidget {
         title: 'Safe Tasks (dialog owns controller)',
         // ----- IMPORTANT: localization delegates -----
         localizationsDelegates: const [
-          FlutterQuillLocalizations.delegate,           // <-- flutter_quill
+          AppLocalizations.delegate,
+          FlutterQuillLocalizations.delegate, // <-- flutter_quill (formatting lib)
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
         // you can list needed locales explicitly or reuse the global supported list
-        supportedLocales: const [
-          Locale('en'),
-          Locale('ru'),
-          // can add others if needed
-        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

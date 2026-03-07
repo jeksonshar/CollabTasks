@@ -1,0 +1,29 @@
+{
+  "@@locale": "en",
+  "addTaskTitle": "Add Task",
+  "cancel": "Cancel",
+  "home": "Home",
+  "enter": "Enter",
+  "delete": "Delete",
+  "emptyTaskTitle": "No tasks yet",
+  "emptyTaskDescription": "Tap \"Add Task\" to create one",
+  "taskAdded": "Task added: \"{task}\"",
+  "taskDeleted": "Task deleted: \"{task}\"",
+  "editorPlaceholder": "Enter task text...",
+  "@taskAdded": {
+    "description": "Shown when a task is added",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "deleteTaskTitle": "Delete task?",
+  "noTasksYet": "No tasks yet",
+  "tapAddTaskHint": "Tap \"Add Task\" to create one",
+  "tasksCount": "{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}",
+  "@tasksCount": {
+    "description": "Number of tasks",
+    "placeholders": {
+      "count": {}
+    }
+  }
+}

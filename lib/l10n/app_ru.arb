@@ -1,0 +1,29 @@
+{
+  "@@locale": "ru",
+  "addTaskTitle": "Добавить задачу",
+  "cancel": "Отмена",
+  "home": "Главная",
+  "enter": "Добавить",
+  "delete": "Удалить",
+  "emptyTaskTitle": "Еще нет задач",
+  "emptyTaskDescription": "Нажми \"Добавить задачу\" для создания",
+  "taskAdded": "Задача добавлена: \"{task}\"",
+  "taskDeleted": "Задача удалена: \"{task}\"",
+  "editorPlaceholder": "Введите текст задачи...",
+  "@taskAdded": {
+    "description": "Показывается после добавления задачи",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "deleteTaskTitle": "Удалить задачу?",
+  "noTasksYet": "Пока нет задач",
+  "tapAddTaskHint": "Нажмите «Добавить задачу», чтобы создать одну",
+  "tasksCount": "{count, plural, =0{Нет задач} =1{1 задача} other{{count} задач}}",
+  "@tasksCount": {
+    "description": "Количество задач",
+    "placeholders": {
+      "count": {}
+    }
+  }
+}

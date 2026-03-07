@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
+import 'package:task_manager/l10n/app_localizations.dart';
 
 import '../dialogs/add_task_dialog.dart';
 import '../view_models/task_view_model.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late TaskViewModel vm;
+  late final loc = AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -47,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // await Provider.of<TaskViewModel>(context, listen: false).addTask(plain);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Task added: "$plain"')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain))));
   }
 
   String _deltaJsonToPlainText(String deltaJson) {
@@ -64,20 +66,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete task?'),
+        title: Text(loc.deleteTaskTitle),
         content: _buildTaskContent(vm.tasks[index].text),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(loc.cancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.black,
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(loc.delete),
           ),
         ],
       ),
@@ -88,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Deleted: "${removed.text}"')));
+    ).showSnackBar(SnackBar(content: Text(loc.taskDeleted(removed.text))));
   }
 
   @override
@@ -96,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<TaskViewModel>(
       builder: (context, vm, _) {
         return Scaffold(
-          appBar: AppBar(title: const Text('Home'), centerTitle: true),
+          appBar: AppBar(title: Text(loc.home), centerTitle: true),
           body: vm.isLoading
               ? const Center(child: CircularProgressIndicator())
               : vm.tasks.isEmpty
@@ -107,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(bottom: 16.0, right: 16.0),
             child: FloatingActionButton.extended(
               onPressed: _showAddTaskDialog,
-              label: const Text('Add Task'),
+              label: Text(loc.addTaskTitle),
               icon: const Icon(Icons.add),
             ),
           ),
@@ -119,12 +118,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _emptyState() => Center(
     child: Column(
       mainAxisSize: MainAxisSize.min,
-      children: const [
+      children: [
         Icon(Icons.inbox, size: 64, color: Colors.grey),
         SizedBox(height: 12),
-        Text('No tasks yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
+        Text(loc.emptyTaskTitle, style: TextStyle(fontSize: 18, color: Colors.grey)),
         SizedBox(height: 4),
-        Text('Tap "Add Task" to create one', style: TextStyle(color: Colors.grey)),
+        Text(loc.emptyTaskDescription, style: TextStyle(color: Colors.grey)),
       ],
     ),
   );
@@ -147,32 +146,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTaskContent(String deltaJson) {
-      try {
-        final document = quill.Document.fromJson(
-          jsonDecode(deltaJson) as List<dynamic>,
-        );
+    try {
+      final document = quill.Document.fromJson(jsonDecode(deltaJson) as List<dynamic>);
 
-        final controller = quill.QuillController(
-          document: document,
-          selection: const TextSelection.collapsed(offset: 0),
-          readOnly: true,
-        );
+      final controller = quill.QuillController(
+        document: document,
+        selection: const TextSelection.collapsed(offset: 0),
+        readOnly: true,
+      );
 
-        return IgnorePointer(
-          // ignoring: true, // 👈 полностью отключает взаимодействие
-          child: quill.QuillEditor(
-            controller: controller,
-            focusNode: FocusNode(canRequestFocus: false),
-            scrollController: ScrollController(),
-            config: const quill.QuillEditorConfig(
-              expands: false,
-              padding: EdgeInsets.zero,
-              // enableInteractiveSelection: false, // 👈 убираем выделение
-            ),
+      return IgnorePointer(
+        // ignoring: true, // 👈 полностью отключает взаимодействие
+        child: quill.QuillEditor(
+          controller: controller,
+          focusNode: FocusNode(canRequestFocus: false),
+          scrollController: ScrollController(),
+          config: const quill.QuillEditorConfig(
+            expands: false,
+            padding: EdgeInsets.zero,
+            // enableInteractiveSelection: false, // 👈 убираем выделение
           ),
-        );
-      } catch (_) {
-        return Text(deltaJson);
-      }
+        ),
+      );
+    } catch (_) {
+      return Text(deltaJson);
     }
+  }
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:task_manager/l10n/app_localizations.dart';
 
 class AddTaskDialog extends StatefulWidget {
   const AddTaskDialog({super.key});
@@ -104,6 +106,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
+    final loc = AppLocalizations.of(context)!;
 
     /* TODO
          сейчас если в эдиторе с длинным текстом тапать в начале или в середине то после
@@ -115,7 +118,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     _ensureEditorVisible(isNeedDelay: true);
 
     return AlertDialog(
-      title: const Text('Add Task'),
+      title: Text(loc.addTaskTitle),
       content: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 700, maxHeight: media.size.height * 0.8),
         child: SingleChildScrollView(
@@ -158,8 +161,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   controller: _controller,
                   focusNode: _focusNode,
                   scrollController: _scrollController,
-                  config: const quill.QuillEditorConfig(
-                    placeholder: 'Enter task text...',
+                  config: quill.QuillEditorConfig(
+                    placeholder: loc.editorPlaceholder,
                     expands: false,
                     padding: EdgeInsets.zero,
                   ),
@@ -170,12 +173,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(loc.cancel)),
         AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
             final enabled = _controller.document.toPlainText().trim().isNotEmpty;
-            return ElevatedButton(onPressed: enabled ? _submit : null, child: const Text('Enter'));
+            return ElevatedButton(onPressed: enabled ? _submit : null, child: Text(loc.enter));
           },
         ),
       ],
