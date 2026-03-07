@@ -8,14 +8,20 @@
   "emptyTaskTitle": "Еще нет задач",
   "emptyTaskDescription": "Нажми \"Добавить задачу\" для создания",
   "taskAdded": "Задача добавлена: \"{task}\"",
-  "taskDeleted": "Задача удалена: \"{task}\"",
-  "editorPlaceholder": "Введите текст задачи...",
   "@taskAdded": {
     "description": "Показывается после добавления задачи",
     "placeholders": {
       "task": {}
     }
   },
+  "taskDeleted": "Задача удалена: \"{task}\"",
+  "@taskDeleted": {
+    "description": "Показывается после удаления задачи",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "editorPlaceholder": "Введите текст задачи...",
   "deleteTaskTitle": "Удалить задачу?",
   "noTasksYet": "Пока нет задач",
   "tapAddTaskHint": "Нажмите «Добавить задачу», чтобы создать одну",

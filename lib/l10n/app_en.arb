@@ -8,14 +8,20 @@
   "emptyTaskTitle": "No tasks yet",
   "emptyTaskDescription": "Tap \"Add Task\" to create one",
   "taskAdded": "Task added: \"{task}\"",
-  "taskDeleted": "Task deleted: \"{task}\"",
-  "editorPlaceholder": "Enter task text...",
   "@taskAdded": {
     "description": "Shown when a task is added",
     "placeholders": {
       "task": {}
     }
   },
+  "taskDeleted": "Task deleted: \"{task}\"",
+  "@taskDeleted": {
+    "description": "Shown when a task is deleted",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "editorPlaceholder": "Enter task text...",
   "deleteTaskTitle": "Delete task?",
   "noTasksYet": "No tasks yet",
   "tapAddTaskHint": "Tap \"Add Task\" to create one",

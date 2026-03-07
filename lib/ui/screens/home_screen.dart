@@ -83,11 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (shouldDelete != true) return;
     final removed = vm.tasks[index];
+
     await vm.deleteTask(removed.id);
+    final plain = _deltaJsonToPlainText(removed.text);
+
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(loc.taskDeleted(removed.text))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskDeleted(plain))));
   }
 
   @override

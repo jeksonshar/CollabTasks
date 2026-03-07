@@ -146,7 +146,7 @@ abstract class AppLocalizations {
   /// **'Task added: \"{task}\"'**
   String taskAdded(Object task);
 
-  /// No description provided for @taskDeleted.
+  /// Shown when a task is deleted
   ///
   /// In en, this message translates to:
   /// **'Task deleted: \"{task}\"'**
