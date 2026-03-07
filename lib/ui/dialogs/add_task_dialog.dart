@@ -16,12 +16,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   final ScrollController _dialogScrollController = ScrollController();
   final GlobalKey _editorKey = GlobalKey(); // key for the editor container
 
-  // TODO проверить корректность работы тут (перенесено из _ensureEditorVisible())
-  // Get the position and size of the editor container in global coordinates
-  late final renderBox = _editorKey.currentContext!.findRenderObject() as RenderBox;
-  late final editorTopLeftGlobal = renderBox.localToGlobal(Offset.zero);
-  late final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height;
-
   @override
   void initState() {
     super.initState();
@@ -69,14 +63,25 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   // Logic Center: Calculates whether the bottom border of the editor is visible, taking
   // the keyboard into account.
   // _dialogScrollController.hasClients check before reading position/offset
-  Future<void> _ensureEditorVisible() async {
-    if (!mounted) return;
+  Future<void> _ensureEditorVisible({bool isNeedDelay = false}) async {
     if (!_dialogScrollController.hasClients) return;
     if (_editorKey.currentContext == null) return;
+
+    if (isNeedDelay) {
+      // delay need to draw all the fields for calculating the sizes to scroll (50-250 ms)
+      const Duration attemptDelay = Duration(milliseconds: 100);
+      await Future<void>.delayed(attemptDelay);
+    }
+
+    if (!mounted) return;
 
     final media = MediaQuery.of(context);
     final keyboardInset = media.viewInsets.bottom;
     final screenHeight = media.size.height;
+
+    final renderBox = _editorKey.currentContext!.findRenderObject() as RenderBox;
+    final editorTopLeftGlobal = renderBox.localToGlobal(Offset.zero);
+    final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height;
 
     // Visible screen height without keyboard and padding at the bottom
     final visibleHeight = screenHeight - keyboardInset - editorBottomGlobal;
@@ -90,7 +95,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       );
       _dialogScrollController.animateTo(
         target,
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 50),
         curve: Curves.easeOut,
       );
     }
@@ -100,28 +105,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
 
-    // When opening the keyboard, scroll down the dialog to fully display the editor.
-    // _dialogScrollController.hasClients check before reading position/offset
     /* TODO
          сейчас если в эдиторе с длинным текстом тапать в начале или в середине то после
          открытия клавиатуры происходит скрол к самому низу, а не к месту тапа,
          это надо исправить
     */
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_dialogScrollController.hasClients && media.viewInsets.bottom > 0) {
-        if (!mounted) return;
-        if (!_dialogScrollController.hasClients) return;
 
-        final maxScrollExtent = _dialogScrollController.position.maxScrollExtent;
-        // TODO maxScrollExtent + editorBottomGlobal.clamp() - нехорошо, исправить
-        final target = maxScrollExtent + editorBottomGlobal.clamp(0.0, maxScrollExtent);
-        _dialogScrollController.animateTo(
-          target,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    // When opening the keyboard, scroll down the dialog to fully display the editor, used delay.
+    _ensureEditorVisible(isNeedDelay: true);
 
     return AlertDialog(
       title: const Text('Add Task'),
