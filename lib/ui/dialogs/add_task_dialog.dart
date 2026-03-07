@@ -14,11 +14,33 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final ScrollController _dialogScrollController = ScrollController();
+  final GlobalKey _editorKey = GlobalKey(); // key for the editor container
+
+  // TODO проверить корректность работы тут (перенесено из _ensureEditorVisible())
+  // Get the position and size of the editor container in global coordinates
+  late final renderBox = _editorKey.currentContext!.findRenderObject() as RenderBox;
+  late final editorTopLeftGlobal = renderBox.localToGlobal(Offset.zero);
+  late final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height;
 
   @override
   void initState() {
     super.initState();
     _controller = quill.QuillController.basic();
+
+    // subscribe to changes in the controller (text/cursor)
+    _controller.addListener(() {
+      // Scroll only if the editor is in focus
+      if (_focusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
+      }
+    });
+
+    // It's also worth checking when you focus (for example, switch to the editor)
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
+      }
+    });
   }
 
   @override
@@ -43,16 +65,59 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
     Navigator.of(context).pop(json);
   }
+
+  // Logic Center: Calculates whether the bottom border of the editor is visible, taking
+  // the keyboard into account.
+  // _dialogScrollController.hasClients check before reading position/offset
+  Future<void> _ensureEditorVisible() async {
+    if (!mounted) return;
+    if (!_dialogScrollController.hasClients) return;
+    if (_editorKey.currentContext == null) return;
+
+    final media = MediaQuery.of(context);
+    final keyboardInset = media.viewInsets.bottom;
+    final screenHeight = media.size.height;
+
+    // Visible screen height without keyboard and padding at the bottom
+    final visibleHeight = screenHeight - keyboardInset - editorBottomGlobal;
+
+    // If the bottom point of the editor is below the visible area, scroll down.
+    if (editorBottomGlobal > visibleHeight) {
+      final diff = editorBottomGlobal - visibleHeight;
+      final target = (_dialogScrollController.offset + diff).clamp(
+        0.0,
+        _dialogScrollController.position.maxScrollExtent,
+      );
+      _dialogScrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
 
-    // Скроллим к редактору, если клавиатура открыта
+    // When opening the keyboard, scroll down the dialog to fully display the editor.
+    // _dialogScrollController.hasClients check before reading position/offset
+    /* TODO
+         сейчас если в эдиторе с длинным текстом тапать в начале или в середине то после
+         открытия клавиатуры происходит скрол к самому низу, а не к месту тапа,
+         это надо исправить
+    */
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_dialogScrollController.hasClients && media.viewInsets.bottom > 0) {
+        if (!mounted) return;
+        if (!_dialogScrollController.hasClients) return;
+
+        final maxScrollExtent = _dialogScrollController.position.maxScrollExtent;
+        // TODO maxScrollExtent + editorBottomGlobal.clamp() - нехорошо, исправить
+        final target = maxScrollExtent + editorBottomGlobal.clamp(0.0, maxScrollExtent);
         _dialogScrollController.animateTo(
-          _dialogScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 50),
+          target,
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
@@ -61,12 +126,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     return AlertDialog(
       title: const Text('Add Task'),
       content: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 700,
-          maxHeight: media.size.height * 0.8,
-        ),
+        constraints: BoxConstraints(maxWidth: 700, maxHeight: media.size.height * 0.8),
         child: SingleChildScrollView(
-          controller: _dialogScrollController, // 👈 управляем скроллом
+          controller: _dialogScrollController, // 👈 control scrolling
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -87,18 +149,18 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   showListCheck: false,
                   showDirection: false,
                   showSearchButton: false,
-
                 ),
               ),
 
               const SizedBox(height: 8),
 
-              /// 🔹 Editor
+              /// 🔹 Editor (wrapped in a key)
               Container(
-                height: 300,
+                key: _editorKey,
+                constraints: const BoxConstraints(minHeight: 100),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: Colors.grey.shade400),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: quill.QuillEditor(
@@ -117,18 +179,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
         AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
             final enabled = _controller.document.toPlainText().trim().isNotEmpty;
-            return ElevatedButton(
-              onPressed: enabled ? _submit : null,
-              child: const Text('Enter'),
-            );
+            return ElevatedButton(onPressed: enabled ? _submit : null, child: const Text('Enter'));
           },
         ),
       ],
