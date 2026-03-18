@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:task_manager/l10n/app_localizations.dart';
 
+const extraPadding = 80;
+
 class AddTaskDialog extends StatefulWidget {
   const AddTaskDialog({super.key});
 
@@ -18,23 +20,31 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   final ScrollController _dialogScrollController = ScrollController();
   final GlobalKey _editorKey = GlobalKey(); // key for the editor container
 
+  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
+
   @override
   void initState() {
     super.initState();
     _controller = quill.QuillController.basic();
 
-    // subscribe to changes in the controller (text/cursor)
+    // слушаем изменения селекции, но реагируем только если селекция изменилась
     _controller.addListener(() {
-      // Scroll only if the editor is in focus
-      if (_focusNode.hasFocus) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
+      final sel = _controller.selection;
+      if (sel != _lastSelection) {
+        _lastSelection = sel;
+        // скроллим только если редактор в фокусе
+        if (_focusNode.hasFocus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
+        }
       }
     });
 
     // It's also worth checking when you focus (for example, switch to the editor)
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _ensureEditorVisible(isNeedDelay: true),
+        );
       }
     });
   }
@@ -80,39 +90,89 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     final media = MediaQuery.of(context);
     final keyboardInset = media.viewInsets.bottom;
     final screenHeight = media.size.height;
+    final bottomSafeArea = media.viewPadding.bottom;
+    final visibleBottom = screenHeight - keyboardInset - bottomSafeArea;
 
-    final renderBox = _editorKey.currentContext!.findRenderObject() as RenderBox;
-    final editorTopLeftGlobal = renderBox.localToGlobal(Offset.zero);
-    final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height;
+    try {
+      final renderBox = _editorKey.currentContext!.findRenderObject() as RenderBox;
+      final editorTopLeftGlobal = renderBox.localToGlobal(Offset.zero);
+      final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height + extraPadding;
+      final visibleTop = media.viewPadding.top; // верхняя видимая граница
 
-    // Visible screen height without keyboard and padding at the bottom
-    final visibleHeight = screenHeight - keyboardInset - editorBottomGlobal;
-
-    // If the bottom point of the editor is below the visible area, scroll down.
-    if (editorBottomGlobal > visibleHeight) {
-      final diff = editorBottomGlobal - visibleHeight;
-      final target = (_dialogScrollController.offset + diff).clamp(
-        0.0,
-        _dialogScrollController.position.maxScrollExtent,
+      debugPrint(
+        'ensureEditorVisible: editorBottomGlobal = $editorBottomGlobal, visibleBottom = $visibleBottom',
       );
-      _dialogScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 50),
-        curve: Curves.easeOut,
-      );
+
+      if (_isCaretVisible(visibleTop, visibleBottom)) {
+        debugPrint('ensureEditorVisible: caret already visible — skip scroll');
+        return;
+      } else {
+        double diff;
+        if (editorBottomGlobal > visibleBottom) {
+          diff = editorBottomGlobal - visibleBottom;
+          debugPrint('ensureEditorVisible: > diff = $diff');
+        } else {
+          final visibleHeight = screenHeight - keyboardInset - editorBottomGlobal;
+          diff = editorBottomGlobal - visibleHeight;
+          debugPrint('ensureEditorVisible: < diff = $diff');
+        }
+        final target = (_dialogScrollController.offset + diff).clamp(
+          0.0,
+          _dialogScrollController.position.maxScrollExtent,
+        );
+        _dialogScrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 50),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      debugPrint('ensureEditorVisible: final fallback failed: $e');
     }
+  }
+
+  bool _isCaretVisible(double visibleTop, double visibleBottom, {double padding = 8.0}) {
+    final ctx = _editorKey.currentContext;
+    if (ctx == null) return false;
+
+    final sel = _controller.selection;
+    if (!sel.isValid) return false;
+
+    // normalize visible bounds with padding
+    final top = visibleTop + padding;
+    final bottom = visibleBottom - padding;
+
+    // приближённая оценка позиции по offset / длина_текста
+    try {
+      final ro = ctx.findRenderObject();
+      if (ro is RenderBox) {
+        final editorTopGlobal = ro.localToGlobal(Offset.zero).dy + extraPadding;
+        final editorHeight = ro.size.height;
+
+        final text = _controller.document.toPlainText();
+        final docLen = text.isEmpty ? 1 : text.length;
+        final selOffset = sel.baseOffset.clamp(0, docLen);
+        final ratio = selOffset / docLen;
+        final approxCaretYGlobal = editorTopGlobal + ratio * editorHeight;
+
+        debugPrint(
+          'ensureEditorVisible: approxCaretYGlobal = $approxCaretYGlobal, top = $top, bottom = $bottom',
+        );
+
+        return approxCaretYGlobal >= top && approxCaretYGlobal <= bottom;
+      }
+    } catch (e) {
+      debugPrint('ensureEditorVisible: isCaretVisible: proportional check failed: $e');
+    }
+
+    debugPrint('ensureEditorVisible: ничего не помогло — считаем невидимым');
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final loc = AppLocalizations.of(context)!;
-
-    /* TODO
-         сейчас если в эдиторе с длинным текстом тапать в начале или в середине то после
-         открытия клавиатуры происходит скрол к самому низу, а не к месту тапа,
-         это надо исправить
-    */
 
     // When opening the keyboard, scroll down the dialog to fully display the editor, used delay.
     _ensureEditorVisible(isNeedDelay: true);
