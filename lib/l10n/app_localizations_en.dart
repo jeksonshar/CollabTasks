@@ -12,6 +12,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addTaskTitle => 'Add Task';
 
   @override
+  String get editTaskTitle => 'Edit Task';
+
+  @override
   String get cancel => 'Cancel';
 
   @override
@@ -19,6 +22,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enter => 'Enter';
+
+  @override
+  String get update => 'Update';
 
   @override
   String get delete => 'Delete';
@@ -31,6 +37,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String taskAdded(Object task) {
+    return 'Task added: \"$task\"';
+  }
+
+  @override
+  String taskUpdated(Object task) {
     return 'Task added: \"$task\"';
   }
 

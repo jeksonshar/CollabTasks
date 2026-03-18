@@ -29,10 +29,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _showAddTaskDialog() async {
+  Future<void> _showTaskDialog({int? editIndex}) async {
+    final vm = Provider.of<TaskViewModel>(context, listen: false);
+    final initial = editIndex != null ? vm.tasks[editIndex].text : null;
+
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => const AddTaskDialog(), // flutter_quill диалог
+      builder: (context) => AddTaskDialog(
+        // flutter_quill диалог
+        initialDeltaJson: initial,
+      ),
     );
 
     debugPrint('HomeScreen AddTaskDialog result = $result');
@@ -40,16 +46,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result == null || result.trim().isEmpty) return;
     if (!mounted) return;
 
-    // ---- Вариант A: сохраняем Delta JSON  ----
-    await Provider.of<TaskViewModel>(context, listen: false).addTask(result);
     final plain = _deltaJsonToPlainText(result);
 
-    // // ---- Вариант B: сохраняем plain text (если модель ожидает обычный текст) ----
-    // final plain = _deltaJsonToPlainText(result);
-    // await Provider.of<TaskViewModel>(context, listen: false).addTask(plain);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain))));
+    if (editIndex == null) {
+      // Добавление новой задачи
+      await vm.addTask(result);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain))));
+    } else {
+      // Редактирование существующей задачи
+      final id = vm.tasks[editIndex].id;
+      await vm.updateTask(id, result);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskUpdated(plain))));
+    }
   }
 
   String _deltaJsonToPlainText(String deltaJson) {
@@ -106,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
           floatingActionButton: Padding(
             padding: const EdgeInsets.only(bottom: 16.0, right: 16.0),
             child: FloatingActionButton.extended(
-              onPressed: _showAddTaskDialog,
+              onPressed: _showTaskDialog,
               label: Text(loc.addTaskTitle),
               icon: const Icon(Icons.add),
             ),
@@ -140,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: _buildTaskContent(item.text),
           leading: const Icon(Icons.task_alt),
           onLongPress: () => _showDeleteDialog(index),
-          onTap: () => _showAddTaskDialog(),
+          onTap: () => _showTaskDialog(editIndex: index),
         );
       },
     );

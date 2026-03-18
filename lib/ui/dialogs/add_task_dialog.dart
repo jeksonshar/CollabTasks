@@ -7,7 +7,9 @@ import 'package:task_manager/l10n/app_localizations.dart';
 const extraPadding = 80;
 
 class AddTaskDialog extends StatefulWidget {
-  const AddTaskDialog({super.key});
+  final String? initialDeltaJson;
+
+  const AddTaskDialog({super.key, this.initialDeltaJson});
 
   @override
   State<AddTaskDialog> createState() => _AddTaskDialogState();
@@ -25,7 +27,29 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = quill.QuillController.basic();
+
+    // init controller either from provided delta (edit mode) or empty (create mode)
+    if (widget.initialDeltaJson != null) {
+      try {
+        final doc = quill.Document.fromJson(jsonDecode(widget.initialDeltaJson!) as List<dynamic>);
+        _controller = quill.QuillController(
+          document: doc,
+          // поставим курсор в конец документа чтобы тулбар сразу мог показать активные стили
+          selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+        );
+      } catch (_) {
+        // fallback: если не JSON — вставим как plain text
+        final doc = quill.Document()..insert(0, widget.initialDeltaJson!);
+        _controller = quill.QuillController(
+          document: doc,
+          selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+        );
+      }
+    } else {
+      _controller = quill.QuillController.basic();
+    }
+
+    _lastSelection = _controller.selection;
 
     // слушаем изменения селекции, но реагируем только если селекция изменилась
     _controller.addListener(() {
@@ -177,8 +201,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     // When opening the keyboard, scroll down the dialog to fully display the editor, used delay.
     _ensureEditorVisible(isNeedDelay: true);
 
+    final title = widget.initialDeltaJson != null
+        ? Text(loc.editTaskTitle)
+        : Text(loc.addTaskTitle);
+
+    final actionBtnText = widget.initialDeltaJson != null ? Text(loc.update) : Text(loc.enter);
+
     return AlertDialog(
-      title: Text(loc.addTaskTitle),
+      title: title,
       content: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 700, maxHeight: media.size.height * 0.8),
         child: SingleChildScrollView(
@@ -238,7 +268,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           animation: _controller,
           builder: (context, _) {
             final enabled = _controller.document.toPlainText().trim().isNotEmpty;
-            return ElevatedButton(onPressed: enabled ? _submit : null, child: Text(loc.enter));
+            return ElevatedButton(onPressed: enabled ? _submit : null, child: actionBtnText);
           },
         ),
       ],

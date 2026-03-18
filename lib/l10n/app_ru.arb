@@ -1,15 +1,24 @@
 {
   "@@locale": "ru",
   "addTaskTitle": "Добавить задачу",
+  "editTaskTitle": "Редактировать задачу",
   "cancel": "Отмена",
   "home": "Главная",
   "enter": "Добавить",
+  "update": "Обновить",
   "delete": "Удалить",
   "emptyTaskTitle": "Еще нет задач",
   "emptyTaskDescription": "Нажми \"Добавить задачу\" для создания",
   "taskAdded": "Задача добавлена: \"{task}\"",
   "@taskAdded": {
     "description": "Показывается после добавления задачи",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "taskUpdated": "Задача обновлена: \"{task}\"",
+  "@taskUpdated": {
+    "description": "Показывается после обновления задачи",
     "placeholders": {
       "task": {}
     }

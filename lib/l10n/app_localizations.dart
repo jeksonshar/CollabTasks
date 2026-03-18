@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'Add Task'**
   String get addTaskTitle;
 
+  /// No description provided for @editTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Task'**
+  String get editTaskTitle;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:
@@ -121,6 +127,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter'**
   String get enter;
+
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
 
   /// No description provided for @delete.
   ///
@@ -145,6 +157,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Task added: \"{task}\"'**
   String taskAdded(Object task);
+
+  /// Shown when a task is updated
+  ///
+  /// In en, this message translates to:
+  /// **'Task added: \"{task}\"'**
+  String taskUpdated(Object task);
 
   /// Shown when a task is deleted
   ///

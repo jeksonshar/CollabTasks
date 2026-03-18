@@ -1,15 +1,24 @@
 {
   "@@locale": "en",
   "addTaskTitle": "Add Task",
+  "editTaskTitle": "Edit Task",
   "cancel": "Cancel",
   "home": "Home",
   "enter": "Enter",
+  "update": "Update",
   "delete": "Delete",
   "emptyTaskTitle": "No tasks yet",
   "emptyTaskDescription": "Tap \"Add Task\" to create one",
   "taskAdded": "Task added: \"{task}\"",
   "@taskAdded": {
     "description": "Shown when a task is added",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "taskUpdated": "Task added: \"{task}\"",
+  "@taskUpdated": {
+    "description": "Shown when a task is updated",
     "placeholders": {
       "task": {}
     }
