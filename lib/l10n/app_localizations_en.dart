@@ -15,6 +15,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTaskTitle => 'Edit Task';
 
   @override
+  String get formattingTitle => 'Formatting options: ';
+
+  @override
+  String get attachFileTitle => 'Attach file: ';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

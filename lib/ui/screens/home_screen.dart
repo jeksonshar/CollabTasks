@@ -5,7 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
 import 'package:task_manager/l10n/app_localizations.dart';
 
-import '../dialogs/add_task_dialog.dart';
+import '../dialogs/task_dialog.dart';
 import '../view_models/task_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AddTaskDialog(
+      builder: (context) => TaskDialog(
         // flutter_quill диалог
         initialDeltaJson: initial,
       ),

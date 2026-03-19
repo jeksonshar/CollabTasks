@@ -15,6 +15,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editTaskTitle => 'Редактировать задачу';
 
   @override
+  String get formattingTitle => 'Параметры форматирования: ';
+
+  @override
+  String get attachFileTitle => 'Прикрепить файл: ';
+
+  @override
   String get cancel => 'Отмена';
 
   @override

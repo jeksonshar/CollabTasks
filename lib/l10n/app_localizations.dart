@@ -110,6 +110,18 @@ abstract class AppLocalizations {
   /// **'Edit Task'**
   String get editTaskTitle;
 
+  /// No description provided for @formattingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Formatting options: '**
+  String get formattingTitle;
+
+  /// No description provided for @attachFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach file: '**
+  String get attachFileTitle;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

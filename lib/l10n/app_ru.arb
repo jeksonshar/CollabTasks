@@ -2,6 +2,8 @@
   "@@locale": "ru",
   "addTaskTitle": "Добавить задачу",
   "editTaskTitle": "Редактировать задачу",
+  "formattingTitle": "Параметры форматирования: ",
+  "attachFileTitle": "Прикрепить файл: ",
   "cancel": "Отмена",
   "home": "Главная",
   "enter": "Добавить",

@@ -2,6 +2,8 @@
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
+  "formattingTitle": "Formatting options: ",
+  "attachFileTitle": "Attach file: ",
   "cancel": "Cancel",
   "home": "Home",
   "enter": "Enter",

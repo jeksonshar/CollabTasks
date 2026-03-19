@@ -6,23 +6,27 @@ import 'package:task_manager/l10n/app_localizations.dart';
 
 const extraPadding = 80;
 
-class AddTaskDialog extends StatefulWidget {
+class TaskDialog extends StatefulWidget {
   final String? initialDeltaJson;
 
-  const AddTaskDialog({super.key, this.initialDeltaJson});
+  const TaskDialog({super.key, this.initialDeltaJson});
 
   @override
-  State<AddTaskDialog> createState() => _AddTaskDialogState();
+  State<TaskDialog> createState() => _TaskDialogState();
 }
 
-class _AddTaskDialogState extends State<AddTaskDialog> {
+class _TaskDialogState extends State<TaskDialog> {
   late final quill.QuillController _controller;
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final ScrollController _dialogScrollController = ScrollController();
+  final ScrollController _toolbarScrollController = ScrollController();
   final GlobalKey _editorKey = GlobalKey(); // key for the editor container
 
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
+
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
 
   @override
   void initState() {
@@ -71,6 +75,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         );
       }
     });
+
+    _toolbarScrollController.addListener(_updateToolbarScrollIndicators);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateToolbarScrollIndicators();
+    });
   }
 
   @override
@@ -79,12 +89,30 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     _focusNode.dispose();
     _scrollController.dispose();
     _dialogScrollController.dispose();
+    _toolbarScrollController.dispose();
+    _toolbarScrollController.removeListener(_updateToolbarScrollIndicators);
+    _toolbarScrollController.dispose();
     super.dispose();
   }
 
   bool get _isEmpty {
     final doc = _controller.document.toDelta();
     return doc.isEmpty || _controller.document.toPlainText().trim().isEmpty;
+  }
+
+  void _updateToolbarScrollIndicators() {
+    if (!_toolbarScrollController.hasClients) return;
+
+    final position = _toolbarScrollController.position;
+    final canLeft = position.pixels > 0;
+    final canRight = position.pixels < position.maxScrollExtent;
+
+    if (canLeft != _canScrollLeft || canRight != _canScrollRight) {
+      setState(() {
+        _canScrollLeft = canLeft;
+        _canScrollRight = canRight;
+      });
+    }
   }
 
   void _submit() {
@@ -215,24 +243,122 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           controller: _dialogScrollController, // 👈 control scrolling
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      loc.attachFileTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        fontFamily: "Roboto",
+                      ),
+                    ),
+                  ),
+                  IconButton(onPressed: () => {}, icon: Icon(Icons.attach_file)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  loc.formattingTitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    fontFamily: "Roboto",
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+
               /// 🔹 Toolbar
-              quill.QuillSimpleToolbar(
-                controller: _controller,
-                config: const quill.QuillSimpleToolbarConfig(
-                  showDividers: true,
-                  showBoldButton: true,
-                  showItalicButton: true,
-                  showStrikeThrough: true,
-                  showHeaderStyle: true,
-                  showColorButton: true,
-                  showBackgroundColorButton: true,
-                  showFontSize: true,
-                  showListNumbers: true,
-                  showListBullets: true,
-                  showListCheck: false,
-                  showDirection: false,
-                  showSearchButton: false,
+              SizedBox(
+                height: 48,
+                child: Stack(
+                  children: [
+                    // сам тулбар с возможностью скролла
+                    SingleChildScrollView(
+                      controller: _toolbarScrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          quill.QuillSimpleToolbar(
+                            controller: _controller,
+                            config: const quill.QuillSimpleToolbarConfig(
+                              showDividers: true,
+                              showBoldButton: true,
+                              showItalicButton: true,
+                              showStrikeThrough: true,
+                              showHeaderStyle: true,
+                              showColorButton: true,
+                              showBackgroundColorButton: true,
+                              showFontSize: true,
+                              showListNumbers: true,
+                              showListBullets: true,
+                              showListCheck: false,
+                              showDirection: false,
+                              showSearchButton: false,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Левый градиент
+                    if (_canScrollLeft)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: 24,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.surface,
+                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.0),
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Правый градиент
+                    if (_canScrollRight)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: IgnorePointer(
+                          child: Container(
+                            width: 24,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.0),
+                                  Theme.of(context).colorScheme.surface,
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
