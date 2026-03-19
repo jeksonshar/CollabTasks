@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
@@ -284,32 +285,37 @@ class _TaskDialogState extends State<TaskDialog> {
                 child: Stack(
                   children: [
                     // сам тулбар с возможностью скролла
-                    SingleChildScrollView(
-                      controller: _toolbarScrollController,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          quill.QuillSimpleToolbar(
-                            controller: _controller,
-                            config: const quill.QuillSimpleToolbarConfig(
-                              showDividers: true,
-                              showBoldButton: true,
-                              showItalicButton: true,
-                              showStrikeThrough: true,
-                              showHeaderStyle: true,
-                              showColorButton: true,
-                              showBackgroundColorButton: true,
-                              showFontSize: true,
-                              showListNumbers: true,
-                              showListBullets: true,
-                              showListCheck: false,
-                              showDirection: false,
-                              showSearchButton: false,
+                    ScrollConfiguration(
+                      behavior: const MaterialScrollBehavior().copyWith(
+                        dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
+                      ),
+                      child: SingleChildScrollView(
+                        controller: _toolbarScrollController,
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            quill.QuillSimpleToolbar(
+                              controller: _controller,
+                              config: const quill.QuillSimpleToolbarConfig(
+                                showDividers: true,
+                                showBoldButton: true,
+                                showItalicButton: true,
+                                showStrikeThrough: true,
+                                showHeaderStyle: true,
+                                showColorButton: true,
+                                showBackgroundColorButton: true,
+                                showFontSize: true,
+                                showListNumbers: true,
+                                showListBullets: true,
+                                showListCheck: false,
+                                showDirection: false,
+                                showSearchButton: false,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 

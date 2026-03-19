@@ -52,13 +52,17 @@ class _HomeScreenState extends State<HomeScreen> {
       // Добавление новой задачи
       await vm.addTask(result);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain), maxLines: 3)));
     } else {
       // Редактирование существующей задачи
       final id = vm.tasks[editIndex].id;
       await vm.updateTask(id, result);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskUpdated(plain))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(loc.taskUpdated(plain), maxLines: 3)));
     }
   }
 
@@ -98,7 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final plain = _deltaJsonToPlainText(removed.text);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.taskDeleted(plain))));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(loc.taskDeleted(plain), maxLines: 3)));
   }
 
   @override
