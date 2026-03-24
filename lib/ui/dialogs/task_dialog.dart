@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:task_manager/l10n/app_localizations.dart';
+import 'package:task_manager/l10n/l10n_mixin.dart';
 
 const extraPadding = 80;
 
@@ -16,7 +16,7 @@ class TaskDialog extends StatefulWidget {
   State<TaskDialog> createState() => _TaskDialogState();
 }
 
-class _TaskDialogState extends State<TaskDialog> {
+class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   late final quill.QuillController _controller;
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -240,16 +240,17 @@ class _TaskDialogState extends State<TaskDialog> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final loc = AppLocalizations.of(context)!;
 
     // When opening the keyboard, scroll down the dialog to fully display the editor, used delay.
     _ensureEditorVisible(isNeedDelay: true);
 
     final title = widget.initialDeltaJson != null
-        ? Text(loc.editTaskTitle)
-        : Text(loc.addTaskTitle);
+        ? Text(localization.editTaskTitle)
+        : Text(localization.addTaskTitle);
 
-    final actionBtnText = widget.initialDeltaJson != null ? Text(loc.update) : Text(loc.enter);
+    final actionBtnText = widget.initialDeltaJson != null
+        ? Text(localization.update)
+        : Text(localization.enter);
 
     return AlertDialog(
       title: title,
@@ -271,7 +272,7 @@ class _TaskDialogState extends State<TaskDialog> {
                   // push the IconButton beyond the Row.
                   Expanded(
                     child: Text(
-                      loc.attachFileTitle,
+                      localization.attachFileTitle,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -292,7 +293,7 @@ class _TaskDialogState extends State<TaskDialog> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  loc.formattingTitle,
+                  localization.formattingTitle,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -408,7 +409,7 @@ class _TaskDialogState extends State<TaskDialog> {
                   focusNode: _focusNode,
                   scrollController: _scrollController,
                   config: quill.QuillEditorConfig(
-                    placeholder: loc.editorPlaceholder,
+                    placeholder: localization.editorPlaceholder,
                     expands: false,
                     padding: EdgeInsets.zero,
                   ),
@@ -419,7 +420,7 @@ class _TaskDialogState extends State<TaskDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(loc.cancel)),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(localization.cancel)),
         AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
-import 'package:task_manager/l10n/app_localizations.dart';
+import 'package:task_manager/l10n/l10n_mixin.dart';
 
 import '../dialogs/task_dialog.dart';
 import '../view_models/task_view_model.dart';
@@ -15,7 +15,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with L10nMixin {
   late TaskViewModel vm;
 
   @override
@@ -29,7 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showTaskDialog({int? editIndex}) async {
-    final loc = AppLocalizations.of(context)!;
     final vm = Provider.of<TaskViewModel>(context, listen: false);
     final initial = editIndex != null ? vm.tasks[editIndex].text : null;
 
@@ -54,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(loc.taskAdded(plain), maxLines: 3)));
+      ).showSnackBar(SnackBar(content: Text(localization.taskAdded(plain), maxLines: 3)));
     } else {
       // Редактирование существующей задачи
       final id = vm.tasks[editIndex].id;
@@ -62,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(loc.taskUpdated(plain), maxLines: 3)));
+      ).showSnackBar(SnackBar(content: Text(localization.taskUpdated(plain), maxLines: 3)));
     }
   }
 
@@ -76,22 +75,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showDeleteDialog(int index) async {
-    final loc = AppLocalizations.of(context)!;
     final vm = Provider.of<TaskViewModel>(context, listen: false);
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(loc.deleteTaskTitle),
+        title: Text(localization.deleteTaskTitle),
         content: _buildTaskContent(vm.tasks[index].text),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(loc.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(localization.cancel),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.black,
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(loc.delete),
+            child: Text(localization.delete),
           ),
         ],
       ),
@@ -105,16 +106,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(loc.taskDeleted(plain), maxLines: 3)));
+    ).showSnackBar(SnackBar(content: Text(localization.taskDeleted(plain), maxLines: 3)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!;
     return Consumer<TaskViewModel>(
       builder: (context, vm, _) {
         return Scaffold(
-          appBar: AppBar(title: Text(loc.home), centerTitle: true),
+          appBar: AppBar(title: Text(localization.home), centerTitle: true),
           body: vm.isLoading
               ? const Center(child: CircularProgressIndicator())
               : vm.tasks.isEmpty
@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(bottom: 16.0, right: 16.0),
             child: FloatingActionButton.extended(
               onPressed: _showTaskDialog,
-              label: Text(loc.addTaskTitle),
+              label: Text(localization.addTaskTitle),
               icon: const Icon(Icons.add),
             ),
           ),
@@ -135,16 +135,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _emptyState() {
-    final loc = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.inbox, size: 64, color: Colors.grey),
           SizedBox(height: 12),
-          Text(loc.emptyTaskTitle, style: TextStyle(fontSize: 18, color: Colors.grey)),
+          Text(localization.emptyTaskTitle, style: TextStyle(fontSize: 18, color: Colors.grey)),
           SizedBox(height: 4),
-          Text(loc.emptyTaskDescription, style: TextStyle(color: Colors.grey)),
+          Text(localization.emptyTaskDescription, style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
