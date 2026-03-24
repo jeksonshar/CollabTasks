@@ -32,66 +32,81 @@ class _TaskDialogState extends State<TaskDialog> {
   @override
   void initState() {
     super.initState();
+    _initQuillController();
+    _setupListeners();
+  }
 
-    // init controller either from provided delta (edit mode) or empty (create mode)
+  void _initQuillController() {
     if (widget.initialDeltaJson != null) {
-      try {
-        final doc = quill.Document.fromJson(jsonDecode(widget.initialDeltaJson!) as List<dynamic>);
-        _controller = quill.QuillController(
-          document: doc,
-          // поставим курсор в конец документа чтобы тулбар сразу мог показать активные стили
-          selection: TextSelection.collapsed(offset: doc.toPlainText().length),
-        );
-      } catch (_) {
-        // fallback: если не JSON — вставим как plain text
-        final doc = quill.Document()..insert(0, widget.initialDeltaJson!);
-        _controller = quill.QuillController(
-          document: doc,
-          selection: TextSelection.collapsed(offset: doc.toPlainText().length),
-        );
-      }
+      _controller = _createControllerFromData(widget.initialDeltaJson!);
     } else {
       _controller = quill.QuillController.basic();
     }
-
     _lastSelection = _controller.selection;
+  }
 
-    // слушаем изменения селекции, но реагируем только если селекция изменилась
-    _controller.addListener(() {
-      final sel = _controller.selection;
-      if (sel != _lastSelection) {
-        _lastSelection = sel;
-        // скроллим только если редактор в фокусе
-        if (_focusNode.hasFocus) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _ensureEditorVisible());
-        }
-      }
-    });
+  quill.QuillController _createControllerFromData(String data) {
+    try {
+      // Trying to parse it as Delta JSON.
+      final doc = quill.Document.fromJson(jsonDecode(data) as List<dynamic>);
+      return quill.QuillController(
+        document: doc,
+        selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+      );
+    } catch (_) {
+      // Fallback to plain text
+      final doc = quill.Document()..insert(0, data);
+      return quill.QuillController(
+        document: doc,
+        selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+      );
+    }
+  }
 
-    // It's also worth checking when you focus (for example, switch to the editor)
-    _focusNode.addListener(() {
-      if (_focusNode.hasFocus) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _ensureEditorVisible(isNeedDelay: true),
-        );
-      }
-    });
-
+  void _setupListeners() {
+    _controller.addListener(_onSelectionChanged);
+    _focusNode.addListener(_onFocusChanged);
     _toolbarScrollController.addListener(_updateToolbarScrollIndicators);
 
+    // One-time call after rendering
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateToolbarScrollIndicators();
+      if (mounted) _updateToolbarScrollIndicators();
+    });
+  }
+
+  void _onSelectionChanged() {
+    final sel = _controller.selection;
+    if (sel != _lastSelection) {
+      _lastSelection = sel;
+      // If there is no focus, there is no need to scroll.
+      if (_focusNode.hasFocus) {
+        _scheduleEnsureVisible();
+      }
+    }
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _scheduleEnsureVisible(isNeedDelay: true);
+    }
+  }
+
+  void _scheduleEnsureVisible({bool isNeedDelay = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _ensureEditorVisible(isNeedDelay: isNeedDelay);
     });
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onSelectionChanged);
+    _focusNode.removeListener(_onFocusChanged);
+    _toolbarScrollController.removeListener(_updateToolbarScrollIndicators);
+
     _controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
     _dialogScrollController.dispose();
-    _toolbarScrollController.dispose();
-    _toolbarScrollController.removeListener(_updateToolbarScrollIndicators);
     _toolbarScrollController.dispose();
     super.dispose();
   }
@@ -250,6 +265,10 @@ class _TaskDialogState extends State<TaskDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Expanded() is necessary that the Text takes up only the available space
+                  // and does not push the IconButton beyond the Row.
+                  // It is necessary that the Text takes up only the available space and does not
+                  // push the IconButton beyond the Row.
                   Expanded(
                     child: Text(
                       loc.attachFileTitle,
@@ -261,7 +280,12 @@ class _TaskDialogState extends State<TaskDialog> {
                       ),
                     ),
                   ),
-                  IconButton(onPressed: () => {}, icon: Icon(Icons.attach_file)),
+                  IconButton(
+                    onPressed: () {
+                      // TODO Implement file attachment logic here
+                    },
+                    icon: Icon(Icons.attach_file),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
