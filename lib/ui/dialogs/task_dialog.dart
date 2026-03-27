@@ -5,12 +5,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:task_manager/l10n/l10n_mixin.dart';
 
+import '../../core/attachment_file_service.dart';
+import '../../domain/models/task_attachment.dart';
+import 'task_attachment_tile.dart';
+
 const extraPadding = 80;
+
+class TaskDialogResult {
+  final String text;
+  final String deltaJson;
+  final List<TaskAttachment> attachments;
+
+  const TaskDialogResult({required this.text, required this.deltaJson, required this.attachments});
+}
 
 class TaskDialog extends StatefulWidget {
   final String? initialDeltaJson;
+  final List<TaskAttachment> initialAttachments;
 
-  const TaskDialog({super.key, this.initialDeltaJson});
+  const TaskDialog({super.key, this.initialDeltaJson, this.initialAttachments = const []});
 
   @override
   State<TaskDialog> createState() => _TaskDialogState();
@@ -24,6 +37,8 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   final ScrollController _toolbarScrollController = ScrollController();
   final GlobalKey _editorKey = GlobalKey(); // key for the editor container
 
+  final List<TaskAttachment> _attachments = [];
+
   TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
 
   bool _canScrollLeft = false;
@@ -33,6 +48,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void initState() {
     super.initState();
     _initQuillController();
+    _attachments.addAll(widget.initialAttachments);
     _setupListeners();
   }
 
@@ -136,8 +152,129 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
     final delta = _controller.document.toDelta();
     final json = jsonEncode(delta.toJson());
+    final plain = _controller.document.toPlainText().trim();
 
-    Navigator.of(context).pop(json);
+    Navigator.of(context).pop(
+      TaskDialogResult(text: json, deltaJson: plain, attachments: List.unmodifiable(_attachments)),
+    );
+  }
+
+  Future<void> _pickAttachments() async {
+    try {
+      final dir = await attachmentsDirectory();
+      final newItems = await pickAttachmentFiles(dir);
+
+      if (!mounted || newItems.isEmpty) return;
+
+      setState(() {
+        _attachments.addAll(newItems);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('Не удалось добавить файл: $e')));
+    }
+  }
+
+  Future<void> _viewAttachment(TaskAttachment attachment) async {
+    try {
+      final content = await tryReadTextAttachment(attachment);
+
+      if (content != null) {
+        if (!mounted) return;
+
+        showDialog<void>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(attachment.name),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: SelectableText(content, style: const TextStyle(fontFamily: 'monospace')),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(localization.cancel),
+                ),
+              ],
+            );
+          },
+        );
+        return;
+      }
+
+      await openAttachment(attachment);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
+    }
+  }
+
+  Future<void> _downloadAttachment(TaskAttachment attachment) async {
+    try {
+      final saved = await downloadAttachmentFile(attachment);
+
+      if (!saved || !mounted) return;
+
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(const SnackBar(content: Text('Файл сохранён')));
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Не удалось скачать файл: $e');
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('Не удалось сохранить файл: $e')));
+    }
+  }
+
+  Future<void> _removeAttachment(TaskAttachment attachment) async {
+    setState(() {
+      _attachments.removeWhere((e) => e.id == attachment.id);
+    });
+    final isFileRemoved = await removeAttachmentFile(attachment);
+    if (!mounted) return;
+
+    if (!isFileRemoved) {
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(localization.deleteFileFailed)));
+    } else {
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(localization.fileDeleted)));
+    }
+  }
+
+  Widget _buildAttachments() {
+    if (_attachments.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text('Вложения', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ..._attachments.map(
+          (attachment) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TaskAttachmentTile(
+              attachment: attachment,
+              onView: () => _viewAttachment(attachment),
+              onOpen: () => openAttachment(attachment),
+              onDownload: () => _downloadAttachment(attachment),
+              onDelete: () => _removeAttachment(attachment),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // Logic Center: Calculates whether the bottom border of the editor is visible, taking
@@ -281,12 +418,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      // TODO Implement file attachment logic here
-                    },
-                    icon: Icon(Icons.attach_file),
-                  ),
+                  IconButton(onPressed: _pickAttachments, icon: Icon(Icons.attach_file)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -415,6 +547,9 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                   ),
                 ),
               ),
+
+              /// 🔹 Attach zone
+              _buildAttachments(),
             ],
           ),
         ),

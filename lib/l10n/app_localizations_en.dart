@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -19,6 +20,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get attachFileTitle => 'Attach file: ';
+
+  @override
+  String get viewFileTitle => 'View';
+
+  @override
+  String get openFileTitle => 'Open';
+
+  @override
+  String get downloadFileTitle => 'Download';
+
+  @override
+  String get deleteFileTitle => 'Delete';
+
+  @override
+  String get fileDeleted => 'File deleted';
+
+  @override
+  String get deleteFileFailed => 'Failed to delete file';
 
   @override
   String get cancel => 'Cancel';

@@ -62,8 +62,7 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -93,10 +91,7 @@ abstract class AppLocalizations {
       ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('ru'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
 
   /// No description provided for @addTaskTitle.
   ///
@@ -121,6 +116,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Attach file: '**
   String get attachFileTitle;
+
+  /// No description provided for @viewFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get viewFileTitle;
+
+  /// No description provided for @openFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get openFileTitle;
+
+  /// No description provided for @downloadFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get downloadFileTitle;
+
+  /// No description provided for @deleteFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteFileTitle;
+
+  /// No description provided for @fileDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'File deleted'**
+  String get fileDeleted;
+
+  /// No description provided for @deleteFileFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete file'**
+  String get deleteFileFailed;
 
   /// No description provided for @cancel.
   ///
@@ -213,8 +244,7 @@ abstract class AppLocalizations {
   String tasksCount(num count);
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -223,8 +253,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

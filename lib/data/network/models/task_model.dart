@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import '../../domain/entities/task.dart';
+import '../../../domain/models/task.dart';
 
-// not used for now
+// not used for now 5.02.26
 class TaskModel extends Task {
   TaskModel({required super.id, required super.text});
 

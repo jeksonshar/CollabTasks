@@ -1,4 +1,4 @@
-import '../entities/task.dart';
+import '../models/task.dart';
 import '../repositories/task_repository.dart';
 
 class GetTasksUseCase {

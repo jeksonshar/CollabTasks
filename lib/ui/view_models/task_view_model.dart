@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/task.dart';
+import '../../domain/models/task.dart';
 import '../../domain/use_cases/add_task_use_case.dart';
 import '../../domain/use_cases/delete_task_use_case.dart';
 import '../../domain/use_cases/get_tasks_use_case.dart';
 import '../../domain/use_cases/update_task_use_case.dart';
+import '../dialogs/task_dialog.dart';
 
 class TaskViewModel extends ChangeNotifier {
   final GetTasksUseCase getTasksUseCase;
@@ -19,71 +20,105 @@ class TaskViewModel extends ChangeNotifier {
     required this.deleteTaskUseCase,
   });
 
-  List<Task> tasks = [];
-  bool isLoading = false;
+  List<Task> _tasks = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<Task> get tasks => List.unmodifiable(_tasks);
+
+  bool get isLoading => _isLoading;
+
+  String? get errorMessage => _errorMessage;
 
   Future<void> loadTasks() async {
     debugPrint('TaskViewModel.loadTasks: start');
-    isLoading = true;
-    notifyListeners();
+    _setLoading(true);
+    _setError(null);
 
     try {
-      // simulate a loading delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      final loaded = await getTasksUseCase();
-      // tasks = List<Task>.from(loaded); // if in TaskRepositoryImpl used TaskModel use it
-      tasks = loaded;
-      debugPrint('TaskViewModel.loadTasks: loaded ${tasks.length}');
+      final loadedTasks = await getTasksUseCase();
+      _tasks = loadedTasks;
     } catch (e, s) {
       debugPrint('TaskViewModel.loadTasks ERROR: $e\n$s');
-      tasks = [];
+      _tasks = [];
+      _setError('Не удалось загрузить задачи');
+    } finally {
+      _setLoading(false);
+      debugPrint('TaskViewModel.loadTasks: end');
     }
-
-    isLoading = false;
-    notifyListeners();
-    debugPrint('TaskViewModel.loadTasks: end');
   }
 
-  Future<void> addTask(String text) async {
-    final task = Task(id: DateTime.now().toIso8601String(), text: text);
-    debugPrint('TaskViewModel.addTask: start text="$text"');
+  Future<void> addTask(TaskDialogResult taskDialogResult) async {
+    final task = Task(
+      id: DateTime.now().toIso8601String(),
+      text: taskDialogResult.text,
+      attachments: taskDialogResult.attachments,
+    );
+
+    _setError(null);
+
     try {
+      debugPrint('TaskViewModel.addTask: start task="$task"');
       await addTaskUseCase(task);
-      tasks.add(task);
+      _tasks = [..._tasks, task];
       notifyListeners();
       debugPrint('TaskViewModel.addTask: done total=${tasks.length}');
     } catch (e, s) {
       debugPrint('TaskViewModel.addTask ERROR: $e\n$s');
+      _setError('Не удалось добавить задачу');
       rethrow;
     }
   }
 
-  Future<void> updateTask(String id, String text) async {
-    final task = Task(id: id, text: text);
-    debugPrint('TaskViewModel.addTask: start text="$text"');
+  Future<void> updateTask(String id, TaskDialogResult taskDialogResult) async {
+    final task = Task(
+      id: id,
+      text: taskDialogResult.text,
+      attachments: taskDialogResult.attachments,
+    );
+
+    _setError(null);
 
     try {
+      debugPrint('TaskViewModel.addTask: start task="$task"');
       await updateTaskUseCase(task);
 
-      final index = tasks.indexWhere((task) => task.id == id);
-      if (index != -1) {
-        tasks[index] = task;
-        notifyListeners();
-      }
+      final index = _tasks.indexWhere((task) => task.id == id);
+      if (index == -1) return;
+
+      final newTasks = [..._tasks];
+      newTasks[index] = task;
+      _tasks = newTasks;
+      notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
+      _setError('Не удалось обновить задачу');
       rethrow;
     }
   }
 
   Future<void> deleteTask(String id) async {
+    _setError(null);
+
     try {
       await deleteTaskUseCase(id);
-      tasks.removeWhere((t) => t.id == id);
+      _tasks = _tasks.where((task) => task.id != id).toList();
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
+      _setError('Не удалось удалить задачу');
     }
+  }
+
+  void _setLoading(bool value) {
+    if (_isLoading == value) return;
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? value) {
+    if (_errorMessage == value) return;
+    _errorMessage = value;
+    notifyListeners();
   }
 }

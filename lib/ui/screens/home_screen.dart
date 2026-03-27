@@ -30,26 +30,28 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
 
   Future<void> _showTaskDialog({int? editIndex}) async {
     final vm = Provider.of<TaskViewModel>(context, listen: false);
-    final initial = editIndex != null ? vm.tasks[editIndex].text : null;
+    final initialTask = editIndex != null ? vm.tasks[editIndex] : null;
 
-    final result = await showDialog<String>(
+    final result = await showDialog<TaskDialogResult>(
       context: context,
       builder: (context) => TaskDialog(
         // flutter_quill диалог
-        initialDeltaJson: initial,
+        initialDeltaJson: initialTask?.text,
+        initialAttachments: initialTask?.attachments ?? const [],
       ),
     );
 
     debugPrint('HomeScreen AddTaskDialog result = $result');
 
-    if (result == null || result.trim().isEmpty) return;
+    if (result == null) return;
     if (!mounted) return;
 
-    final plain = _deltaJsonToPlainText(result);
+    final plain = _deltaJsonToPlainText(result.deltaJson);
 
     if (editIndex == null) {
       // Добавление новой задачи
       await vm.addTask(result);
+
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
