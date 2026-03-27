@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     // get the viewmodel in the next frame so that the context is ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       vm = Provider.of<TaskViewModel>(context, listen: false);
-      vm.loadTasks();
+      // vm.loadTasks(); // TODO 27.03 it is not need seems like, check it
     });
   }
 

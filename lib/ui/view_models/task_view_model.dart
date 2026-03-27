@@ -36,7 +36,9 @@ class TaskViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
+      debugPrint('TaskViewModel.loadTasks: 0');
       final loadedTasks = await getTasksUseCase();
+      debugPrint('TaskViewModel.loadTasks: 0');
       _tasks = loadedTasks;
     } catch (e, s) {
       debugPrint('TaskViewModel.loadTasks ERROR: $e\n$s');

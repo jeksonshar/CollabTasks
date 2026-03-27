@@ -161,11 +161,14 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
   Future<void> _pickAttachments() async {
     try {
+      debugPrint('Picking attachments 0');
       final dir = await attachmentsDirectory();
       final newItems = await pickAttachmentFiles(dir);
 
-      if (!mounted || newItems.isEmpty) return;
+      debugPrint('Picking attachments 1');
 
+      if (!mounted || newItems.isEmpty) return;
+      debugPrint('Picking attachments 2');
       setState(() {
         _attachments.addAll(newItems);
       });
@@ -174,6 +177,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       ScaffoldMessenger.maybeOf(
         context,
       )?.showSnackBar(SnackBar(content: Text('Не удалось добавить файл: $e')));
+      debugPrint('Failed to pick attachments: $e');
     }
   }
 

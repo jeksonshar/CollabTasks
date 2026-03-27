@@ -18,6 +18,10 @@ class AppDatabase extends _$AppDatabase {
     return driftDatabase(
       name: 'task_manager_db',
       native: const DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.dart.js'),
+      ),
     );
   }
 }
