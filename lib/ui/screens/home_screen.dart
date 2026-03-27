@@ -161,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
         return ListTile(
           title: _buildTaskContent(item.text),
           leading: const Icon(Icons.task_alt),
+          trailing: item.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
           onLongPress: () => _showDeleteDialog(index),
           onTap: () => _showTaskDialog(editIndex: index),
         );
