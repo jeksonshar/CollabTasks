@@ -67,14 +67,14 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       final doc = quill.Document.fromJson(jsonDecode(data) as List<dynamic>);
       return quill.QuillController(
         document: doc,
-        selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+        selection: TextSelection.collapsed(offset: doc.length - 1),
       );
     } catch (_) {
       // Fallback to plain text
       final doc = quill.Document()..insert(0, data);
       return quill.QuillController(
         document: doc,
-        selection: TextSelection.collapsed(offset: doc.toPlainText().length),
+        selection: TextSelection.collapsed(offset: doc.length - 1),
       );
     }
   }
