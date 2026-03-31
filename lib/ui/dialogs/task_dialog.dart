@@ -211,6 +211,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         return;
       }
 
+      debugPrint('open in _viewAttachment: bytes = ${attachment.bytes}');
       await openAttachment(attachment);
     } catch (e) {
       if (!mounted) return;
@@ -271,7 +272,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
             child: TaskAttachmentTile(
               attachment: attachment,
               onView: () => _viewAttachment(attachment),
-              onOpen: () => openAttachment(attachment),
+              // onOpen: () => openAttachment(attachment),
               onDownload: () => _downloadAttachment(attachment),
               onDelete: () => _removeAttachment(attachment),
             ),

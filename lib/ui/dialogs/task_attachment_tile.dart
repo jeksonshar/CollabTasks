@@ -6,7 +6,8 @@ import '../../l10n/app_localizations.dart';
 class TaskAttachmentTile extends StatelessWidget {
   final TaskAttachment attachment;
   final VoidCallback onView;
-  final VoidCallback onOpen;
+
+  // final VoidCallback onOpen;
   final VoidCallback onDownload;
   final VoidCallback onDelete;
 
@@ -14,7 +15,7 @@ class TaskAttachmentTile extends StatelessWidget {
     super.key,
     required this.attachment,
     required this.onView,
-    required this.onOpen,
+    // required this.onOpen,
     required this.onDownload,
     required this.onDelete,
   });
@@ -40,9 +41,9 @@ class TaskAttachmentTile extends StatelessWidget {
               case 'view':
                 onView();
                 break;
-              case 'open':
-                onOpen();
-                break;
+              // case 'open':
+              //   onOpen();
+              //   break;
               case 'download':
                 onDownload();
                 break;
