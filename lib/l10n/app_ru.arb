@@ -4,12 +4,18 @@
   "editTaskTitle": "Редактировать задачу",
   "formattingTitle": "Параметры форматирования: ",
   "attachFileTitle": "Прикрепить файл: ",
+  "attachmentsTitle": "Вложения: ",
   "viewFileTitle": "Просмотреть",
   "openFileTitle": "Открыть",
   "downloadFileTitle": "Скачать",
   "deleteFileTitle": "Удалить",
   "fileDeleted": "Файл удалён",
+  "fileDownloaded": "Файл сохранён",
   "deleteFileFailed": "Не удалось удалить файл",
+  "loadTasksError": "Не удалось загрузить задачи",
+  "addTaskError": "Не удалось добавить задачу",
+  "updateTaskError": "Не удалось обновить задачу",
+  "deleteTaskError": "Не удалось удалить задачу",
   "cancel": "Отмена",
   "home": "Главная",
   "enter": "Добавить",
@@ -36,6 +42,27 @@
     "description": "Показывается после удаления задачи",
     "placeholders": {
       "task": {}
+    }
+  },
+  "taskAddedError": "Не удалось добавить файл: \"{task}\"",
+  "@taskAddedError": {
+    "description": "Показывается после получения ошибки при добавлении задачи",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "fileDownloadError": "Не удалось сохранить файл: \"{file}\"",
+  "@fileDownloadError": {
+    "description": "Показывается после получения ошибки при сохранении файла",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "fileOpenError": "Не удалось открыть файл: \"{file}\"",
+  "@fileOpenError": {
+    "description": "Показывается после получения ошибки при открытии файла",
+    "placeholders": {
+      "file": {}
     }
   },
   "editorPlaceholder": "Введите текст задачи...",

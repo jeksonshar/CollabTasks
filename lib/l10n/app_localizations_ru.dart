@@ -21,6 +21,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get attachFileTitle => 'Прикрепить файл: ';
 
   @override
+  String get attachmentsTitle => 'Вложения: ';
+
+  @override
   String get viewFileTitle => 'Просмотреть';
 
   @override
@@ -36,7 +39,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get fileDeleted => 'Файл удалён';
 
   @override
+  String get fileDownloaded => 'Файл сохранён';
+
+  @override
   String get deleteFileFailed => 'Не удалось удалить файл';
+
+  @override
+  String get loadTasksError => 'Не удалось загрузить задачи';
+
+  @override
+  String get addTaskError => 'Не удалось добавить задачу';
+
+  @override
+  String get updateTaskError => 'Не удалось обновить задачу';
+
+  @override
+  String get deleteTaskError => 'Не удалось удалить задачу';
 
   @override
   String get cancel => 'Отмена';
@@ -72,6 +90,21 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String taskDeleted(Object task) {
     return 'Задача удалена: \"$task\"';
+  }
+
+  @override
+  String taskAddedError(Object task) {
+    return 'Не удалось добавить файл: \"$task\"';
+  }
+
+  @override
+  String fileDownloadError(Object file) {
+    return 'Не удалось сохранить файл: \"$file\"';
+  }
+
+  @override
+  String fileOpenError(Object file) {
+    return 'Не удалось открыть файл: \"$file\"';
   }
 
   @override

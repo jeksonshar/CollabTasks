@@ -4,12 +4,18 @@
   "editTaskTitle": "Edit Task",
   "formattingTitle": "Formatting options: ",
   "attachFileTitle": "Attach file: ",
+  "attachmentsTitle": "Attachments: ",
   "viewFileTitle": "View",
   "openFileTitle": "Open",
   "downloadFileTitle": "Download",
   "deleteFileTitle": "Delete",
   "fileDeleted": "File deleted",
+  "fileDownloaded": "File downloaded",
   "deleteFileFailed": "Failed to delete file",
+  "loadTasksError": "Failed to load tasks",
+  "addTaskError": "Failed to add task",
+  "updateTaskError": "Failed to update task",
+  "deleteTaskError": "Failed to delete task",
   "cancel": "Cancel",
   "home": "Home",
   "enter": "Enter",
@@ -36,6 +42,27 @@
     "description": "Shown when a task is deleted",
     "placeholders": {
       "task": {}
+    }
+  },
+  "taskAddedError": "Failed to add file: \"{task}\"",
+  "@taskAddedError": {
+    "description": "Shown after receiving an error when adding a task",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "fileDownloadError": "Failed to save file: \"{file}\"",
+  "@fileDownloadError": {
+    "description": "Shown after receiving an error while saving a file",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "fileOpenError": "Failed to open file: \"{file}\"",
+  "@fileOpenError": {
+    "description": "Shown after receiving an error while opening a file",
+    "placeholders": {
+      "file": {}
     }
   },
   "editorPlaceholder": "Enter task text...",

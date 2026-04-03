@@ -30,27 +30,25 @@ class TaskViewModel extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  Future<void> loadTasks() async {
+  Future<void> loadTasks(String errorMessage) async {
     debugPrint('TaskViewModel.loadTasks: start');
     _setLoading(true);
     _setError(null);
 
     try {
-      debugPrint('TaskViewModel.loadTasks: 0');
       final loadedTasks = await getTasksUseCase();
-      debugPrint('TaskViewModel.loadTasks: 0');
       _tasks = loadedTasks;
     } catch (e, s) {
       debugPrint('TaskViewModel.loadTasks ERROR: $e\n$s');
       _tasks = [];
-      _setError('Не удалось загрузить задачи');
+      _setError(errorMessage);
     } finally {
       _setLoading(false);
       debugPrint('TaskViewModel.loadTasks: end');
     }
   }
 
-  Future<void> addTask(TaskDialogResult taskDialogResult) async {
+  Future<void> addTask(TaskDialogResult taskDialogResult, String errorMessage) async {
     final task = Task(
       id: DateTime.now().toIso8601String(),
       text: taskDialogResult.text,
@@ -60,19 +58,17 @@ class TaskViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
-      debugPrint('TaskViewModel.addTask: start task="$task"');
       await addTaskUseCase(task);
       _tasks = [..._tasks, task];
       notifyListeners();
-      debugPrint('TaskViewModel.addTask: done total=${tasks.length}');
     } catch (e, s) {
       debugPrint('TaskViewModel.addTask ERROR: $e\n$s');
-      _setError('Не удалось добавить задачу');
+      _setError(errorMessage);
       rethrow;
     }
   }
 
-  Future<void> updateTask(String id, TaskDialogResult taskDialogResult) async {
+  Future<void> updateTask(String id, TaskDialogResult taskDialogResult, String errorMessage) async {
     final task = Task(
       id: id,
       text: taskDialogResult.text,
@@ -82,7 +78,6 @@ class TaskViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
-      debugPrint('TaskViewModel.addTask: start task="$task"');
       await updateTaskUseCase(task);
 
       final index = _tasks.indexWhere((task) => task.id == id);
@@ -94,12 +89,12 @@ class TaskViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
-      _setError('Не удалось обновить задачу');
+      _setError(errorMessage);
       rethrow;
     }
   }
 
-  Future<void> deleteTask(String id) async {
+  Future<void> deleteTask(String id, String errorMessage) async {
     _setError(null);
 
     try {
@@ -108,7 +103,7 @@ class TaskViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
-      _setError('Не удалось удалить задачу');
+      _setError(errorMessage);
     }
   }
 

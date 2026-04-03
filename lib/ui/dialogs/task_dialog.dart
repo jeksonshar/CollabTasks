@@ -161,14 +161,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
   Future<void> _pickAttachments() async {
     try {
-      debugPrint('Picking attachments 0');
-      final dir = await attachmentsDirectory();
-      final newItems = await pickAttachmentFiles(dir);
-
-      debugPrint('Picking attachments 1');
+      final attachmentsDirPath = await attachmentsDirectory();
+      final newItems = await pickAttachmentFiles(attachmentsDirPath);
 
       if (!mounted || newItems.isEmpty) return;
-      debugPrint('Picking attachments 2');
       setState(() {
         _attachments.addAll(newItems);
       });
@@ -176,7 +172,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       if (!mounted) return;
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(SnackBar(content: Text('Не удалось добавить файл: $e')));
+      )?.showSnackBar(SnackBar(content: Text(localization.taskAddedError(e))));
       debugPrint('Failed to pick attachments: $e');
     }
   }
@@ -211,13 +207,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         return;
       }
 
-      debugPrint('open in _viewAttachment: bytes = ${attachment.bytes}');
       await openAttachment(attachment);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(SnackBar(content: Text('Не удалось открыть файл: $e')));
+      )?.showSnackBar(SnackBar(content: Text(localization.fileOpenError(e))));
     }
   }
 
@@ -229,13 +224,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(const SnackBar(content: Text('Файл сохранён')));
+      )?.showSnackBar(SnackBar(content: Text(localization.fileDownloaded)));
     } catch (e) {
-      if (!mounted) return;
       debugPrint('Не удалось скачать файл: $e');
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(SnackBar(content: Text('Не удалось сохранить файл: $e')));
+      )?.showSnackBar(SnackBar(content: Text(localization.fileDownloadError(e))));
     }
   }
 
@@ -264,7 +258,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        const Text('Вложения', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(
+          localization.attachmentsTitle,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         ..._attachments.map(
           (attachment) => Padding(
@@ -272,7 +269,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
             child: TaskAttachmentTile(
               attachment: attachment,
               onView: () => _viewAttachment(attachment),
-              // onOpen: () => openAttachment(attachment),
               onDownload: () => _downloadAttachment(attachment),
               onDelete: () => _removeAttachment(attachment),
             ),
@@ -309,22 +305,15 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       final editorBottomGlobal = editorTopLeftGlobal.dy + renderBox.size.height + extraPadding;
       final visibleTop = media.viewPadding.top; // верхняя видимая граница
 
-      debugPrint(
-        'ensureEditorVisible: editorBottomGlobal = $editorBottomGlobal, visibleBottom = $visibleBottom',
-      );
-
       if (_isCaretVisible(visibleTop, visibleBottom)) {
-        debugPrint('ensureEditorVisible: caret already visible — skip scroll');
         return;
       } else {
         double diff;
         if (editorBottomGlobal > visibleBottom) {
           diff = editorBottomGlobal - visibleBottom;
-          debugPrint('ensureEditorVisible: > diff = $diff');
         } else {
           final visibleHeight = screenHeight - keyboardInset - editorBottomGlobal;
           diff = editorBottomGlobal - visibleHeight;
-          debugPrint('ensureEditorVisible: < diff = $diff');
         }
         final target = (_dialogScrollController.offset + diff).clamp(
           0.0,
@@ -352,7 +341,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     final top = visibleTop + padding;
     final bottom = visibleBottom - padding;
 
-    // приближённая оценка позиции по offset / длина_текста
+    // approximate position estimate by offset / text length
     try {
       final ro = ctx.findRenderObject();
       if (ro is RenderBox) {
@@ -364,10 +353,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         final selOffset = sel.baseOffset.clamp(0, docLen);
         final ratio = selOffset / docLen;
         final approxCaretYGlobal = editorTopGlobal + ratio * editorHeight;
-
-        debugPrint(
-          'ensureEditorVisible: approxCaretYGlobal = $approxCaretYGlobal, top = $top, bottom = $bottom',
-        );
 
         return approxCaretYGlobal >= top && approxCaretYGlobal <= bottom;
       }
@@ -446,7 +431,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                 height: 48,
                 child: Stack(
                   children: [
-                    // сам тулбар с возможностью скролла
+                    // the toolbar itself with scrolling capabilities
                     ScrollConfiguration(
                       behavior: const MaterialScrollBehavior().copyWith(
                         dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
@@ -481,7 +466,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                       ),
                     ),
 
-                    // Левый градиент
+                    // Left gradient
                     if (_canScrollLeft)
                       Positioned(
                         left: 0,
@@ -504,7 +489,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                         ),
                       ),
 
-                    // Правый градиент
+                    // Right gradient
                     if (_canScrollRight)
                       Positioned(
                         right: 0,

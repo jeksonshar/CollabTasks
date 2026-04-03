@@ -22,9 +22,7 @@ class MyApp extends StatelessWidget {
     // Provide TaskViewModel via Provider + GetIt factory
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<TaskViewModel>(
-          create: (_) => GetIt.instance<TaskViewModel>()..loadTasks(),
-        ),
+        ChangeNotifierProvider<TaskViewModel>(create: (_) => GetIt.instance<TaskViewModel>()),
       ],
       child: MaterialApp(
         title: 'Safe Tasks (dialog owns controller)',

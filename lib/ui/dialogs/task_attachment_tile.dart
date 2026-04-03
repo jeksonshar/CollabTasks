@@ -15,7 +15,6 @@ class TaskAttachmentTile extends StatelessWidget {
     super.key,
     required this.attachment,
     required this.onView,
-    // required this.onOpen,
     required this.onDownload,
     required this.onDelete,
   });
@@ -41,9 +40,6 @@ class TaskAttachmentTile extends StatelessWidget {
               case 'view':
                 onView();
                 break;
-              // case 'open':
-              //   onOpen();
-              //   break;
               case 'download':
                 onDownload();
                 break;
@@ -54,7 +50,6 @@ class TaskAttachmentTile extends StatelessWidget {
           },
           itemBuilder: (context) => [
             PopupMenuItem(value: 'view', child: Text(localization.viewFileTitle)),
-            // PopupMenuItem(value: 'open', child: Text(localization.openFileTitle)),
             PopupMenuItem(value: 'download', child: Text(localization.downloadFileTitle)),
             PopupMenuItem(value: 'delete', child: Text(localization.deleteFileTitle)),
           ],

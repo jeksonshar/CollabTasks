@@ -18,7 +18,6 @@ class TaskAttachment {
     this.bytes,
   });
 
-  // удобно для проверки платформы
   bool get isWeb => bytes != null;
 
   Map<String, dynamic> toJson() => {
@@ -27,12 +26,12 @@ class TaskAttachment {
     'extension': extension,
     'localPath': localPath,
     'sizeBytes': sizeBytes,
-
-    //  bytes сохраняем только если есть (web)
-    if (bytes != null) 'bytes': base64Encode(bytes!),
+    if (isWeb) 'bytesBase64': base64Encode(bytes!),
   };
 
   factory TaskAttachment.fromJson(Map<String, dynamic> json) {
+    final rawBytes = json['bytesBase64'] ?? json['bytes'];
+
     return TaskAttachment(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -41,10 +40,9 @@ class TaskAttachment {
       // старые данные продолжат работать
       localPath: json['localPath'] as String?,
 
-      sizeBytes: json['sizeBytes'] as int,
-
+      sizeBytes: (json['sizeBytes'] as num).toInt(),
       // web данные (если есть)
-      bytes: json['bytes'] != null ? base64Decode(json['bytes'] as String) : null,
+      bytes: rawBytes is String && rawBytes.isNotEmpty ? base64Decode(rawBytes) : null,
     );
   }
 

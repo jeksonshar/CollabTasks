@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     // get the viewmodel in the next frame so that the context is ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       vm = Provider.of<TaskViewModel>(context, listen: false);
-      // vm.loadTasks(); // TODO 27.03 it is not need seems like, check it
+      vm.loadTasks(localization.loadTasksError);
     });
   }
 
@@ -35,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     final result = await showDialog<TaskDialogResult>(
       context: context,
       builder: (context) => TaskDialog(
-        // flutter_quill диалог
+        // flutter_quill dialog
         initialDeltaJson: initialTask?.text,
         initialAttachments: initialTask?.attachments ?? const [],
       ),
@@ -49,17 +49,17 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     final plain = _deltaJsonToPlainText(result.deltaJson);
 
     if (editIndex == null) {
-      // Добавление новой задачи
-      await vm.addTask(result);
+      // Adding a new task
+      await vm.addTask(result, localization.addTaskError);
 
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(localization.taskAdded(plain), maxLines: 3)));
     } else {
-      // Редактирование существующей задачи
+      // Editing an existing task
       final id = vm.tasks[editIndex].id;
-      await vm.updateTask(id, result);
+      await vm.updateTask(id, result, localization.updateTaskError);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     if (shouldDelete != true) return;
     final removed = vm.tasks[index];
 
-    await vm.deleteTask(removed.id);
+    await vm.deleteTask(removed.id, localization.deleteTaskError);
     final plain = _deltaJsonToPlainText(removed.text);
 
     if (!mounted) return;
@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
       );
 
       return IgnorePointer(
-        // ignoring: true, // 👈 полностью отключает взаимодействие
+        // ignoring: true, // 👈 disables interaction completely
         child: quill.QuillEditor(
           controller: controller,
           focusNode: FocusNode(canRequestFocus: false),
@@ -188,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
           config: const quill.QuillEditorConfig(
             expands: false,
             padding: EdgeInsets.zero,
-            // enableInteractiveSelection: false, // 👈 убираем выделение
+            // enableInteractiveSelection: false, // 👈 remove the selection
           ),
         ),
       );

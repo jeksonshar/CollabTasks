@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachFileTitle => 'Attach file: ';
 
   @override
+  String get attachmentsTitle => 'Attachments: ';
+
+  @override
   String get viewFileTitle => 'View';
 
   @override
@@ -36,7 +39,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileDeleted => 'File deleted';
 
   @override
+  String get fileDownloaded => 'File downloaded';
+
+  @override
   String get deleteFileFailed => 'Failed to delete file';
+
+  @override
+  String get loadTasksError => 'Failed to load tasks';
+
+  @override
+  String get addTaskError => 'Failed to add task';
+
+  @override
+  String get updateTaskError => 'Failed to update task';
+
+  @override
+  String get deleteTaskError => 'Failed to delete task';
 
   @override
   String get cancel => 'Cancel';
@@ -72,6 +90,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String taskDeleted(Object task) {
     return 'Task deleted: \"$task\"';
+  }
+
+  @override
+  String taskAddedError(Object task) {
+    return 'Failed to add file: \"$task\"';
+  }
+
+  @override
+  String fileDownloadError(Object file) {
+    return 'Failed to save file: \"$file\"';
+  }
+
+  @override
+  String fileOpenError(Object file) {
+    return 'Failed to open file: \"$file\"';
   }
 
   @override

@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'Attach file: '**
   String get attachFileTitle;
 
+  /// No description provided for @attachmentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments: '**
+  String get attachmentsTitle;
+
   /// No description provided for @viewFileTitle.
   ///
   /// In en, this message translates to:
@@ -152,11 +158,41 @@ abstract class AppLocalizations {
   /// **'File deleted'**
   String get fileDeleted;
 
+  /// No description provided for @fileDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'File downloaded'**
+  String get fileDownloaded;
+
   /// No description provided for @deleteFileFailed.
   ///
   /// In en, this message translates to:
   /// **'Failed to delete file'**
   String get deleteFileFailed;
+
+  /// No description provided for @loadTasksError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load tasks'**
+  String get loadTasksError;
+
+  /// No description provided for @addTaskError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add task'**
+  String get addTaskError;
+
+  /// No description provided for @updateTaskError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update task'**
+  String get updateTaskError;
+
+  /// No description provided for @deleteTaskError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete task'**
+  String get deleteTaskError;
 
   /// No description provided for @cancel.
   ///
@@ -217,6 +253,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Task deleted: \"{task}\"'**
   String taskDeleted(Object task);
+
+  /// Shown after receiving an error when adding a task
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add file: \"{task}\"'**
+  String taskAddedError(Object task);
+
+  /// Shown after receiving an error while saving a file
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save file: \"{file}\"'**
+  String fileDownloadError(Object file);
+
+  /// Shown after receiving an error while opening a file
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open file: \"{file}\"'**
+  String fileOpenError(Object file);
 
   /// No description provided for @editorPlaceholder.
   ///
