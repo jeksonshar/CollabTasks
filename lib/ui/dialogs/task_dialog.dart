@@ -9,14 +9,13 @@ import '../../core/attachment_file_service.dart';
 import '../../domain/models/task_attachment.dart';
 import 'task_attachment_tile.dart';
 
-const extraPadding = 80;
+const extraPadding = 80; // TODO 6.04 it is no good, in the future, need to calculating this size
 
 class TaskDialogResult {
-  final String text;
-  final String deltaJson;
+  final String textJson;
   final List<TaskAttachment> attachments;
 
-  const TaskDialogResult({required this.text, required this.deltaJson, required this.attachments});
+  const TaskDialogResult({required this.textJson, required this.attachments});
 }
 
 class TaskDialog extends StatefulWidget {
@@ -151,12 +150,11 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     if (_isEmpty) return;
 
     final delta = _controller.document.toDelta();
-    final json = jsonEncode(delta.toJson());
-    final plain = _controller.document.toPlainText().trim();
+    final textJson = jsonEncode(delta.toJson());
 
-    Navigator.of(context).pop(
-      TaskDialogResult(text: json, deltaJson: plain, attachments: List.unmodifiable(_attachments)),
-    );
+    Navigator.of(
+      context,
+    ).pop(TaskDialogResult(textJson: textJson, attachments: List.unmodifiable(_attachments)));
   }
 
   Future<void> _pickAttachments() async {

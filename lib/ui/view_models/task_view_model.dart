@@ -51,7 +51,7 @@ class TaskViewModel extends ChangeNotifier {
   Future<void> addTask(TaskDialogResult taskDialogResult, String errorMessage) async {
     final task = Task(
       id: DateTime.now().toIso8601String(),
-      text: taskDialogResult.text,
+      text: taskDialogResult.textJson,
       attachments: taskDialogResult.attachments,
     );
 
@@ -71,7 +71,7 @@ class TaskViewModel extends ChangeNotifier {
   Future<void> updateTask(String id, TaskDialogResult taskDialogResult, String errorMessage) async {
     final task = Task(
       id: id,
-      text: taskDialogResult.text,
+      text: taskDialogResult.textJson,
       attachments: taskDialogResult.attachments,
     );
 

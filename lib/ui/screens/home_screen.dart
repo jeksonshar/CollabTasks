@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     if (result == null) return;
     if (!mounted) return;
 
-    final plain = _deltaJsonToPlainText(result.deltaJson);
+    final plain = _deltaJsonToPlainText(result.textJson);
 
     if (editIndex == null) {
       // Adding a new task
