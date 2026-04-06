@@ -5,7 +5,7 @@ import '../../domain/use_cases/add_task_use_case.dart';
 import '../../domain/use_cases/delete_task_use_case.dart';
 import '../../domain/use_cases/get_tasks_use_case.dart';
 import '../../domain/use_cases/update_task_use_case.dart';
-import '../dialogs/task_dialog.dart';
+import '../dialogs/task_dialog/task_dialog.dart';
 
 class TaskViewModel extends ChangeNotifier {
   final GetTasksUseCase getTasksUseCase;

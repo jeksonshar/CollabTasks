@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/models/task_attachment.dart';
-import '../../l10n/app_localizations.dart';
+import '../../../../domain/models/task_attachment.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class TaskAttachmentTile extends StatelessWidget {
   final TaskAttachment attachment;

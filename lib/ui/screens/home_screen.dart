@@ -5,7 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
 
-import '../dialogs/task_dialog.dart';
+import '../dialogs/task_dialog/task_dialog.dart';
 import '../view_models/task_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
