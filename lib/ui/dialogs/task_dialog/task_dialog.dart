@@ -7,7 +7,6 @@ import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachmen
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 
 import '../../../domain/models/task_attachment.dart';
-import 'logic/editor_visibility_controller.dart';
 
 const extraPadding = 90.0; // TODO 6.04 it is no good, in the future, need to calculating this size
 
@@ -30,7 +29,6 @@ class TaskDialog extends StatefulWidget {
 
 class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   late final quill.QuillController _controller;
-  late final EditorVisibilityController _visibilityController;
 
   final FocusNode _focusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
@@ -49,13 +47,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _initController();
 
     _attachments.addAll(widget.initialAttachments);
-
-    _visibilityController = EditorVisibilityController(
-      dialogScrollController: _dialogScrollController,
-      editorKey: _editorKey,
-      controller: _controller,
-      extraPadding: extraPadding,
-    );
 
     _setupListeners();
   }
@@ -86,7 +77,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
   void _setupListeners() {
     _controller.addListener(_onSelectionChanged);
-    _focusNode.addListener(_onFocusChanged);
   }
 
   void _onSelectionChanged() {
@@ -94,24 +84,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     if (sel == _lastSelection) return;
 
     _lastSelection = sel;
-
-    if (_focusNode.hasFocus) {
-      _ensureVisible();
-    }
-  }
-
-  void _onFocusChanged() {
-    if (_focusNode.hasFocus) {
-      _ensureVisible(withDelay: true);
-    }
-  }
-
-  void _ensureVisible({bool withDelay = false}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      _visibilityController.ensureVisible(context, isNeedDelay: withDelay);
-    });
   }
 
   bool get _isEmpty => _controller.document.toPlainText().trim().isEmpty;

@@ -174,22 +174,28 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
         ),
         const SizedBox(height: 8),
 
-        /// 🔹 Editor
-        Container(
-          key: widget.editorKey,
-          constraints: const BoxConstraints(minHeight: 100),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: quill.QuillEditor(
-            controller: widget.controller,
-            focusNode: widget.focusNode,
-            scrollController: widget.scrollController,
-            config: quill.QuillEditorConfig(
-              placeholder: widget.editorPlaceholder,
-              expands: false,
-              padding: EdgeInsets.all(12),
+        /// 🔹 Editor with min and max height, scrollable
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 100, maxHeight: 200),
+          child: Scrollbar(
+            controller: widget.scrollController,
+            thumbVisibility: true, // показывать не только при скролле, а всегда
+            child: Container(
+              key: widget.editorKey,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: quill.QuillEditor(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                scrollController: widget.scrollController,
+                config: quill.QuillEditorConfig(
+                  placeholder: widget.editorPlaceholder,
+                  expands: false,
+                  padding: EdgeInsets.all(12),
+                ),
+              ),
             ),
           ),
         ),
