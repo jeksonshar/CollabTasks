@@ -164,17 +164,17 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
           ],
         ),
         if (_attachments.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            localization.attachmentsTitle,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: "Roboto",
-            ),
-          ),
-          const SizedBox(height: 8),
+          // const SizedBox(height: 8),
+          // Text(
+          //   localization.attachmentsTitle,
+          //   style: const TextStyle(
+          //     fontSize: 16,
+          //     fontWeight: FontWeight.bold,
+          //     color: Colors.black87,
+          //     fontFamily: "Roboto",
+          //   ),
+          // ),
+          // const SizedBox(height: 8),
 
           ..._attachments.map(
             (attachment) => Padding(

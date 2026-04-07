@@ -72,19 +72,19 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// 🔹 Title for toolbar
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            widget.formattingTitle,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: "Roboto",
-            ),
-          ),
-        ),
-        const SizedBox(height: 2),
+        // Align(
+        //   alignment: Alignment.centerLeft,
+        //   child: Text(
+        //     widget.formattingTitle,
+        //     style: const TextStyle(
+        //       fontSize: 16,
+        //       fontWeight: FontWeight.bold,
+        //       color: Colors.black87,
+        //       fontFamily: "Roboto",
+        //     ),
+        //   ),
+        // ),
+        // const SizedBox(height: 2),
 
         /// 🔹 Toolbar
         SizedBox(
