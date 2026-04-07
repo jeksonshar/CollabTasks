@@ -7,6 +7,8 @@ import '../../domain/use_cases/get_tasks_use_case.dart';
 import '../../domain/use_cases/update_task_use_case.dart';
 import '../dialogs/task_dialog/task_dialog.dart';
 
+enum TaskErrorType { load, add, update, delete } // TODO in future use sealed class if it need
+
 class TaskViewModel extends ChangeNotifier {
   final GetTasksUseCase getTasksUseCase;
   final AddTaskUseCase addTaskUseCase;
@@ -22,15 +24,15 @@ class TaskViewModel extends ChangeNotifier {
 
   List<Task> _tasks = [];
   bool _isLoading = false;
-  String? _errorMessage;
+  TaskErrorType? _errorType;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
 
   bool get isLoading => _isLoading;
 
-  String? get errorMessage => _errorMessage;
+  TaskErrorType? get errorType => _errorType;
 
-  Future<void> loadTasks(String errorMessage) async {
+  Future<void> loadTasks() async {
     debugPrint('TaskViewModel.loadTasks: start');
     _setLoading(true);
     _setError(null);
@@ -38,17 +40,18 @@ class TaskViewModel extends ChangeNotifier {
     try {
       final loadedTasks = await getTasksUseCase();
       _tasks = loadedTasks;
+      notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.loadTasks ERROR: $e\n$s');
-      _tasks = [];
-      _setError(errorMessage);
+      _tasks = <Task>[];
+      _setError(TaskErrorType.load);
     } finally {
       _setLoading(false);
       debugPrint('TaskViewModel.loadTasks: end');
     }
   }
 
-  Future<void> addTask(TaskDialogResult taskDialogResult, String errorMessage) async {
+  Future<void> addTask(TaskDialogResult taskDialogResult) async {
     final task = Task(
       id: DateTime.now().toIso8601String(),
       text: taskDialogResult.textJson,
@@ -63,12 +66,12 @@ class TaskViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.addTask ERROR: $e\n$s');
-      _setError(errorMessage);
+      _setError(TaskErrorType.add);
       rethrow;
     }
   }
 
-  Future<void> updateTask(String id, TaskDialogResult taskDialogResult, String errorMessage) async {
+  Future<void> updateTask(String id, TaskDialogResult taskDialogResult) async {
     final task = Task(
       id: id,
       text: taskDialogResult.textJson,
@@ -89,12 +92,12 @@ class TaskViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
-      _setError(errorMessage);
+      _setError(TaskErrorType.update);
       rethrow;
     }
   }
 
-  Future<void> deleteTask(String id, String errorMessage) async {
+  Future<void> deleteTask(String id) async {
     _setError(null);
 
     try {
@@ -103,8 +106,12 @@ class TaskViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
-      _setError(errorMessage);
+      _setError(TaskErrorType.delete);
     }
+  }
+
+  void clearError() {
+    _setError(null);
   }
 
   void _setLoading(bool value) {
@@ -113,9 +120,9 @@ class TaskViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setError(String? value) {
-    if (_errorMessage == value) return;
-    _errorMessage = value;
+  void _setError(TaskErrorType? value) {
+    if (_errorType == value) return;
+    _errorType = value;
     notifyListeners();
   }
 }

@@ -17,19 +17,52 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with L10nMixin {
   late TaskViewModel vm;
+  TaskErrorType? _lastShownError;
 
   @override
   void initState() {
     super.initState();
     // get the viewmodel in the next frame so that the context is ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      vm = Provider.of<TaskViewModel>(context, listen: false);
-      vm.loadTasks(localization.loadTasksError);
+      if (!mounted) return;
+
+      vm = context.read<TaskViewModel>();
+      vm.addListener(_onVmChanged);
+      vm.loadTasks();
     });
   }
 
+  void _onVmChanged() {
+    if (!mounted) return;
+
+    final errorType = vm.errorType;
+    if (errorType == null || errorType == _lastShownError) return;
+
+    _lastShownError = errorType;
+
+    final message = switch (errorType) {
+      TaskErrorType.load => localization.loadTasksError,
+      TaskErrorType.add => localization.addTaskError,
+      TaskErrorType.update => localization.updateTaskError,
+      TaskErrorType.delete => localization.deleteTaskError,
+    };
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+    vm.clearError();
+    _lastShownError = null;
+  }
+
+  @override
+  void dispose() {
+    if (mounted) {
+      vm.removeListener(_onVmChanged);
+    }
+    super.dispose();
+  }
+
   Future<void> _showTaskDialog({int? editIndex}) async {
-    final vm = Provider.of<TaskViewModel>(context, listen: false);
+    final vm = context.read<TaskViewModel>();
     final initialTask = editIndex != null ? vm.tasks[editIndex] : null;
 
     final result = await showDialog<TaskDialogResult>(
@@ -50,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
 
     if (editIndex == null) {
       // Adding a new task
-      await vm.addTask(result, localization.addTaskError);
+      await vm.addTask(result);
 
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -59,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     } else {
       // Editing an existing task
       final id = vm.tasks[editIndex].id;
-      await vm.updateTask(id, result, localization.updateTaskError);
+      await vm.updateTask(id, result);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -77,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
   }
 
   Future<void> _showDeleteDialog(int index) async {
-    final vm = Provider.of<TaskViewModel>(context, listen: false);
+    final vm = context.read<TaskViewModel>();
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -102,7 +135,10 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     if (shouldDelete != true) return;
     final removed = vm.tasks[index];
 
-    await vm.deleteTask(removed.id, localization.deleteTaskError);
+    await vm.deleteTask(removed.id);
+
+    if (vm.errorType == TaskErrorType.delete) return;
+
     final plain = _deltaJsonToPlainText(removed.text);
 
     if (!mounted) return;
