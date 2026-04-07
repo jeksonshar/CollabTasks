@@ -138,8 +138,6 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
 
   @override
   Widget build(BuildContext context) {
-    if (_attachments.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -165,29 +163,31 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
             IconButton(onPressed: _pickAttachments, icon: const Icon(Icons.attach_file)),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          localization.attachmentsTitle,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-            fontFamily: "Roboto",
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        ..._attachments.map(
-          (attachment) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: TaskAttachmentTile(
-              attachment: attachment,
-              onView: () => _viewAttachment(attachment),
-              onDownload: () => _downloadAttachment(attachment),
-              onDelete: () => _removeAttachment(attachment),
+        if (_attachments.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            localization.attachmentsTitle,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              fontFamily: "Roboto",
             ),
           ),
-        ),
+          const SizedBox(height: 8),
+
+          ..._attachments.map(
+            (attachment) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TaskAttachmentTile(
+                attachment: attachment,
+                onView: () => _viewAttachment(attachment),
+                onDownload: () => _downloadAttachment(attachment),
+                onDelete: () => _removeAttachment(attachment),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
