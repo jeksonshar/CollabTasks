@@ -1,12 +1,12 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:provider/provider.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
+import 'package:task_manager/ui/screens/home_screen/utils/json_helpers.dart';
 
-import '../dialogs/task_dialog/task_dialog.dart';
-import '../view_models/task_view_model.dart';
+import '../../dialogs/task_dialog/task_dialog.dart';
+import '../../view_models/task_view_model.dart';
+import 'components/task_list_title.dart';
+import 'components/task_rich_preview.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -76,10 +76,9 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
 
     debugPrint('HomeScreen AddTaskDialog result = $result');
 
-    if (result == null) return;
-    if (!mounted) return;
+    if (result == null || !mounted) return;
 
-    final plain = _deltaJsonToPlainText(result.textJson);
+    final plain = deltaJsonToPlainText(result.textJson);
 
     if (editIndex == null) {
       // Adding a new task
@@ -100,14 +99,14 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
     }
   }
 
-  String _deltaJsonToPlainText(String deltaJson) {
-    try {
-      final doc = quill.Document.fromJson(jsonDecode(deltaJson) as List<dynamic>);
-      return doc.toPlainText().trim();
-    } catch (_) {
-      return deltaJson;
-    }
-  }
+  // String _deltaJsonToPlainText(String deltaJson) {
+  //   try {
+  //     final doc = quill.Document.fromJson(jsonDecode(deltaJson) as List<dynamic>);
+  //     return doc.toPlainText().trim();
+  //   } catch (_) {
+  //     return deltaJson;
+  //   }
+  // }
 
   Future<void> _showDeleteDialog(int index) async {
     final vm = context.read<TaskViewModel>();
@@ -115,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(localization.deleteTaskTitle),
-        content: _buildTaskContent(vm.tasks[index].text),
+        content: TaskRichPreview(deltaJson: vm.tasks[index].text),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -132,14 +131,15 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
         ],
       ),
     );
-    if (shouldDelete != true) return;
-    final removed = vm.tasks[index];
 
+    if (shouldDelete != true) return;
+
+    final removed = vm.tasks[index];
     await vm.deleteTask(removed.id);
 
     if (vm.errorType == TaskErrorType.delete) return;
 
-    final plain = _deltaJsonToPlainText(removed.text);
+    final plain = deltaJsonToPlainText(removed.text);
 
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -194,42 +194,12 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = vm.tasks[index];
-        return ListTile(
-          title: _buildTaskContent(item.text),
-          leading: const Icon(Icons.task_alt),
-          trailing: item.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
-          onLongPress: () => _showDeleteDialog(index),
+        return TaskListTile(
+          task: item,
           onTap: () => _showTaskDialog(editIndex: index),
+          onLongPress: () => _showDeleteDialog(index),
         );
       },
     );
-  }
-
-  Widget _buildTaskContent(String deltaJson) {
-    try {
-      final document = quill.Document.fromJson(jsonDecode(deltaJson) as List<dynamic>);
-
-      final controller = quill.QuillController(
-        document: document,
-        selection: const TextSelection.collapsed(offset: 0),
-        readOnly: true,
-      );
-
-      return IgnorePointer(
-        // ignoring: true, // 👈 disables interaction completely
-        child: quill.QuillEditor(
-          controller: controller,
-          focusNode: FocusNode(canRequestFocus: false),
-          scrollController: ScrollController(),
-          config: const quill.QuillEditorConfig(
-            expands: false,
-            padding: EdgeInsets.zero,
-            // enableInteractiveSelection: false, // 👈 remove the selection
-          ),
-        ),
-      );
-    } catch (_) {
-      return Text(deltaJson);
-    }
   }
 }

@@ -3,10 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
+import 'package:task_manager/ui/screens/home_screen/home_screen.dart';
 
 import 'di/service_locator.dart';
 import 'l10n/app_localizations.dart';
-import 'ui/screens/home_screen.dart';
 import 'ui/view_models/task_view_model.dart';
 
 void main() {
