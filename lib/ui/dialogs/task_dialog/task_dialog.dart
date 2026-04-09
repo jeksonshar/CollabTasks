@@ -7,6 +7,7 @@ import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachmen
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 
 import '../../../domain/models/task_attachment.dart';
+import '../../screens/home_screen/utils/json_helpers.dart';
 
 const extraPadding = 90.0; // TODO 6.04 it is no good, in the future, need to calculating this size
 
@@ -92,10 +93,11 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     if (_isEmpty) return;
 
     final delta = _controller.document.toDelta();
+    final trimmedDelta = trimDelta(delta);
 
     Navigator.of(context).pop(
       TaskDialogResult(
-        textJson: jsonEncode(delta.toJson()),
+        textJson: jsonEncode(trimmedDelta.toJson()),
         attachments: List.unmodifiable(_attachments),
       ),
     );
