@@ -9,8 +9,6 @@ import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter
 import '../../../domain/models/task_attachment.dart';
 import '../../screens/home_screen/utils/json_helpers.dart';
 
-const extraPadding = 90.0; // TODO 6.04 it is no good, in the future, need to calculating this size
-
 class TaskDialogResult {
   final String textJson;
   final List<TaskAttachment> attachments;
@@ -29,62 +27,51 @@ class TaskDialog extends StatefulWidget {
 }
 
 class _TaskDialogState extends State<TaskDialog> with L10nMixin {
-  late final quill.QuillController _controller;
+  late quill.QuillController _controller;
 
   final FocusNode _focusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
-  final ScrollController _dialogScrollController = ScrollController();
 
   final GlobalKey _editorKey = GlobalKey();
 
   final List<TaskAttachment> _attachments = [];
 
-  TextSelection _lastSelection = const TextSelection.collapsed(offset: -1);
-
   @override
   void initState() {
     super.initState();
-
-    _initController();
-
+    _controller = _createController(widget.initialDeltaJson);
     _attachments.addAll(widget.initialAttachments);
-
-    _setupListeners();
   }
 
-  void _initController() {
-    if (widget.initialDeltaJson != null) {
-      try {
-        final doc = quill.Document.fromJson(jsonDecode(widget.initialDeltaJson!) as List);
+  @override
+  void didUpdateWidget(covariant TaskDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-        _controller = quill.QuillController(
+    if (oldWidget.initialDeltaJson != widget.initialDeltaJson) {
+      _controller.dispose();
+      _controller = _createController(widget.initialDeltaJson);
+    }
+  }
+
+  quill.QuillController _createController(String? initialDeltaJson) {
+    if (initialDeltaJson != null) {
+      try {
+        final doc = quill.Document.fromJson(jsonDecode(initialDeltaJson) as List<dynamic>);
+
+        return quill.QuillController(
           document: doc,
           selection: TextSelection.collapsed(offset: doc.length > 0 ? doc.length - 1 : 0),
         );
       } catch (_) {
-        final doc = quill.Document()..insert(0, widget.initialDeltaJson!);
-
-        _controller = quill.QuillController(
+        final doc = quill.Document()..insert(0, initialDeltaJson);
+        return quill.QuillController(
           document: doc,
           selection: TextSelection.collapsed(offset: doc.length),
         );
       }
-    } else {
-      _controller = quill.QuillController.basic();
     }
 
-    _lastSelection = _controller.selection;
-  }
-
-  void _setupListeners() {
-    _controller.addListener(_onSelectionChanged);
-  }
-
-  void _onSelectionChanged() {
-    final sel = _controller.selection;
-    if (sel == _lastSelection) return;
-
-    _lastSelection = sel;
+    return quill.QuillController.basic();
   }
 
   bool get _isEmpty => _controller.document.toPlainText().trim().isEmpty;
@@ -92,8 +79,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void _submit() {
     if (_isEmpty) return;
 
-    final delta = _controller.document.toDelta();
-    final trimmedDelta = trimDelta(delta);
+    final trimmedDelta = trimDelta(_controller.document.toDelta());
 
     Navigator.of(context).pop(
       TaskDialogResult(
@@ -114,15 +100,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _controller.dispose();
     _focusNode.dispose();
     _editorScrollController.dispose();
-    _dialogScrollController.dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-
     final isEdit = widget.initialDeltaJson != null;
 
     return AlertDialog(
@@ -130,7 +113,6 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       content: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 700, maxHeight: media.size.height * 0.8),
         child: SingleChildScrollView(
-          controller: _dialogScrollController,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,10 +139,8 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         AnimatedBuilder(
           animation: _controller,
           builder: (_, _) {
-            final enabled = !_isEmpty;
-
             return ElevatedButton(
-              onPressed: enabled ? _submit : null,
+              onPressed: _isEmpty ? null : _submit,
               child: Text(isEdit ? localization.update : localization.enter),
             );
           },

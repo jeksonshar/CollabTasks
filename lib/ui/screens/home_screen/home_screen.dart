@@ -55,9 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
 
   @override
   void dispose() {
-    if (mounted) {
-      vm.removeListener(_onVmChanged);
-    }
+    vm.removeListener(_onVmChanged);
     super.dispose();
   }
 
