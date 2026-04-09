@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/task.dart';
+import '../../domain/models/task_draft.dart';
 import '../../domain/use_cases/add_task_use_case.dart';
 import '../../domain/use_cases/delete_task_use_case.dart';
 import '../../domain/use_cases/get_tasks_use_case.dart';
 import '../../domain/use_cases/update_task_use_case.dart';
-import '../dialogs/task_dialog/task_dialog.dart';
 
 enum TaskErrorType { load, add, update, delete } // TODO in future use sealed class if it need
 
@@ -51,11 +51,11 @@ class TaskViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> addTask(TaskDialogResult taskDialogResult) async {
+  Future<void> addTask(TaskDraft draft) async {
     final task = Task(
       id: DateTime.now().toIso8601String(),
-      text: taskDialogResult.textJson,
-      attachments: taskDialogResult.attachments,
+      text: draft.textJson,
+      attachments: draft.attachments,
     );
 
     _setError(null);
@@ -71,12 +71,8 @@ class TaskViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateTask(String id, TaskDialogResult taskDialogResult) async {
-    final task = Task(
-      id: id,
-      text: taskDialogResult.textJson,
-      attachments: taskDialogResult.attachments,
-    );
+  Future<void> updateTask(String id, TaskDraft draft) async {
+    final task = Task(id: id, text: draft.textJson, attachments: draft.attachments);
 
     _setError(null);
 

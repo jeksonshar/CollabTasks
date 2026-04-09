@@ -7,14 +7,8 @@ import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachmen
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 
 import '../../../domain/models/task_attachment.dart';
+import '../../../domain/models/task_draft.dart';
 import '../../screens/home_screen/utils/json_helpers.dart';
-
-class TaskDialogResult {
-  final String textJson;
-  final List<TaskAttachment> attachments;
-
-  const TaskDialogResult({required this.textJson, required this.attachments});
-}
 
 class TaskDialog extends StatefulWidget {
   final String? initialDeltaJson;
@@ -82,7 +76,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     final trimmedDelta = trimDelta(_controller.document.toDelta());
 
     Navigator.of(context).pop(
-      TaskDialogResult(
+      TaskDraft(
         textJson: jsonEncode(trimmedDelta.toJson()),
         attachments: List.unmodifiable(_attachments),
       ),
