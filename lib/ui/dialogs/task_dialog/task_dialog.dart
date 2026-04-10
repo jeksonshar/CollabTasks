@@ -7,6 +7,7 @@ import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachmen
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
 
+import '../../../core/task_priority/task_priority_utils.dart';
 import '../../../domain/models/task_attachment.dart';
 import '../../../domain/models/task_draft.dart';
 import '../../screens/home_screen/utils/json_helpers.dart';
@@ -102,9 +103,9 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       ..addAll(list);
   }
 
-  void _onPriorityChanged(int value) {
+  void _onPriorityChanged(TaskPriority newPriority) {
     setState(() {
-      _priority = value;
+      _priority = newPriority.value;
     });
   }
 
@@ -141,7 +142,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
               const SizedBox(height: 4),
               TaskPrioritySection(
                 title: localization.priorityTitle,
-                priority: _priority,
+                priority: TaskPriority.fromValue(_priority),
                 onChanged: _onPriorityChanged,
               ),
               TaskAttachmentsSection(

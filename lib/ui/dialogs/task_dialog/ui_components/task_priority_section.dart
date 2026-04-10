@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:task_manager/core/theme/app_text_styles.dart';
+import 'package:task_manager/l10n/app_localizations.dart';
+
+import '../../../../core/task_priority/task_priority_utils.dart';
 
 class TaskPrioritySection extends StatelessWidget {
-  final int priority;
-  final ValueChanged<int> onChanged;
+  final TaskPriority priority;
+  final ValueChanged<TaskPriority> onChanged;
   final String title;
 
   const TaskPrioritySection({
@@ -15,23 +18,23 @@ class TaskPrioritySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedItem = _PriorityItem.byValue(priority);
+    final localization = AppLocalizations.of(context)!;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: AppTextStyles.bold16Black87Roboto),
-        PopupMenuButton<int>(
+        PopupMenuButton<TaskPriority>(
           tooltip: title,
           initialValue: priority,
           onSelected: onChanged,
-          itemBuilder: (context) => _PriorityItem.values
+          itemBuilder: (context) => TaskPriority.values
               .map(
-                (item) => PopupMenuItem<int>(
-                  value: item.value,
+                (item) => PopupMenuItem<TaskPriority>(
+                  value: item,
                   child: Row(
                     children: [
-                      Expanded(child: Text(item.label)),
+                      Expanded(child: Text(item.label(localization))),
                       const SizedBox(width: 12),
                       _PriorityIndicator(item: item),
                     ],
@@ -39,7 +42,7 @@ class TaskPrioritySection extends StatelessWidget {
                 ),
               )
               .toList(),
-          child: _PriorityButton(selectedItem: selectedItem),
+          child: _PriorityButton(selectedItem: priority),
         ),
       ],
     );
@@ -47,7 +50,7 @@ class TaskPrioritySection extends StatelessWidget {
 }
 
 class _PriorityButton extends StatelessWidget {
-  final _PriorityItem selectedItem;
+  final TaskPriority selectedItem;
 
   const _PriorityButton({required this.selectedItem});
 
@@ -70,60 +73,22 @@ class _PriorityButton extends StatelessWidget {
 }
 
 class _PriorityIndicator extends StatelessWidget {
-  final _PriorityItem item;
+  final TaskPriority item;
 
   const _PriorityIndicator({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = item.borderColor ?? Theme.of(context).colorScheme.outline;
+
     return Container(
       width: 18,
       height: 18,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: item.color ?? Theme.of(context).colorScheme.outline, width: 1.5),
+        border: Border.all(color: borderColor, width: 1.5),
         color: item.fillColor,
       ),
     );
-  }
-}
-
-class _PriorityItem {
-  final int value;
-  final String label;
-  final Color? color;
-  final Color? fillColor;
-
-  const _PriorityItem({
-    required this.value,
-    required this.label,
-    required this.color,
-    required this.fillColor,
-  });
-
-  static const values = <_PriorityItem>[
-    _PriorityItem(value: 0, label: 'Без приоритета', color: null, fillColor: null),
-    _PriorityItem(
-      value: 1,
-      label: 'Низкий приоритет',
-      color: Colors.green,
-      fillColor: Color(0x332E7D32),
-    ),
-    _PriorityItem(
-      value: 2,
-      label: 'Средний приоритет',
-      color: Colors.amber,
-      fillColor: Color(0x33FFB300),
-    ),
-    _PriorityItem(
-      value: 3,
-      label: 'Высокий приоритет',
-      color: Colors.red,
-      fillColor: Color(0x33C62828),
-    ),
-  ];
-
-  static _PriorityItem byValue(int value) {
-    return values.firstWhere((e) => e.value == value, orElse: () => values.first);
   }
 }

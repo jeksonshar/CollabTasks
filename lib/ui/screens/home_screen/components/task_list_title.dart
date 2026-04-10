@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:task_manager/domain/models/task.dart';
 
+import '../../../../core/task_priority/task_priority_utils.dart';
 import 'task_rich_preview.dart';
 
 class TaskListTile extends StatelessWidget {
@@ -15,26 +16,14 @@ class TaskListTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
-  Color? _priorityColor(BuildContext context) {
-    switch (task.priority) {
-      case 1:
-        return Colors.green;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.red;
-      case 0:
-        return null;
-      default:
-        return Theme.of(context).iconTheme.color;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final priority = TaskPriority.fromValue(task.priority);
+    final priorityColor = priority.borderColor ?? Theme.of(context).iconTheme.color;
+
     return ListTile(
       key: ValueKey(task.id),
-      leading: Icon(Icons.task_alt, color: _priorityColor(context)),
+      leading: Icon(Icons.task_alt, color: priorityColor),
       title: TaskRichPreview(deltaJson: task.text),
       trailing: task.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
       onTap: onTap,
