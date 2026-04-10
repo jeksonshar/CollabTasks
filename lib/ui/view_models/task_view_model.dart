@@ -55,6 +55,7 @@ class TaskViewModel extends ChangeNotifier {
     final task = Task(
       id: DateTime.now().toIso8601String(),
       text: draft.textJson,
+      priority: draft.priority,
       attachments: draft.attachments,
     );
 
@@ -72,7 +73,12 @@ class TaskViewModel extends ChangeNotifier {
   }
 
   Future<void> updateTask(String id, TaskDraft draft) async {
-    final task = Task(id: id, text: draft.textJson, attachments: draft.attachments);
+    final task = Task(
+      id: id,
+      text: draft.textJson,
+      priority: draft.priority,
+      attachments: draft.attachments,
+    );
 
     _setError(null);
 

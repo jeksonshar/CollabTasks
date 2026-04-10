@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:task_manager/l10n/l10n_mixin.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
+import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
 
 import '../../../domain/models/task_attachment.dart';
 import '../../../domain/models/task_draft.dart';
@@ -13,8 +14,14 @@ import '../../screens/home_screen/utils/json_helpers.dart';
 class TaskDialog extends StatefulWidget {
   final String? initialDeltaJson;
   final List<TaskAttachment> initialAttachments;
+  final int initialPriority;
 
-  const TaskDialog({super.key, this.initialDeltaJson, this.initialAttachments = const []});
+  const TaskDialog({
+    super.key,
+    this.initialDeltaJson,
+    this.initialAttachments = const [],
+    this.initialPriority = 0,
+  });
 
   @override
   State<TaskDialog> createState() => _TaskDialogState();
@@ -25,16 +32,17 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
   final FocusNode _focusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
-
   final GlobalKey _editorKey = GlobalKey();
 
   final List<TaskAttachment> _attachments = [];
+  int _priority = 0;
 
   @override
   void initState() {
     super.initState();
     _controller = _createController(widget.initialDeltaJson);
     _attachments.addAll(widget.initialAttachments);
+    _priority = widget.initialPriority;
   }
 
   @override
@@ -44,6 +52,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     if (oldWidget.initialDeltaJson != widget.initialDeltaJson) {
       _controller.dispose();
       _controller = _createController(widget.initialDeltaJson);
+    }
+
+    if (oldWidget.initialPriority != widget.initialPriority) {
+      _priority = widget.initialPriority;
     }
   }
 
@@ -78,6 +90,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     Navigator.of(context).pop(
       TaskDraft(
         textJson: jsonEncode(trimmedDelta.toJson()),
+        priority: _priority,
         attachments: List.unmodifiable(_attachments),
       ),
     );
@@ -87,6 +100,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _attachments
       ..clear()
       ..addAll(list);
+  }
+
+  void _onPriorityChanged(int value) {
+    setState(() {
+      _priority = value;
+    });
   }
 
   @override
@@ -119,7 +138,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                 formattingTitle: localization.formattingTitle,
                 editorPlaceholder: localization.editorPlaceholder,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
+              TaskPrioritySection(
+                title: localization.priorityTitle,
+                priority: _priority,
+                onChanged: _onPriorityChanged,
+              ),
               TaskAttachmentsSection(
                 initialAttachments: widget.initialAttachments,
                 onChanged: _onAttachmentsChanged,

@@ -69,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
       builder: (context) => TaskDialog(
         // flutter_quill dialog
         initialDeltaJson: initialTask?.text,
+        initialPriority: initialTask?.priority ?? 0,
         initialAttachments: initialTask?.attachments ?? const [],
       ),
     );

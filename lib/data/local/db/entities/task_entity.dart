@@ -21,6 +21,8 @@ class TaskEntity extends Table {
 
   TextColumn get taskText => text()();
 
+  IntColumn get taskPriority => integer().withDefault(const Constant(0))();
+
   TextColumn get taskAttachments => text().map(const TaskAttachmentListConverter())();
 
   @override

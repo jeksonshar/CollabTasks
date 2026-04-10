@@ -13,6 +13,7 @@ class TaskRepositoryImpl implements TaskRepository {
     final companion = TaskEntityCompanion.insert(
       taskId: task.id,
       taskText: task.text,
+      taskPriority: Value(task.priority),
       taskAttachments: task.attachments,
     );
 
@@ -35,7 +36,14 @@ class TaskRepositoryImpl implements TaskRepository {
     final rows = await _db.select(_db.taskEntity).get();
 
     return rows
-        .map((row) => Task(id: row.taskId, text: row.taskText, attachments: row.taskAttachments))
+        .map(
+          (row) => Task(
+            id: row.taskId,
+            text: row.taskText,
+            priority: row.taskPriority,
+            attachments: row.taskAttachments,
+          ),
+        )
         .toList();
   }
 }

@@ -76,12 +76,7 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
         //   alignment: Alignment.centerLeft,
         //   child: Text(
         //     widget.formattingTitle,
-        //     style: const TextStyle(
-        //       fontSize: 16,
-        //       fontWeight: FontWeight.bold,
-        //       color: Colors.black87,
-        //       fontFamily: "Roboto",
-        //     ),
+        //     style: AppTextStyles.bold16Black87Roboto,
         //   ),
         // ),
         // const SizedBox(height: 2),

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:task_manager/core/theme/app_text_styles.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
 
 import '../../../../core/attachment_files/attachment_file_service.dart';
@@ -150,15 +151,7 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
             // It is necessary that the Text takes up only the available space and does not
             // push the IconButton beyond the Row.
             Expanded(
-              child: Text(
-                localization.attachFileTitle,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  fontFamily: "Roboto",
-                ),
-              ),
+              child: Text(localization.attachFileTitle, style: AppTextStyles.bold16Black87Roboto),
             ),
             IconButton(onPressed: _pickAttachments, icon: const Icon(Icons.attach_file)),
           ],
@@ -167,12 +160,7 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
           // const SizedBox(height: 8),
           // Text(
           //   localization.attachmentsTitle,
-          //   style: const TextStyle(
-          //     fontSize: 16,
-          //     fontWeight: FontWeight.bold,
-          //     color: Colors.black87,
-          //     fontFamily: "Roboto",
-          //   ),
+          //   style: AppTextStyles.bold16Black87Roboto,
           // ),
           // const SizedBox(height: 8),
           ..._attachments.map(
