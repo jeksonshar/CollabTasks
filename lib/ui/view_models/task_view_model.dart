@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/enums/task_sort_direction.dart';
 import '../../core/enums/task_sort_type.dart';
 import '../../domain/models/task.dart';
 import '../../domain/models/task_draft.dart';
@@ -26,7 +27,9 @@ class TaskViewModel extends ChangeNotifier {
   List<Task> _tasks = [];
   bool _isLoading = false;
   TaskErrorType? _errorType;
+
   TaskSortType _sortType = TaskSortType.byDateCreated;
+  TaskSortDirection _sortDirection = TaskSortDirection.topToBottom;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
 
@@ -36,6 +39,8 @@ class TaskViewModel extends ChangeNotifier {
 
   TaskSortType get sortType => _sortType;
 
+  TaskSortDirection get sortDirection => _sortDirection;
+
   Future<void> loadTasks() async {
     debugPrint('TaskViewModel.loadTasks: start');
     _setLoading(true);
@@ -43,7 +48,7 @@ class TaskViewModel extends ChangeNotifier {
 
     try {
       final loadedTasks = await getTasksUseCase();
-      _tasks = loadedTasks;
+      _tasks = _sortTasks(loadedTasks);
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.loadTasks ERROR: $e\n$s');
@@ -56,8 +61,14 @@ class TaskViewModel extends ChangeNotifier {
   }
 
   void setSortType(TaskSortType value) {
-    if (_sortType == value) return;
-    _sortType = value;
+    if (_sortType == value) {
+      _sortDirection = _sortDirection == TaskSortDirection.topToBottom
+          ? TaskSortDirection.bottomToTop
+          : TaskSortDirection.topToBottom;
+    } else {
+      _sortType = value;
+      _sortDirection = TaskSortDirection.topToBottom;
+    }
     _tasks = _sortTasks(_tasks);
     notifyListeners();
   }
@@ -75,7 +86,7 @@ class TaskViewModel extends ChangeNotifier {
 
     try {
       await addTaskUseCase(task);
-      _tasks = [..._tasks, task];
+      _tasks = _sortTasks([..._tasks, task]);
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.addTask ERROR: $e\n$s');
@@ -103,7 +114,7 @@ class TaskViewModel extends ChangeNotifier {
 
       final newTasks = [..._tasks];
       newTasks[index] = task;
-      _tasks = newTasks;
+      _tasks = _sortTasks(newTasks);
       notifyListeners();
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
@@ -132,15 +143,20 @@ class TaskViewModel extends ChangeNotifier {
   List<Task> _sortTasks(List<Task> tasks) {
     final sorted = [...tasks];
 
+    int compare<T extends Comparable>(T a, T b) {
+      final result = a.compareTo(b);
+      return _sortDirection.isAscending ? -result : result;
+    }
+
     switch (_sortType) {
       case TaskSortType.byDateCreated:
-        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        sorted.sort((a, b) => compare(a.createdAt, b.createdAt));
         break;
       case TaskSortType.byPriority:
-        sorted.sort((a, b) => b.priority.compareTo(a.priority));
+        sorted.sort((a, b) => compare(a.priority, b.priority));
         break;
       case TaskSortType.byTitle:
-        sorted.sort((a, b) => a.text.compareTo(b.text));
+        sorted.sort((a, b) => compare(a.text, b.text));
         break;
     }
 

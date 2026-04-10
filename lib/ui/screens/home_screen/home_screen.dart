@@ -4,6 +4,7 @@ import 'package:task_manager/core/enums/task_sort_type.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
 import 'package:task_manager/ui/screens/home_screen/utils/json_helpers.dart';
 
+import '../../../core/enums/task_sort_direction.dart';
 import '../../../domain/models/task_draft.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../dialogs/task_dialog/task_dialog.dart';
@@ -143,6 +144,8 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+
     return Consumer<TaskViewModel>(
       builder: (context, vm, _) {
         return Scaffold(
@@ -154,12 +157,27 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
                 padding: const EdgeInsets.only(right: 16),
                 child: PopupMenuButton<TaskSortType>(
                   icon: const Icon(Icons.sort),
+                  initialValue: vm.sortType,
                   onSelected: vm.setSortType,
                   itemBuilder: (context) {
                     final localization = AppLocalizations.of(context)!;
 
                     return TaskSortType.values.map((type) {
-                      return PopupMenuItem(value: type, child: Text(type.label(localization)));
+                      final isSelected = vm.sortType == type;
+                      final directionIcon = isSelected
+                          ? vm.sortDirection.icon
+                          : Icons.arrow_downward;
+
+                      return PopupMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(type.label(localization))),
+                            const SizedBox(width: 12),
+                            Icon(directionIcon, size: 18),
+                          ],
+                        ),
+                      );
                     }).toList();
                   },
                 ),

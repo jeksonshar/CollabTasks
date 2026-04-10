@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -40,13 +39,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskPriorityHigh => 'Высокий приоритет';
 
   @override
-  String get sortByDate => 'Сортировка по дате';
+  String get sortByDate => 'По дате';
 
   @override
-  String get sortByPriority => 'Сортировка по приоритету';
+  String get sortByPriority => 'По приоритету';
 
   @override
-  String get sortByTitle => 'Сортировка по имени';
+  String get sortByTitle => 'По имени';
 
   @override
   String get viewFileTitle => 'Просмотреть';
