@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:web/web.dart' as web;
 
-import '../domain/models/task_attachment.dart';
+import '../../domain/models/task_attachment.dart';
+import 'attachment_utils.dart';
 
 Future<String?> attachmentsDirectory() async {
   return null;
@@ -15,7 +16,7 @@ Future<List<TaskAttachment>> pickAttachmentFiles(String? attachmentsDirPath) asy
   final result = await FilePicker.platform.pickFiles(
     allowMultiple: true,
     type: FileType.custom,
-    allowedExtensions: const ['pdf', 'doc', 'docx', 'xml', 'txt'],
+    allowedExtensions: documentAttachmentExtensions,
     withData: true,
   );
 

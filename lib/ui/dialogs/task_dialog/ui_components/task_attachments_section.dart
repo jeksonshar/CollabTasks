@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
 
-import '../../../../core/attachment_file_service.dart';
+import '../../../../core/attachment_files/attachment_file_service.dart';
 import '../../../../domain/models/task_attachment.dart';
 import 'task_attachment_tile.dart';
 
@@ -175,7 +175,6 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
           //   ),
           // ),
           // const SizedBox(height: 8),
-
           ..._attachments.map(
             (attachment) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
