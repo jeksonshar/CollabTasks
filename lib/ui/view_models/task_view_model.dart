@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/enums/task_sort_type.dart';
 import '../../domain/models/task.dart';
 import '../../domain/models/task_draft.dart';
 import '../../domain/use_cases/add_task_use_case.dart';
@@ -25,12 +26,15 @@ class TaskViewModel extends ChangeNotifier {
   List<Task> _tasks = [];
   bool _isLoading = false;
   TaskErrorType? _errorType;
+  TaskSortType _sortType = TaskSortType.byDateCreated;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
 
   bool get isLoading => _isLoading;
 
   TaskErrorType? get errorType => _errorType;
+
+  TaskSortType get sortType => _sortType;
 
   Future<void> loadTasks() async {
     debugPrint('TaskViewModel.loadTasks: start');
@@ -51,9 +55,17 @@ class TaskViewModel extends ChangeNotifier {
     }
   }
 
+  void setSortType(TaskSortType value) {
+    if (_sortType == value) return;
+    _sortType = value;
+    _tasks = _sortTasks(_tasks);
+    notifyListeners();
+  }
+
   Future<void> addTask(TaskDraft draft) async {
     final task = Task(
       id: DateTime.now().toIso8601String(),
+      createdAt: DateTime.now(),
       text: draft.textJson,
       priority: draft.priority,
       attachments: draft.attachments,
@@ -72,9 +84,10 @@ class TaskViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateTask(String id, TaskDraft draft) async {
+  Future<void> updateTask(String id, DateTime createdAt, TaskDraft draft) async {
     final task = Task(
       id: id,
+      createdAt: createdAt,
       text: draft.textJson,
       priority: draft.priority,
       attachments: draft.attachments,
@@ -114,6 +127,24 @@ class TaskViewModel extends ChangeNotifier {
 
   void clearError() {
     _setError(null);
+  }
+
+  List<Task> _sortTasks(List<Task> tasks) {
+    final sorted = [...tasks];
+
+    switch (_sortType) {
+      case TaskSortType.byDateCreated:
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case TaskSortType.byPriority:
+        sorted.sort((a, b) => b.priority.compareTo(a.priority));
+        break;
+      case TaskSortType.byTitle:
+        sorted.sort((a, b) => a.text.compareTo(b.text));
+        break;
+    }
+
+    return sorted;
   }
 
   void _setLoading(bool value) {

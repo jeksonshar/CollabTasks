@@ -23,6 +23,8 @@ class TaskEntity extends Table {
 
   IntColumn get taskPriority => integer().withDefault(const Constant(0))();
 
+  DateTimeColumn get taskCreatedAt => dateTime()();
+
   TextColumn get taskAttachments => text().map(const TaskAttachmentListConverter())();
 
   @override
