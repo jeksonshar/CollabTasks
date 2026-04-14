@@ -5,9 +5,9 @@ class TaskAttachment {
   final String id;
   final String name;
   final String extension;
-  final String? localPath; // путь к файлу (mobile/desktop)
+  final String? localPath; // path to file (mobile/desktop)
   final int sizeBytes;
-  final Uint8List? bytes; // бинарные данные (web)
+  final Uint8List? bytes; // binary data (web)
 
   const TaskAttachment({
     required this.id,
@@ -37,11 +37,11 @@ class TaskAttachment {
       name: json['name'] as String,
       extension: json['extension'] as String,
 
-      // старые данные продолжат работать
+      // old data will continue to work
       localPath: json['localPath'] as String?,
 
       sizeBytes: (json['sizeBytes'] as num).toInt(),
-      // web данные (если есть)
+      // web data (if available)
       bytes: rawBytes is String && rawBytes.isNotEmpty ? base64Decode(rawBytes) : null,
     );
   }

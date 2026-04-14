@@ -174,7 +174,7 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
           constraints: const BoxConstraints(minHeight: 100, maxHeight: 200),
           child: Scrollbar(
             controller: widget.scrollController,
-            thumbVisibility: true, // показывать не только при скролле, а всегда
+            thumbVisibility: true, // show not only on scroll, but always
             child: Container(
               key: widget.editorKey,
               decoration: BoxDecoration(

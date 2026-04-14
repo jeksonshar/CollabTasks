@@ -27,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         await m.addColumn(taskEntity, taskEntity.taskCreatedAt);
 
-        // заполняем старые записи, у taskPriority в task_entity стояли дефолтные значения
+        // populate old records, taskPriority in task_entity had default values
         await customStatement('UPDATE task_entity SET task_created_at = ?', [
           DateTime.now().millisecondsSinceEpoch,
         ]);

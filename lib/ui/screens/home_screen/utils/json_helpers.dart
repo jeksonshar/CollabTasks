@@ -20,7 +20,7 @@ quill.Delta trimDelta(quill.Delta delta) {
     return insert is String && insert.trim().isEmpty;
   }
 
-  // Убираем пустые текстовые ops по краям
+  // Remove empty text ops from the edges
   while (ops.isNotEmpty && isEmptyTextOp(ops.first)) {
     ops.removeAt(0);
   }
@@ -28,7 +28,7 @@ quill.Delta trimDelta(quill.Delta delta) {
     ops.removeLast();
   }
 
-  // Подрезаем именно крайние строки, если там есть пробелы/переводы строк
+  // Trim the edge lines if they contain spaces/newlines
   if (ops.isNotEmpty && ops.first['insert'] is String) {
     ops.first['insert'] = (ops.first['insert'] as String).replaceFirst(RegExp(r'^\s+'), '');
     if ((ops.first['insert'] as String).isEmpty) {
@@ -43,7 +43,7 @@ quill.Delta trimDelta(quill.Delta delta) {
     }
   }
 
-  // Quill-документ должен оканчиваться переводом строки
+  // Quill document must end with a newline
   if (ops.isEmpty) {
     ops.add({'insert': '\n'});
   } else {
