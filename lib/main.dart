@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
-import 'package:task_manager/ui/screens/home_screen/home_screen.dart';
+import 'package:task_manager/ui/screens/main_screen/main_screen.dart';
 
 import 'di/service_locator.dart';
 import 'l10n/app_localizations.dart';
@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         ),
-        home: const HomeScreen(),
+        home: const MainScreen(),
       ),
     );
   }

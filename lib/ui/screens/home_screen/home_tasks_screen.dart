@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:task_manager/core/enums/task_sort_type.dart';
 import 'package:task_manager/l10n/l10n_mixin.dart';
-import 'package:task_manager/ui/screens/home_screen/utils/json_helpers.dart';
 
 import '../../../core/enums/task_sort_direction.dart';
 import '../../../domain/models/task_draft.dart';
@@ -11,15 +10,16 @@ import '../../dialogs/task_dialog/task_dialog.dart';
 import '../../view_models/task_view_model.dart';
 import 'components/task_list_title.dart';
 import 'components/task_rich_preview.dart';
+import 'utils/json_helpers.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeTasksScreen extends StatefulWidget {
+  const HomeTasksScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeTasksScreen> createState() => _HomeTasksScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with L10nMixin {
+class _HomeTasksScreenState extends State<HomeTasksScreen> with L10nMixin {
   late TaskViewModel vm;
   TaskErrorType? _lastShownError;
 
@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
       ),
     );
 
-    debugPrint('HomeScreen AddTaskDialog result = $result');
+    debugPrint('HomeTasksScreen AddTaskDialog result = $result');
 
     if (result == null || !mounted) return;
 
@@ -151,6 +151,8 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
         return Scaffold(
           appBar: AppBar(
             title: Text(localization.my_tasks),
+            scrolledUnderElevation: 0.0,
+            // elevation: 12,
             centerTitle: false,
             actions: [
               Padding(
@@ -209,10 +211,13 @@ class _HomeScreenState extends State<HomeScreen> with L10nMixin {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.inbox, size: 64, color: Colors.grey),
-          SizedBox(height: 12),
-          Text(localization.emptyTaskTitle, style: TextStyle(fontSize: 18, color: Colors.grey)),
-          SizedBox(height: 4),
-          Text(localization.emptyTaskDescription, style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 12),
+          Text(
+            localization.emptyTaskTitle,
+            style: const TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+          const SizedBox(height: 4),
+          Text(localization.emptyTaskDescription, style: const TextStyle(color: Colors.grey)),
         ],
       ),
     );
