@@ -110,6 +110,24 @@ abstract class AppLocalizations {
   /// **'Edit Task'**
   String get editTaskTitle;
 
+  /// No description provided for @titleField.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get titleField;
+
+  /// No description provided for @titlePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter task title'**
+  String get titlePlaceholder;
+
+  /// No description provided for @descriptionField.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get descriptionField;
+
   /// No description provided for @formattingTitle.
   ///
   /// In en, this message translates to:

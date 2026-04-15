@@ -15,6 +15,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editTaskTitle => 'Edit Task';
 
   @override
+  String get titleField => 'Title';
+
+  @override
+  String get titlePlaceholder => 'Enter task title';
+
+  @override
+  String get descriptionField => 'Description';
+
+  @override
   String get formattingTitle => 'Formatting options: ';
 
   @override

@@ -5,6 +5,7 @@ import 'task_attachment.dart';
 class Task {
   final String id;
   final DateTime createdAt;
+  final String title;
   final String text;
   final int priority;
   final List<TaskAttachment> attachments;
@@ -12,6 +13,7 @@ class Task {
   const Task({
     required this.id,
     required this.createdAt,
+    required this.title,
     required this.text,
     this.priority = 0,
     this.attachments = const [],
@@ -20,6 +22,7 @@ class Task {
   Task copyWith({
     String? id,
     DateTime? createdAt,
+    String? title,
     String? text,
     int? priority,
     List<TaskAttachment>? attachments,
@@ -27,6 +30,7 @@ class Task {
     return Task(
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
+      title: title ?? this.title,
       text: text ?? this.text,
       priority: priority ?? this.priority,
       attachments: attachments ?? this.attachments,
@@ -36,6 +40,7 @@ class Task {
   Map<String, dynamic> toMap() => {
     'id': id,
     'createdAt': createdAt,
+    'title': title,
     'text': text,
     'priority': priority,
     'attachments': attachments.map((e) => e.toJson()).toList(),
@@ -47,6 +52,7 @@ class Task {
     return Task(
       id: map['id'] as String,
       createdAt: map['createdAt'] as DateTime,
+      title: map['title'] as String,
       text: map['text'] as String,
       priority: map['priority'] as int,
       attachments: rawAttachments is List

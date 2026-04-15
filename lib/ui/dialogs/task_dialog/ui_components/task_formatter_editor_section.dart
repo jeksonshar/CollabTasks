@@ -167,7 +167,16 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        // const SizedBox(height: 8),
+
+        /// 🔹 Label for editor
+        Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Text(
+            localization.descriptionField,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+          ),
+        ),
 
         /// 🔹 Editor with min and max height, scrollable
         ConstrainedBox(
@@ -188,7 +197,7 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
                 config: quill.QuillEditorConfig(
                   placeholder: widget.editorPlaceholder,
                   expands: false,
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(12),
                 ),
               ),
             ),

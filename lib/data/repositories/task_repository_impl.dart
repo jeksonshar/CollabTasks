@@ -12,6 +12,7 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<void> _upsertTask(Task task) {
     final companion = TaskEntityCompanion.insert(
       taskId: task.id,
+      taskTitle: Value(task.title),
       taskCreatedAt: task.createdAt,
       taskText: task.text,
       taskPriority: Value(task.priority),
@@ -41,6 +42,7 @@ class TaskRepositoryImpl implements TaskRepository {
           (row) => Task(
             id: row.taskId,
             createdAt: row.taskCreatedAt,
+            title: row.taskTitle,
             text: row.taskText,
             priority: row.taskPriority,
             attachments: row.taskAttachments,

@@ -19,6 +19,8 @@ class TaskAttachmentListConverter extends TypeConverter<List<TaskAttachment>, St
 class TaskEntity extends Table {
   TextColumn get taskId => text()();
 
+  TextColumn get taskTitle => text().withDefault(const Constant(''))();
+
   TextColumn get taskText => text()();
 
   IntColumn get taskPriority => integer().withDefault(const Constant(0))();

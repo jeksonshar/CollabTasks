@@ -77,6 +77,7 @@ class TaskViewModel extends ChangeNotifier {
     final task = Task(
       id: DateTime.now().toIso8601String(),
       createdAt: DateTime.now(),
+      title: draft.title,
       text: draft.textJson,
       priority: draft.priority,
       attachments: draft.attachments,
@@ -99,6 +100,7 @@ class TaskViewModel extends ChangeNotifier {
     final task = Task(
       id: id,
       createdAt: createdAt,
+      title: draft.title,
       text: draft.textJson,
       priority: draft.priority,
       attachments: draft.attachments,

@@ -12,7 +12,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -31,6 +31,13 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('UPDATE task_entity SET task_created_at = ?', [
           DateTime.now().millisecondsSinceEpoch,
         ]);
+      }
+
+      if (from < 4) {
+        // Add taskTitle column with default value for existing records
+        await customStatement(
+          'ALTER TABLE task_entity ADD COLUMN task_title TEXT NOT NULL DEFAULT ""',
+        );
       }
     },
   );

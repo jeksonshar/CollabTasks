@@ -6,6 +6,7 @@ import 'package:task_manager/l10n/l10n_mixin.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
+import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
 
 import '../../../core/task_priority/task_priority_utils.dart';
 import '../../../domain/models/task_attachment.dart';
@@ -13,12 +14,14 @@ import '../../../domain/models/task_draft.dart';
 import '../../screens/home_screen/utils/json_helpers.dart';
 
 class TaskDialog extends StatefulWidget {
+  final String? initialTitle;
   final String? initialDeltaJson;
   final List<TaskAttachment> initialAttachments;
   final int initialPriority;
 
   const TaskDialog({
     super.key,
+    this.initialTitle,
     this.initialDeltaJson,
     this.initialAttachments = const [],
     this.initialPriority = 0,
@@ -30,6 +33,7 @@ class TaskDialog extends StatefulWidget {
 
 class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   late quill.QuillController _controller;
+  late TextEditingController _titleController;
 
   final FocusNode _focusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
@@ -42,6 +46,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void initState() {
     super.initState();
     _controller = _createController(widget.initialDeltaJson);
+    _titleController = TextEditingController(text: widget.initialTitle ?? '');
     _attachments.addAll(widget.initialAttachments);
     _priority = widget.initialPriority;
   }
@@ -81,7 +86,8 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     return quill.QuillController.basic();
   }
 
-  bool get _isEmpty => _controller.document.toPlainText().trim().isEmpty;
+  bool get _isEmpty =>
+      _titleController.text.trim().isEmpty || _controller.document.toPlainText().trim().isEmpty;
 
   void _submit() {
     if (_isEmpty) return;
@@ -90,6 +96,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
     Navigator.of(context).pop(
       TaskDraft(
+        title: _titleController.text.trim(),
         textJson: jsonEncode(trimmedDelta.toJson()),
         priority: _priority,
         attachments: List.unmodifiable(_attachments),
@@ -112,6 +119,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   @override
   void dispose() {
     _controller.dispose();
+    _titleController.dispose();
     _focusNode.dispose();
     _editorScrollController.dispose();
     super.dispose();
@@ -131,6 +139,9 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Title input field
+              TaskTitleSection(controller: _titleController),
+              const SizedBox(height: 8),
               TaskFormatterEditorSection(
                 editorKey: _editorKey,
                 controller: _controller,
@@ -156,7 +167,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(localization.cancel)),
         AnimatedBuilder(
-          animation: _controller,
+          animation: Listenable.merge([_controller, _titleController]),
           builder: (_, _) {
             return ElevatedButton(
               onPressed: _isEmpty ? null : _submit,

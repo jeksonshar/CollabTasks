@@ -10,7 +10,6 @@ import '../../dialogs/task_dialog/task_dialog.dart';
 import '../../view_models/task_view_model.dart';
 import 'components/task_list_title.dart';
 import 'components/task_rich_preview.dart';
-import 'utils/json_helpers.dart';
 
 class HomeTasksScreen extends StatefulWidget {
   const HomeTasksScreen({super.key});
@@ -71,6 +70,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> with L10nMixin {
       context: context,
       builder: (context) => TaskDialog(
         // flutter_quill dialog
+        initialTitle: initialTask?.title,
         initialDeltaJson: initialTask?.text,
         initialPriority: initialTask?.priority ?? 0,
         initialAttachments: initialTask?.attachments ?? const [],
@@ -81,7 +81,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> with L10nMixin {
 
     if (result == null || !mounted) return;
 
-    final plain = deltaJsonToPlainText(result.textJson);
+    final plain = result.title;
 
     if (editIndex == null) {
       // Adding a new task
@@ -134,7 +134,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> with L10nMixin {
 
     if (vm.errorType == TaskErrorType.delete) return;
 
-    final plain = deltaJsonToPlainText(removed.text);
+    final plain = removed.title;
 
     if (!mounted) return;
     ScaffoldMessenger.of(

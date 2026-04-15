@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:task_manager/domain/models/task.dart';
 
 import '../../../../core/task_priority/task_priority_utils.dart';
-import 'task_rich_preview.dart';
 
 class TaskListTile extends StatelessWidget {
   const TaskListTile({
@@ -24,7 +23,7 @@ class TaskListTile extends StatelessWidget {
     return ListTile(
       key: ValueKey(task.id),
       leading: Icon(Icons.task_alt, color: priorityColor),
-      title: TaskRichPreview(deltaJson: task.text),
+      title: Text(task.title),
       trailing: task.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
       onTap: onTap,
       onLongPress: onLongPress,

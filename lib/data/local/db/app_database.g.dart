@@ -19,6 +19,16 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _taskTitleMeta = const VerificationMeta('taskTitle');
+  @override
+  late final GeneratedColumn<String> taskTitle = GeneratedColumn<String>(
+    'task_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _taskTextMeta = const VerificationMeta('taskText');
   @override
   late final GeneratedColumn<String> taskText = GeneratedColumn<String>(
@@ -60,6 +70,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
   @override
   List<GeneratedColumn> get $columns => [
     taskId,
+    taskTitle,
     taskText,
     taskPriority,
     taskCreatedAt,
@@ -84,6 +95,12 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
       context.handle(_taskIdMeta, taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta));
     } else if (isInserting) {
       context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('task_title')) {
+      context.handle(
+        _taskTitleMeta,
+        taskTitle.isAcceptableOrUnknown(data['task_title']!, _taskTitleMeta),
+      );
     }
     if (data.containsKey('task_text')) {
       context.handle(
@@ -121,6 +138,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         DriftSqlType.string,
         data['${effectivePrefix}task_id'],
       )!,
+      taskTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_title'],
+      )!,
       taskText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}task_text'],
@@ -153,6 +174,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
 
 class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final String taskId;
+  final String taskTitle;
   final String taskText;
   final int taskPriority;
   final DateTime taskCreatedAt;
@@ -160,6 +182,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
 
   const TaskEntityData({
     required this.taskId,
+    required this.taskTitle,
     required this.taskText,
     required this.taskPriority,
     required this.taskCreatedAt,
@@ -170,6 +193,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['task_id'] = Variable<String>(taskId);
+    map['task_title'] = Variable<String>(taskTitle);
     map['task_text'] = Variable<String>(taskText);
     map['task_priority'] = Variable<int>(taskPriority);
     map['task_created_at'] = Variable<DateTime>(taskCreatedAt);
@@ -184,6 +208,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   TaskEntityCompanion toCompanion(bool nullToAbsent) {
     return TaskEntityCompanion(
       taskId: Value(taskId),
+      taskTitle: Value(taskTitle),
       taskText: Value(taskText),
       taskPriority: Value(taskPriority),
       taskCreatedAt: Value(taskCreatedAt),
@@ -195,6 +220,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TaskEntityData(
       taskId: serializer.fromJson<String>(json['taskId']),
+      taskTitle: serializer.fromJson<String>(json['taskTitle']),
       taskText: serializer.fromJson<String>(json['taskText']),
       taskPriority: serializer.fromJson<int>(json['taskPriority']),
       taskCreatedAt: serializer.fromJson<DateTime>(json['taskCreatedAt']),
@@ -207,6 +233,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'taskId': serializer.toJson<String>(taskId),
+      'taskTitle': serializer.toJson<String>(taskTitle),
       'taskText': serializer.toJson<String>(taskText),
       'taskPriority': serializer.toJson<int>(taskPriority),
       'taskCreatedAt': serializer.toJson<DateTime>(taskCreatedAt),
@@ -216,12 +243,14 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
 
   TaskEntityData copyWith({
     String? taskId,
+    String? taskTitle,
     String? taskText,
     int? taskPriority,
     DateTime? taskCreatedAt,
     List<TaskAttachment>? taskAttachments,
   }) => TaskEntityData(
     taskId: taskId ?? this.taskId,
+    taskTitle: taskTitle ?? this.taskTitle,
     taskText: taskText ?? this.taskText,
     taskPriority: taskPriority ?? this.taskPriority,
     taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
@@ -231,6 +260,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   TaskEntityData copyWithCompanion(TaskEntityCompanion data) {
     return TaskEntityData(
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      taskTitle: data.taskTitle.present ? data.taskTitle.value : this.taskTitle,
       taskText: data.taskText.present ? data.taskText.value : this.taskText,
       taskPriority: data.taskPriority.present ? data.taskPriority.value : this.taskPriority,
       taskCreatedAt: data.taskCreatedAt.present ? data.taskCreatedAt.value : this.taskCreatedAt,
@@ -244,6 +274,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   String toString() {
     return (StringBuffer('TaskEntityData(')
           ..write('taskId: $taskId, ')
+          ..write('taskTitle: $taskTitle, ')
           ..write('taskText: $taskText, ')
           ..write('taskPriority: $taskPriority, ')
           ..write('taskCreatedAt: $taskCreatedAt, ')
@@ -253,13 +284,15 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   }
 
   @override
-  int get hashCode => Object.hash(taskId, taskText, taskPriority, taskCreatedAt, taskAttachments);
+  int get hashCode =>
+      Object.hash(taskId, taskTitle, taskText, taskPriority, taskCreatedAt, taskAttachments);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TaskEntityData &&
           other.taskId == this.taskId &&
+          other.taskTitle == this.taskTitle &&
           other.taskText == this.taskText &&
           other.taskPriority == this.taskPriority &&
           other.taskCreatedAt == this.taskCreatedAt &&
@@ -268,6 +301,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
 
 class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<String> taskId;
+  final Value<String> taskTitle;
   final Value<String> taskText;
   final Value<int> taskPriority;
   final Value<DateTime> taskCreatedAt;
@@ -276,6 +310,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
 
   const TaskEntityCompanion({
     this.taskId = const Value.absent(),
+    this.taskTitle = const Value.absent(),
     this.taskText = const Value.absent(),
     this.taskPriority = const Value.absent(),
     this.taskCreatedAt = const Value.absent(),
@@ -285,6 +320,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
 
   TaskEntityCompanion.insert({
     required String taskId,
+    this.taskTitle = const Value.absent(),
     required String taskText,
     this.taskPriority = const Value.absent(),
     required DateTime taskCreatedAt,
@@ -297,6 +333,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
 
   static Insertable<TaskEntityData> custom({
     Expression<String>? taskId,
+    Expression<String>? taskTitle,
     Expression<String>? taskText,
     Expression<int>? taskPriority,
     Expression<DateTime>? taskCreatedAt,
@@ -305,6 +342,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   }) {
     return RawValuesInsertable({
       if (taskId != null) 'task_id': taskId,
+      if (taskTitle != null) 'task_title': taskTitle,
       if (taskText != null) 'task_text': taskText,
       if (taskPriority != null) 'task_priority': taskPriority,
       if (taskCreatedAt != null) 'task_created_at': taskCreatedAt,
@@ -315,6 +353,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
 
   TaskEntityCompanion copyWith({
     Value<String>? taskId,
+    Value<String>? taskTitle,
     Value<String>? taskText,
     Value<int>? taskPriority,
     Value<DateTime>? taskCreatedAt,
@@ -323,6 +362,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   }) {
     return TaskEntityCompanion(
       taskId: taskId ?? this.taskId,
+      taskTitle: taskTitle ?? this.taskTitle,
       taskText: taskText ?? this.taskText,
       taskPriority: taskPriority ?? this.taskPriority,
       taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
@@ -336,6 +376,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     final map = <String, Expression>{};
     if (taskId.present) {
       map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (taskTitle.present) {
+      map['task_title'] = Variable<String>(taskTitle.value);
     }
     if (taskText.present) {
       map['task_text'] = Variable<String>(taskText.value);
@@ -361,6 +404,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   String toString() {
     return (StringBuffer('TaskEntityCompanion(')
           ..write('taskId: $taskId, ')
+          ..write('taskTitle: $taskTitle, ')
           ..write('taskText: $taskText, ')
           ..write('taskPriority: $taskPriority, ')
           ..write('taskCreatedAt: $taskCreatedAt, ')
@@ -388,6 +432,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$TaskEntityTableCreateCompanionBuilder =
     TaskEntityCompanion Function({
       required String taskId,
+      Value<String> taskTitle,
       required String taskText,
       Value<int> taskPriority,
       required DateTime taskCreatedAt,
@@ -397,6 +442,7 @@ typedef $$TaskEntityTableCreateCompanionBuilder =
 typedef $$TaskEntityTableUpdateCompanionBuilder =
     TaskEntityCompanion Function({
       Value<String> taskId,
+      Value<String> taskTitle,
       Value<String> taskText,
       Value<int> taskPriority,
       Value<DateTime> taskCreatedAt,
@@ -415,6 +461,9 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
 
   ColumnFilters<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taskTitle =>
+      $composableBuilder(column: $table.taskTitle, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get taskText =>
       $composableBuilder(column: $table.taskText, builder: (column) => ColumnFilters(column));
@@ -444,6 +493,9 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
   ColumnOrderings<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get taskTitle =>
+      $composableBuilder(column: $table.taskTitle, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get taskText =>
       $composableBuilder(column: $table.taskText, builder: (column) => ColumnOrderings(column));
 
@@ -472,6 +524,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
 
   GeneratedColumn<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get taskTitle =>
+      $composableBuilder(column: $table.taskTitle, builder: (column) => column);
 
   GeneratedColumn<String> get taskText =>
       $composableBuilder(column: $table.taskText, builder: (column) => column);
@@ -513,6 +568,7 @@ class $$TaskEntityTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> taskId = const Value.absent(),
+                Value<String> taskTitle = const Value.absent(),
                 Value<String> taskText = const Value.absent(),
                 Value<int> taskPriority = const Value.absent(),
                 Value<DateTime> taskCreatedAt = const Value.absent(),
@@ -520,6 +576,7 @@ class $$TaskEntityTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion(
                 taskId: taskId,
+                taskTitle: taskTitle,
                 taskText: taskText,
                 taskPriority: taskPriority,
                 taskCreatedAt: taskCreatedAt,
@@ -529,6 +586,7 @@ class $$TaskEntityTableTableManager
           createCompanionCallback:
               ({
                 required String taskId,
+                Value<String> taskTitle = const Value.absent(),
                 required String taskText,
                 Value<int> taskPriority = const Value.absent(),
                 required DateTime taskCreatedAt,
@@ -536,6 +594,7 @@ class $$TaskEntityTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion.insert(
                 taskId: taskId,
+                taskTitle: taskTitle,
                 taskText: taskText,
                 taskPriority: taskPriority,
                 taskCreatedAt: taskCreatedAt,
