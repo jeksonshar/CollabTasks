@@ -96,6 +96,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home => 'Home';
 
   @override
+  String get nameTitle => 'Name';
+
+  @override
+  String get emailTitle => 'Email';
+
+  @override
+  String get statusTitle => 'Status';
+
+  @override
+  String get groups => 'Groups';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get userProfile => 'User Profile';
+
+  @override
+  String get editProfile => 'Edit Profile';
+
+  @override
   String get my_tasks => 'My tasks';
 
   @override
@@ -109,6 +130,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get emptyTaskTitle => 'No tasks yet';
+
+  @override
+  String get emptyGroupsTitle => 'No groups yet';
 
   @override
   String get emptyTaskDescription => 'Tap \"Add Task\" to create one';

@@ -272,6 +272,48 @@ abstract class AppLocalizations {
   /// **'Home'**
   String get home;
 
+  /// No description provided for @nameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get nameTitle;
+
+  /// No description provided for @emailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailTitle;
+
+  /// No description provided for @statusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusTitle;
+
+  /// No description provided for @groups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get groups;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @userProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'User Profile'**
+  String get userProfile;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfile;
+
   /// No description provided for @my_tasks.
   ///
   /// In en, this message translates to:
@@ -301,6 +343,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No tasks yet'**
   String get emptyTaskTitle;
+
+  /// No description provided for @emptyGroupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet'**
+  String get emptyGroupsTitle;
 
   /// No description provided for @emptyTaskDescription.
   ///

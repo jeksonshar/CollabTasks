@@ -1,3 +1,4 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class GroupScreen extends StatelessWidget {
@@ -5,17 +6,18 @@ class GroupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Groups'), centerTitle: false),
+      appBar: AppBar(title: Text(localization.groups), centerTitle: false),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.groups, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('Groups', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(localization.groups, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('No groups yet', style: TextStyle(color: Colors.grey)),
+            Text(localization.emptyGroupsTitle, style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),

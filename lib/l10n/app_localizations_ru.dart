@@ -96,6 +96,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get home => 'Главная';
 
   @override
+  String get nameTitle => 'Имя';
+
+  @override
+  String get emailTitle => 'Email';
+
+  @override
+  String get statusTitle => 'Статус';
+
+  @override
+  String get groups => 'Проекты';
+
+  @override
+  String get profile => 'Профиль';
+
+  @override
+  String get userProfile => 'Профиль пользователя';
+
+  @override
+  String get editProfile => 'Редактировать профиль';
+
+  @override
   String get my_tasks => 'Moи задачи';
 
   @override
@@ -109,6 +130,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get emptyTaskTitle => 'Еще нет задач';
+
+  @override
+  String get emptyGroupsTitle => 'Еще нет проектов';
 
   @override
   String get emptyTaskDescription => 'Нажми \"Добавить задачу\" для создания';

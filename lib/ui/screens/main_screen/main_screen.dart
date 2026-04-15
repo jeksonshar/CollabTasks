@@ -1,3 +1,4 @@
+import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:collab_tasks/ui/screens/group_screen/group_screen.dart';
 import 'package:collab_tasks/ui/screens/home_screen/home_tasks_screen.dart';
 import 'package:collab_tasks/ui/screens/profile_screen/profile_screen.dart';
@@ -10,7 +11,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with L10nMixin {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -36,10 +37,10 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         // selectedItemColor: Colors.white,
         // unselectedItemColor: Colors.blue.shade200,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Groups'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: localization.home),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: localization.groups),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: localization.profile),
         ],
       ),
     );

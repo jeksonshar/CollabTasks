@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile'), centerTitle: false),
+      appBar: AppBar(title: Text(localization.profile), centerTitle: false),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -19,8 +22,8 @@ class ProfileScreen extends StatelessWidget {
                 child: Icon(Icons.person, size: 50, color: Colors.blue.shade800),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'User Profile',
+              Text(
+                localization.userProfile,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -30,11 +33,11 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildProfileField('Name', 'John Doe'),
+                      _buildProfileField(localization.nameTitle, 'John Doe'),
                       const Divider(),
-                      _buildProfileField('Email', 'john@example.com'),
+                      _buildProfileField(localization.emailTitle, 'john@example.com'),
                       const Divider(),
-                      _buildProfileField('Status', 'Active'),
+                      _buildProfileField(localization.statusTitle, 'Active'),
                     ],
                   ),
                 ),
@@ -47,7 +50,7 @@ class ProfileScreen extends StatelessWidget {
                   ).showSnackBar(const SnackBar(content: Text('Edit profile functionality')));
                 },
                 icon: const Icon(Icons.edit),
-                label: const Text('Edit Profile'),
+                label: Text(localization.editProfile),
               ),
             ],
           ),
