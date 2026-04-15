@@ -1,6 +1,6 @@
+import 'package:collab_tasks/core/theme/app_text_styles.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:task_manager/core/theme/app_text_styles.dart';
-import 'package:task_manager/l10n/app_localizations.dart';
 
 import '../../../../core/task_priority/task_priority_utils.dart';
 

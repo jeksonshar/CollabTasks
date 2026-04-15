@@ -1,5 +1,5 @@
+import 'package:collab_tasks/domain/models/task.dart';
 import 'package:flutter/material.dart';
-import 'package:task_manager/domain/models/task.dart';
 
 import '../../../../core/task_priority/task_priority_utils.dart';
 

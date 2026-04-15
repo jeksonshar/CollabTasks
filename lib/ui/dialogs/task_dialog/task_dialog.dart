@@ -1,12 +1,12 @@
 import 'dart:convert';
 
+import 'package:collab_tasks/l10n/l10n_mixin.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:task_manager/l10n/l10n_mixin.dart';
-import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
-import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
-import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
-import 'package:task_manager/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
 
 import '../../../core/task_priority/task_priority_utils.dart';
 import '../../../domain/models/task_attachment.dart';

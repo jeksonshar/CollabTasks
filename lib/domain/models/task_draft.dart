@@ -1,4 +1,4 @@
-import 'package:task_manager/domain/models/task_attachment.dart';
+import 'package:collab_tasks/domain/models/task_attachment.dart';
 
 class TaskDraft {
   final String title;

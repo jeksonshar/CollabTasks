@@ -1,7 +1,7 @@
+import 'package:collab_tasks/ui/screens/group_screen/group_screen.dart';
+import 'package:collab_tasks/ui/screens/home_screen/home_tasks_screen.dart';
+import 'package:collab_tasks/ui/screens/profile_screen/profile_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:task_manager/ui/screens/group_screen/group_screen.dart';
-import 'package:task_manager/ui/screens/home_screen/home_tasks_screen.dart';
-import 'package:task_manager/ui/screens/profile_screen/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

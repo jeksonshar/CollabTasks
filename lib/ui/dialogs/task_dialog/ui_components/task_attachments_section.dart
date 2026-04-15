@@ -1,7 +1,7 @@
+import 'package:collab_tasks/core/theme/app_text_styles.dart';
+import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:task_manager/core/theme/app_text_styles.dart';
-import 'package:task_manager/l10n/l10n_mixin.dart';
 
 import '../../../../core/attachment_files/attachment_file_service.dart';
 import '../../../../domain/models/task_attachment.dart';

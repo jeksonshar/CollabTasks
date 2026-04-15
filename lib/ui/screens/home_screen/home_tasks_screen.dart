@@ -1,7 +1,7 @@
+import 'package:collab_tasks/core/enums/task_sort_type.dart';
+import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:task_manager/core/enums/task_sort_type.dart';
-import 'package:task_manager/l10n/l10n_mixin.dart';
 
 import '../../../core/enums/task_sort_direction.dart';
 import '../../../domain/models/task_draft.dart';

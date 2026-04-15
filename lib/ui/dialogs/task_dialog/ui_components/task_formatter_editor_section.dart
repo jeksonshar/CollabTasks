@@ -1,8 +1,8 @@
 import 'dart:ui';
 
+import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:task_manager/l10n/l10n_mixin.dart';
 
 class TaskFormatterEditorSection extends StatefulWidget {
   final GlobalKey editorKey;

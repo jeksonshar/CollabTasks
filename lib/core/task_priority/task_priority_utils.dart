@@ -1,5 +1,5 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:task_manager/l10n/app_localizations.dart';
 
 enum TaskPriority {
   none(0),

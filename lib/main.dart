@@ -1,9 +1,9 @@
+import 'package:collab_tasks/ui/screens/main_screen/main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
-import 'package:task_manager/ui/screens/main_screen/main_screen.dart';
 
 import 'di/service_locator.dart';
 import 'l10n/app_localizations.dart';
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<TaskViewModel>(create: (_) => GetIt.instance<TaskViewModel>()),
       ],
       child: MaterialApp(
-        title: 'Safe Tasks (dialog owns controller)',
+        title: 'CollabTasks',
         // ----- IMPORTANT: localization delegates -----
         localizationsDelegates: const [
           AppLocalizations.delegate,

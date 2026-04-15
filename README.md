@@ -1,4 +1,4 @@
-# task_manager
+# collab_tasks
 
 A new Flutter project.
 
