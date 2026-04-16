@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/out.js
+/out.js.deps
+/android/build/reports/problems/problems-report.html
+/out.js.map
