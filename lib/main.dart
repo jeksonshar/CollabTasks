@@ -1,15 +1,17 @@
+import 'package:collab_tasks/ui/blocs/task_bloc/task_bloc.dart';
+import 'package:collab_tasks/ui/blocs/task_bloc/task_event.dart';
 import 'package:collab_tasks/ui/screens/main_screen/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-import 'package:get_it/get_it.dart';
-import 'package:provider/provider.dart';
 
 import 'di/service_locator.dart';
 import 'l10n/app_localizations.dart';
-import 'ui/view_models/task_view_model.dart';
 
 void main() {
+  // Убеждаемся, что инициализация БД (если она асинхронная) завершена
+  WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
   runApp(const MyApp());
 }
@@ -20,9 +22,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Provide TaskViewModel via Provider + GetIt factory
-    return MultiProvider(
+    return MultiBlocProvider(
       providers: [
-        ChangeNotifierProvider<TaskViewModel>(create: (_) => GetIt.instance<TaskViewModel>()),
+        // Создаем блок через GetIt и СРАЗУ отправляем ивент на загрузку данных
+        BlocProvider<TaskBloc>(create: (_) => getIt<TaskBloc>()..add(LoadTasksStarted())),
       ],
       child: MaterialApp(
         title: 'CollabTasks',

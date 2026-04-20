@@ -118,23 +118,27 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
   }
 
   Future<void> _removeAttachment(TaskAttachment attachment) async {
+    final isFileRemoved = await removeAttachmentFile(attachment);
+    if (!mounted) return;
+
+    if (!isFileRemoved) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(localization.deleteFileFailed),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _attachments.removeWhere((e) => e.id == attachment.id);
     });
     _notifyParent();
 
-    final isFileRemoved = await removeAttachmentFile(attachment);
-    if (!mounted) return;
-
-    if (!isFileRemoved) {
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(localization.deleteFileFailed)));
-    } else {
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(localization.fileDeleted)));
-    }
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text(localization.fileDeleted)));
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -95,14 +96,23 @@ Future<bool> downloadAttachmentFile(TaskAttachment attachment) async {
 Future<bool> removeAttachmentFile(TaskAttachment attachment) async {
   try {
     final path = attachment.localPath;
-    if (path == null) return false;
+    if (path == null) {
+      debugPrint('Cannot remove attachment: localPath is null');
+      return false;
+    }
 
     final file = File(path);
-    if (!await file.exists()) return false;
+
+    if (!await file.exists()) {
+      debugPrint('Cannot remove attachment: file does not exist at $path');
+      return false;
+    }
 
     await file.delete();
+    debugPrint('Successfully removed attachment file: $path');
     return true;
-  } catch (_) {
+  } catch (e, s) {
+    debugPrint('Error removing attachment file: $e\n$s');
     return false;
   }
 }

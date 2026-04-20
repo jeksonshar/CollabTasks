@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:equatable/equatable.dart';
+
 import 'task_attachment.dart';
 
-class Task {
+class Task extends Equatable {
   final String id;
   final DateTime createdAt;
   final String title;
@@ -64,4 +66,7 @@ class Task {
   String toJson() => json.encode(toMap());
 
   factory Task.fromJson(String source) => Task.fromMap(json.decode(source) as Map<String, dynamic>);
+
+  @override
+  List<Object?> get props => [id, createdAt, title, text, priority, attachments];
 }
