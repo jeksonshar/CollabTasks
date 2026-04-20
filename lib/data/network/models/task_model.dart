@@ -4,7 +4,7 @@ import '../../../domain/models/task.dart';
 
 // not used for now 5.02.26
 class TaskModel extends Task {
-  TaskModel({
+  const TaskModel({
     required super.id,
     required super.title,
     required super.text,
