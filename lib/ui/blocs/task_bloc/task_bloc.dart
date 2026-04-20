@@ -92,9 +92,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
     try {
       await updateTaskUseCase(task);
-      final taskTitle = state.tasks.firstWhere((t) => t.id == event.id).title;
+      final taskTitle = event.draft.title; // Use the new title from draft
 
-      final index = state.tasks.indexWhere((task) => task.id == event.id);
+      final index = state.tasks.indexWhere((t) => t.id == event.id);
       if (index == -1) return;
 
       final newTasks = [...state.tasks];
@@ -147,7 +147,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         sortDirection: newDirection,
         tasks: _sortTasks(state.tasks, event.sortType, newDirection),
         lastAction: TaskAction.none,
-        lastActionTaskTitle: '',
+        lastActionTaskTitle: null,
       ),
     );
   }

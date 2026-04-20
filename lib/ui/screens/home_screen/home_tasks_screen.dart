@@ -40,7 +40,8 @@ class HomeTasksScreen extends StatelessWidget {
         ),
         // ЛИСТЕНЕР УСПЕХА
         BlocListener<TaskBloc, TaskState>(
-          listenWhen: (prev, curr) => curr.lastAction != TaskAction.none,
+          listenWhen: (prev, curr) =>
+              curr.lastAction != TaskAction.none && curr.lastActionTaskTitle != null,
           listener: (context, state) {
             final title = state.lastActionTaskTitle ?? '';
             final localization = AppLocalizations.of(context)!;
