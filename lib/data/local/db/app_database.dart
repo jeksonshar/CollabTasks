@@ -12,7 +12,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +42,10 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 5) {
         await m.addColumn(taskEntity, taskEntity.taskIsCompleted);
+      }
+
+      if (from < 6) {
+        await m.addColumn(taskEntity, taskEntity.taskDeadline);
       }
     },
   );

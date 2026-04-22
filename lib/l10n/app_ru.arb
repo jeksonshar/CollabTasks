@@ -96,5 +96,8 @@
     "placeholders": {
       "count": {}
     }
-  }
+  },
+  "deadlineTitle": "Дедлайн",
+  "setDeadline": "Установить дедлайн",
+  "clearDeadline": "Очистить дедлайн"
 }

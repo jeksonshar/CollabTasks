@@ -6,6 +6,7 @@ class TaskDraft {
   final int priority;
   final List<TaskAttachment> attachments;
   final bool isCompleted;
+  final DateTime? deadline;
 
   const TaskDraft({
     required this.title,
@@ -13,5 +14,6 @@ class TaskDraft {
     required this.priority,
     required this.attachments,
     required this.isCompleted,
+    this.deadline,
   });
 }

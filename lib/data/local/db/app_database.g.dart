@@ -77,6 +77,15 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("task_is_completed" IN (0, 1))'),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _taskDeadlineMeta = const VerificationMeta('taskDeadline');
+  @override
+  late final GeneratedColumn<DateTime> taskDeadline = GeneratedColumn<DateTime>(
+    'task_deadline',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
 
   @override
   List<GeneratedColumn> get $columns => [
@@ -87,6 +96,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     taskCreatedAt,
     taskAttachments,
     taskIsCompleted,
+    taskDeadline,
   ];
 
   @override
@@ -142,6 +152,12 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         taskIsCompleted.isAcceptableOrUnknown(data['task_is_completed']!, _taskIsCompletedMeta),
       );
     }
+    if (data.containsKey('task_deadline')) {
+      context.handle(
+        _taskDeadlineMeta,
+        taskDeadline.isAcceptableOrUnknown(data['task_deadline']!, _taskDeadlineMeta),
+      );
+    }
     return context;
   }
 
@@ -182,6 +198,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         DriftSqlType.bool,
         data['${effectivePrefix}task_is_completed'],
       )!,
+      taskDeadline: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}task_deadline'],
+      ),
     );
   }
 
@@ -202,6 +222,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final DateTime taskCreatedAt;
   final List<TaskAttachment> taskAttachments;
   final bool taskIsCompleted;
+  final DateTime? taskDeadline;
 
   const TaskEntityData({
     required this.taskId,
@@ -211,6 +232,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     required this.taskCreatedAt,
     required this.taskAttachments,
     required this.taskIsCompleted,
+    this.taskDeadline,
   });
 
   @override
@@ -227,6 +249,9 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       );
     }
     map['task_is_completed'] = Variable<bool>(taskIsCompleted);
+    if (!nullToAbsent || taskDeadline != null) {
+      map['task_deadline'] = Variable<DateTime>(taskDeadline);
+    }
     return map;
   }
 
@@ -239,6 +264,9 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskCreatedAt: Value(taskCreatedAt),
       taskAttachments: Value(taskAttachments),
       taskIsCompleted: Value(taskIsCompleted),
+      taskDeadline: taskDeadline == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskDeadline),
     );
   }
 
@@ -252,6 +280,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskCreatedAt: serializer.fromJson<DateTime>(json['taskCreatedAt']),
       taskAttachments: serializer.fromJson<List<TaskAttachment>>(json['taskAttachments']),
       taskIsCompleted: serializer.fromJson<bool>(json['taskIsCompleted']),
+      taskDeadline: serializer.fromJson<DateTime?>(json['taskDeadline']),
     );
   }
 
@@ -266,6 +295,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       'taskCreatedAt': serializer.toJson<DateTime>(taskCreatedAt),
       'taskAttachments': serializer.toJson<List<TaskAttachment>>(taskAttachments),
       'taskIsCompleted': serializer.toJson<bool>(taskIsCompleted),
+      'taskDeadline': serializer.toJson<DateTime?>(taskDeadline),
     };
   }
 
@@ -277,6 +307,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     DateTime? taskCreatedAt,
     List<TaskAttachment>? taskAttachments,
     bool? taskIsCompleted,
+    Value<DateTime?> taskDeadline = const Value.absent(),
   }) => TaskEntityData(
     taskId: taskId ?? this.taskId,
     taskTitle: taskTitle ?? this.taskTitle,
@@ -285,6 +316,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
     taskAttachments: taskAttachments ?? this.taskAttachments,
     taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
+    taskDeadline: taskDeadline.present ? taskDeadline.value : this.taskDeadline,
   );
 
   TaskEntityData copyWithCompanion(TaskEntityCompanion data) {
@@ -300,6 +332,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskIsCompleted: data.taskIsCompleted.present
           ? data.taskIsCompleted.value
           : this.taskIsCompleted,
+      taskDeadline: data.taskDeadline.present ? data.taskDeadline.value : this.taskDeadline,
     );
   }
 
@@ -312,7 +345,8 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ..write('taskPriority: $taskPriority, ')
           ..write('taskCreatedAt: $taskCreatedAt, ')
           ..write('taskAttachments: $taskAttachments, ')
-          ..write('taskIsCompleted: $taskIsCompleted')
+          ..write('taskIsCompleted: $taskIsCompleted, ')
+          ..write('taskDeadline: $taskDeadline')
           ..write(')'))
         .toString();
   }
@@ -326,6 +360,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskCreatedAt,
     taskAttachments,
     taskIsCompleted,
+    taskDeadline,
   );
 
   @override
@@ -338,7 +373,8 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           other.taskPriority == this.taskPriority &&
           other.taskCreatedAt == this.taskCreatedAt &&
           other.taskAttachments == this.taskAttachments &&
-          other.taskIsCompleted == this.taskIsCompleted);
+          other.taskIsCompleted == this.taskIsCompleted &&
+          other.taskDeadline == this.taskDeadline);
 }
 
 class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
@@ -349,6 +385,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<DateTime> taskCreatedAt;
   final Value<List<TaskAttachment>> taskAttachments;
   final Value<bool> taskIsCompleted;
+  final Value<DateTime?> taskDeadline;
   final Value<int> rowid;
 
   const TaskEntityCompanion({
@@ -359,6 +396,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskCreatedAt = const Value.absent(),
     this.taskAttachments = const Value.absent(),
     this.taskIsCompleted = const Value.absent(),
+    this.taskDeadline = const Value.absent(),
     this.rowid = const Value.absent(),
   });
 
@@ -370,6 +408,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     required DateTime taskCreatedAt,
     required List<TaskAttachment> taskAttachments,
     this.taskIsCompleted = const Value.absent(),
+    this.taskDeadline = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
        taskText = Value(taskText),
@@ -384,6 +423,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Expression<DateTime>? taskCreatedAt,
     Expression<String>? taskAttachments,
     Expression<bool>? taskIsCompleted,
+    Expression<DateTime>? taskDeadline,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -394,6 +434,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       if (taskCreatedAt != null) 'task_created_at': taskCreatedAt,
       if (taskAttachments != null) 'task_attachments': taskAttachments,
       if (taskIsCompleted != null) 'task_is_completed': taskIsCompleted,
+      if (taskDeadline != null) 'task_deadline': taskDeadline,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -406,6 +447,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Value<DateTime>? taskCreatedAt,
     Value<List<TaskAttachment>>? taskAttachments,
     Value<bool>? taskIsCompleted,
+    Value<DateTime?>? taskDeadline,
     Value<int>? rowid,
   }) {
     return TaskEntityCompanion(
@@ -416,6 +458,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
       taskAttachments: taskAttachments ?? this.taskAttachments,
       taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
+      taskDeadline: taskDeadline ?? this.taskDeadline,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -446,6 +489,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     if (taskIsCompleted.present) {
       map['task_is_completed'] = Variable<bool>(taskIsCompleted.value);
     }
+    if (taskDeadline.present) {
+      map['task_deadline'] = Variable<DateTime>(taskDeadline.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -462,6 +508,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
           ..write('taskCreatedAt: $taskCreatedAt, ')
           ..write('taskAttachments: $taskAttachments, ')
           ..write('taskIsCompleted: $taskIsCompleted, ')
+          ..write('taskDeadline: $taskDeadline, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -491,6 +538,7 @@ typedef $$TaskEntityTableCreateCompanionBuilder =
       required DateTime taskCreatedAt,
       required List<TaskAttachment> taskAttachments,
       Value<bool> taskIsCompleted,
+      Value<DateTime?> taskDeadline,
       Value<int> rowid,
     });
 typedef $$TaskEntityTableUpdateCompanionBuilder =
@@ -502,6 +550,7 @@ typedef $$TaskEntityTableUpdateCompanionBuilder =
       Value<DateTime> taskCreatedAt,
       Value<List<TaskAttachment>> taskAttachments,
       Value<bool> taskIsCompleted,
+      Value<DateTime?> taskDeadline,
       Value<int> rowid,
     });
 
@@ -539,6 +588,9 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
     column: $table.taskIsCompleted,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<DateTime> get taskDeadline =>
+      $composableBuilder(column: $table.taskDeadline, builder: (column) => ColumnFilters(column));
 }
 
 class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEntityTable> {
@@ -576,6 +628,9 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
     column: $table.taskIsCompleted,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get taskDeadline =>
+      $composableBuilder(column: $table.taskDeadline, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskEntityTable> {
@@ -607,6 +662,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
 
   GeneratedColumn<bool> get taskIsCompleted =>
       $composableBuilder(column: $table.taskIsCompleted, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get taskDeadline =>
+      $composableBuilder(column: $table.taskDeadline, builder: (column) => column);
 }
 
 class $$TaskEntityTableTableManager
@@ -642,6 +700,7 @@ class $$TaskEntityTableTableManager
                 Value<DateTime> taskCreatedAt = const Value.absent(),
                 Value<List<TaskAttachment>> taskAttachments = const Value.absent(),
                 Value<bool> taskIsCompleted = const Value.absent(),
+                Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion(
                 taskId: taskId,
@@ -651,6 +710,7 @@ class $$TaskEntityTableTableManager
                 taskCreatedAt: taskCreatedAt,
                 taskAttachments: taskAttachments,
                 taskIsCompleted: taskIsCompleted,
+                taskDeadline: taskDeadline,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -662,6 +722,7 @@ class $$TaskEntityTableTableManager
                 required DateTime taskCreatedAt,
                 required List<TaskAttachment> taskAttachments,
                 Value<bool> taskIsCompleted = const Value.absent(),
+                Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion.insert(
                 taskId: taskId,
@@ -671,6 +732,7 @@ class $$TaskEntityTableTableManager
                 taskCreatedAt: taskCreatedAt,
                 taskAttachments: taskAttachments,
                 taskIsCompleted: taskIsCompleted,
+                taskDeadline: taskDeadline,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) =>

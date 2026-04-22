@@ -20,13 +20,25 @@ class TaskListTile extends StatelessWidget {
     final priority = TaskPriority.fromValue(task.priority);
     final priorityColor = priority.borderColor ?? Theme.of(context).iconTheme.color;
 
+    final List<Widget> trailingWidgets = [];
+
+    if (task.attachments.isNotEmpty) {
+      trailingWidgets.add(const Icon(Icons.attach_file));
+    }
+
+    if (task.deadline != null) {
+      trailingWidgets.add(const Icon(Icons.alarm));
+    }
+
     return ListTile(
       key: ValueKey(task.id),
       leading: task.isCompleted
           ? Icon(Icons.task_alt, color: priorityColor)
           : Icon(Icons.circle_outlined, color: priorityColor),
       title: Text(task.title),
-      trailing: task.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
+      trailing: trailingWidgets.isNotEmpty
+          ? Row(mainAxisSize: MainAxisSize.min, children: trailingWidgets)
+          : null,
       onTap: onTap,
       onLongPress: onLongPress,
     );

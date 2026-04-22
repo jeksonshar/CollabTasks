@@ -10,7 +10,7 @@ import '../../blocs/task_bloc/task_state.dart';
 import '../../dialogs/task_dialog/task_dialog.dart';
 import 'components/task_app_bar_component.dart';
 import 'components/task_fab_component.dart';
-import 'components/task_list_title.dart';
+import 'components/task_list_tile.dart';
 import 'components/task_rich_preview.dart';
 
 class HomeTasksScreen extends StatelessWidget {
@@ -139,6 +139,7 @@ class HomeTasksScreen extends StatelessWidget {
         initialPriority: taskToEdit?.priority ?? 0,
         initialAttachments: taskToEdit?.attachments ?? const [],
         initialIsCompletedState: taskToEdit?.isCompleted ?? false,
+        initialDeadline: taskToEdit?.deadline,
       ),
     );
 

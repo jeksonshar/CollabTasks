@@ -96,5 +96,8 @@
     "placeholders": {
       "count": {}
     }
-  }
+  },
+  "deadlineTitle": "Deadline",
+  "setDeadline": "Set Deadline",
+  "clearDeadline": "Clear Deadline"
 }

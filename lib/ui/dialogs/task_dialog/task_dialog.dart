@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_completed_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_deadline_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
@@ -20,6 +21,7 @@ class TaskDialog extends StatefulWidget {
   final List<TaskAttachment> initialAttachments;
   final int initialPriority;
   final bool initialIsCompletedState;
+  final DateTime? initialDeadline;
 
   const TaskDialog({
     super.key,
@@ -28,6 +30,7 @@ class TaskDialog extends StatefulWidget {
     this.initialAttachments = const [],
     this.initialPriority = 0,
     this.initialIsCompletedState = false,
+    this.initialDeadline,
   });
 
   @override
@@ -45,6 +48,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   final List<TaskAttachment> _attachments = [];
   int _priority = 0;
   bool _isCompleted = false;
+  DateTime? _deadline;
 
   @override
   void initState() {
@@ -54,6 +58,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _attachments.addAll(widget.initialAttachments);
     _priority = widget.initialPriority;
     _isCompleted = widget.initialIsCompletedState;
+    _deadline = widget.initialDeadline;
   }
 
   @override
@@ -71,6 +76,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
     if (oldWidget.initialIsCompletedState != widget.initialIsCompletedState) {
       _isCompleted = widget.initialIsCompletedState;
+    }
+
+    if (oldWidget.initialDeadline != widget.initialDeadline) {
+      _deadline = widget.initialDeadline;
     }
   }
 
@@ -110,6 +119,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         priority: _priority,
         isCompleted: _isCompleted,
         attachments: List.unmodifiable(_attachments),
+        deadline: _deadline,
       ),
     );
   }
@@ -129,6 +139,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void onIsTaskCompleteChanged(bool value) {
     setState(() {
       _isCompleted = value;
+    });
+  }
+
+  void _onDeadlineChanged(DateTime? newDeadline) {
+    setState(() {
+      _deadline = newDeadline;
     });
   }
 
@@ -167,6 +183,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                 editorPlaceholder: localization.editorPlaceholder,
               ),
               const SizedBox(height: 4),
+              TaskDeadlineSection(initialDeadline: _deadline, onChanged: _onDeadlineChanged),
               if (isEdit) ...[
                 TaskCompletedSection(
                   title: localization.completedTaskTitle,

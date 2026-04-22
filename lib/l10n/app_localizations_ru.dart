@@ -193,4 +193,13 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get deadlineTitle => 'Дедлайн';
+
+  @override
+  String get setDeadline => 'Установить дедлайн';
+
+  @override
+  String get clearDeadline => 'Очистить дедлайн';
 }

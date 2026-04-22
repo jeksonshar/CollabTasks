@@ -427,6 +427,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}'**
   String tasksCount(num count);
+
+  /// No description provided for @deadlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline'**
+  String get deadlineTitle;
+
+  /// No description provided for @setDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Deadline'**
+  String get setDeadline;
+
+  /// No description provided for @clearDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Deadline'**
+  String get clearDeadline;
 }
 
 class _AppLocalizationsDelegate

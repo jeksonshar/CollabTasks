@@ -12,6 +12,7 @@ class Task extends Equatable {
   final int priority;
   final List<TaskAttachment> attachments;
   final bool isCompleted;
+  final DateTime? deadline;
 
   const Task({
     required this.id,
@@ -21,6 +22,7 @@ class Task extends Equatable {
     this.priority = 0,
     this.attachments = const [],
     this.isCompleted = false,
+    this.deadline,
   });
 
   Task copyWith({
@@ -31,6 +33,7 @@ class Task extends Equatable {
     int? priority,
     List<TaskAttachment>? attachments,
     bool? isCompleted,
+    DateTime? deadline,
   }) {
     return Task(
       id: id ?? this.id,
@@ -40,6 +43,7 @@ class Task extends Equatable {
       priority: priority ?? this.priority,
       attachments: attachments ?? this.attachments,
       isCompleted: isCompleted ?? this.isCompleted,
+      deadline: deadline ?? this.deadline,
     );
   }
 
@@ -51,6 +55,7 @@ class Task extends Equatable {
     'priority': priority,
     'attachments': attachments.map((e) => e.toJson()).toList(),
     'isCompleted': isCompleted,
+    'deadline': deadline?.toIso8601String(),
   };
 
   factory Task.fromMap(Map<String, dynamic> map) {
@@ -66,6 +71,7 @@ class Task extends Equatable {
           ? rawAttachments.whereType<Map<String, dynamic>>().map(TaskAttachment.fromJson).toList()
           : const [],
       isCompleted: map['isCompleted'] as bool? ?? false,
+      deadline: map['deadline'] != null ? DateTime.parse(map['deadline'] as String) : null,
     );
   }
 
@@ -74,5 +80,14 @@ class Task extends Equatable {
   factory Task.fromJson(String source) => Task.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
-  List<Object?> get props => [id, createdAt, title, text, priority, attachments, isCompleted];
+  List<Object?> get props => [
+    id,
+    createdAt,
+    title,
+    text,
+    priority,
+    attachments,
+    isCompleted,
+    deadline,
+  ];
 }

@@ -193,4 +193,13 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get deadlineTitle => 'Deadline';
+
+  @override
+  String get setDeadline => 'Set Deadline';
+
+  @override
+  String get clearDeadline => 'Clear Deadline';
 }

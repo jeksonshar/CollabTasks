@@ -47,6 +47,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           tasks: _sortTasks(tasks, state.sortType, state.sortDirection),
         ),
       );
+      debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
     } catch (e, s) {
       debugPrint('TaskBloc.loadTasks ERROR: $e\n$s');
       emit(state.copyWith(status: TaskStatus.failure, errorType: TaskErrorType.load));
@@ -63,6 +64,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       priority: event.draft.priority,
       attachments: event.draft.attachments,
       isCompleted: event.draft.isCompleted,
+      deadline: event.draft.deadline,
     );
 
     try {
@@ -91,6 +93,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       priority: event.draft.priority,
       attachments: event.draft.attachments,
       isCompleted: event.draft.isCompleted,
+      deadline: event.draft.deadline,
     );
 
     try {

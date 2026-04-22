@@ -18,6 +18,7 @@ class TaskRepositoryImpl implements TaskRepository {
       taskPriority: Value(task.priority),
       taskAttachments: task.attachments,
       taskIsCompleted: Value(task.isCompleted),
+      taskDeadline: Value(task.deadline),
     );
 
     return _db.into(_db.taskEntity).insert(companion, onConflict: DoUpdate((old) => companion));
@@ -48,6 +49,7 @@ class TaskRepositoryImpl implements TaskRepository {
             priority: row.taskPriority,
             attachments: row.taskAttachments,
             isCompleted: row.taskIsCompleted,
+            deadline: row.taskDeadline,
           ),
         )
         .toList();
