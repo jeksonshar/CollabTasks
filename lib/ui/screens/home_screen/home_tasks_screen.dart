@@ -138,6 +138,7 @@ class HomeTasksScreen extends StatelessWidget {
         initialDeltaJson: taskToEdit?.text,
         initialPriority: taskToEdit?.priority ?? 0,
         initialAttachments: taskToEdit?.attachments ?? const [],
+        initialIsCompletedState: taskToEdit?.isCompleted ?? false,
       ),
     );
 

@@ -29,6 +29,8 @@ class TaskEntity extends Table {
 
   TextColumn get taskAttachments => text().map(const TaskAttachmentListConverter())();
 
+  BoolColumn get taskIsCompleted => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {taskId};
 }

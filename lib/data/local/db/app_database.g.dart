@@ -66,6 +66,17 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<List<TaskAttachment>>($TaskEntityTable.$convertertaskAttachments);
+  static const VerificationMeta _taskIsCompletedMeta = const VerificationMeta('taskIsCompleted');
+  @override
+  late final GeneratedColumn<bool> taskIsCompleted = GeneratedColumn<bool>(
+    'task_is_completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("task_is_completed" IN (0, 1))'),
+    defaultValue: const Constant(false),
+  );
 
   @override
   List<GeneratedColumn> get $columns => [
@@ -75,6 +86,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     taskPriority,
     taskCreatedAt,
     taskAttachments,
+    taskIsCompleted,
   ];
 
   @override
@@ -124,6 +136,12 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     } else if (isInserting) {
       context.missing(_taskCreatedAtMeta);
     }
+    if (data.containsKey('task_is_completed')) {
+      context.handle(
+        _taskIsCompletedMeta,
+        taskIsCompleted.isAcceptableOrUnknown(data['task_is_completed']!, _taskIsCompletedMeta),
+      );
+    }
     return context;
   }
 
@@ -160,6 +178,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
           data['${effectivePrefix}task_attachments'],
         )!,
       ),
+      taskIsCompleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}task_is_completed'],
+      )!,
     );
   }
 
@@ -179,6 +201,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final int taskPriority;
   final DateTime taskCreatedAt;
   final List<TaskAttachment> taskAttachments;
+  final bool taskIsCompleted;
 
   const TaskEntityData({
     required this.taskId,
@@ -187,6 +210,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     required this.taskPriority,
     required this.taskCreatedAt,
     required this.taskAttachments,
+    required this.taskIsCompleted,
   });
 
   @override
@@ -202,6 +226,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
         $TaskEntityTable.$convertertaskAttachments.toSql(taskAttachments),
       );
     }
+    map['task_is_completed'] = Variable<bool>(taskIsCompleted);
     return map;
   }
 
@@ -213,6 +238,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskPriority: Value(taskPriority),
       taskCreatedAt: Value(taskCreatedAt),
       taskAttachments: Value(taskAttachments),
+      taskIsCompleted: Value(taskIsCompleted),
     );
   }
 
@@ -225,6 +251,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskPriority: serializer.fromJson<int>(json['taskPriority']),
       taskCreatedAt: serializer.fromJson<DateTime>(json['taskCreatedAt']),
       taskAttachments: serializer.fromJson<List<TaskAttachment>>(json['taskAttachments']),
+      taskIsCompleted: serializer.fromJson<bool>(json['taskIsCompleted']),
     );
   }
 
@@ -238,6 +265,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       'taskPriority': serializer.toJson<int>(taskPriority),
       'taskCreatedAt': serializer.toJson<DateTime>(taskCreatedAt),
       'taskAttachments': serializer.toJson<List<TaskAttachment>>(taskAttachments),
+      'taskIsCompleted': serializer.toJson<bool>(taskIsCompleted),
     };
   }
 
@@ -248,6 +276,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     int? taskPriority,
     DateTime? taskCreatedAt,
     List<TaskAttachment>? taskAttachments,
+    bool? taskIsCompleted,
   }) => TaskEntityData(
     taskId: taskId ?? this.taskId,
     taskTitle: taskTitle ?? this.taskTitle,
@@ -255,6 +284,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskPriority: taskPriority ?? this.taskPriority,
     taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
     taskAttachments: taskAttachments ?? this.taskAttachments,
+    taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
   );
 
   TaskEntityData copyWithCompanion(TaskEntityCompanion data) {
@@ -267,6 +297,9 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskAttachments: data.taskAttachments.present
           ? data.taskAttachments.value
           : this.taskAttachments,
+      taskIsCompleted: data.taskIsCompleted.present
+          ? data.taskIsCompleted.value
+          : this.taskIsCompleted,
     );
   }
 
@@ -278,14 +311,22 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ..write('taskText: $taskText, ')
           ..write('taskPriority: $taskPriority, ')
           ..write('taskCreatedAt: $taskCreatedAt, ')
-          ..write('taskAttachments: $taskAttachments')
+          ..write('taskAttachments: $taskAttachments, ')
+          ..write('taskIsCompleted: $taskIsCompleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(taskId, taskTitle, taskText, taskPriority, taskCreatedAt, taskAttachments);
+  int get hashCode => Object.hash(
+    taskId,
+    taskTitle,
+    taskText,
+    taskPriority,
+    taskCreatedAt,
+    taskAttachments,
+    taskIsCompleted,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -296,7 +337,8 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           other.taskText == this.taskText &&
           other.taskPriority == this.taskPriority &&
           other.taskCreatedAt == this.taskCreatedAt &&
-          other.taskAttachments == this.taskAttachments);
+          other.taskAttachments == this.taskAttachments &&
+          other.taskIsCompleted == this.taskIsCompleted);
 }
 
 class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
@@ -306,6 +348,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<int> taskPriority;
   final Value<DateTime> taskCreatedAt;
   final Value<List<TaskAttachment>> taskAttachments;
+  final Value<bool> taskIsCompleted;
   final Value<int> rowid;
 
   const TaskEntityCompanion({
@@ -315,6 +358,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskPriority = const Value.absent(),
     this.taskCreatedAt = const Value.absent(),
     this.taskAttachments = const Value.absent(),
+    this.taskIsCompleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
 
@@ -325,6 +369,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskPriority = const Value.absent(),
     required DateTime taskCreatedAt,
     required List<TaskAttachment> taskAttachments,
+    this.taskIsCompleted = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
        taskText = Value(taskText),
@@ -338,6 +383,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Expression<int>? taskPriority,
     Expression<DateTime>? taskCreatedAt,
     Expression<String>? taskAttachments,
+    Expression<bool>? taskIsCompleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -347,6 +393,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       if (taskPriority != null) 'task_priority': taskPriority,
       if (taskCreatedAt != null) 'task_created_at': taskCreatedAt,
       if (taskAttachments != null) 'task_attachments': taskAttachments,
+      if (taskIsCompleted != null) 'task_is_completed': taskIsCompleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -358,6 +405,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Value<int>? taskPriority,
     Value<DateTime>? taskCreatedAt,
     Value<List<TaskAttachment>>? taskAttachments,
+    Value<bool>? taskIsCompleted,
     Value<int>? rowid,
   }) {
     return TaskEntityCompanion(
@@ -367,6 +415,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       taskPriority: taskPriority ?? this.taskPriority,
       taskCreatedAt: taskCreatedAt ?? this.taskCreatedAt,
       taskAttachments: taskAttachments ?? this.taskAttachments,
+      taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -394,6 +443,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
         $TaskEntityTable.$convertertaskAttachments.toSql(taskAttachments.value),
       );
     }
+    if (taskIsCompleted.present) {
+      map['task_is_completed'] = Variable<bool>(taskIsCompleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -409,6 +461,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
           ..write('taskPriority: $taskPriority, ')
           ..write('taskCreatedAt: $taskCreatedAt, ')
           ..write('taskAttachments: $taskAttachments, ')
+          ..write('taskIsCompleted: $taskIsCompleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -437,6 +490,7 @@ typedef $$TaskEntityTableCreateCompanionBuilder =
       Value<int> taskPriority,
       required DateTime taskCreatedAt,
       required List<TaskAttachment> taskAttachments,
+      Value<bool> taskIsCompleted,
       Value<int> rowid,
     });
 typedef $$TaskEntityTableUpdateCompanionBuilder =
@@ -447,6 +501,7 @@ typedef $$TaskEntityTableUpdateCompanionBuilder =
       Value<int> taskPriority,
       Value<DateTime> taskCreatedAt,
       Value<List<TaskAttachment>> taskAttachments,
+      Value<bool> taskIsCompleted,
       Value<int> rowid,
     });
 
@@ -478,6 +533,11 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
   get taskAttachments => $composableBuilder(
     column: $table.taskAttachments,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get taskIsCompleted => $composableBuilder(
+    column: $table.taskIsCompleted,
+    builder: (column) => ColumnFilters(column),
   );
 }
 
@@ -511,6 +571,11 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
     column: $table.taskAttachments,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get taskIsCompleted => $composableBuilder(
+    column: $table.taskIsCompleted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskEntityTable> {
@@ -539,6 +604,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
 
   GeneratedColumnWithTypeConverter<List<TaskAttachment>, String> get taskAttachments =>
       $composableBuilder(column: $table.taskAttachments, builder: (column) => column);
+
+  GeneratedColumn<bool> get taskIsCompleted =>
+      $composableBuilder(column: $table.taskIsCompleted, builder: (column) => column);
 }
 
 class $$TaskEntityTableTableManager
@@ -573,6 +641,7 @@ class $$TaskEntityTableTableManager
                 Value<int> taskPriority = const Value.absent(),
                 Value<DateTime> taskCreatedAt = const Value.absent(),
                 Value<List<TaskAttachment>> taskAttachments = const Value.absent(),
+                Value<bool> taskIsCompleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion(
                 taskId: taskId,
@@ -581,6 +650,7 @@ class $$TaskEntityTableTableManager
                 taskPriority: taskPriority,
                 taskCreatedAt: taskCreatedAt,
                 taskAttachments: taskAttachments,
+                taskIsCompleted: taskIsCompleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -591,6 +661,7 @@ class $$TaskEntityTableTableManager
                 Value<int> taskPriority = const Value.absent(),
                 required DateTime taskCreatedAt,
                 required List<TaskAttachment> taskAttachments,
+                Value<bool> taskIsCompleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion.insert(
                 taskId: taskId,
@@ -599,6 +670,7 @@ class $$TaskEntityTableTableManager
                 taskPriority: taskPriority,
                 taskCreatedAt: taskCreatedAt,
                 taskAttachments: taskAttachments,
+                taskIsCompleted: taskIsCompleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) =>

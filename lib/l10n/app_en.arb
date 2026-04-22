@@ -2,6 +2,7 @@
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
+  "completedTaskTitle": "Completed",
   "titleField": "Title",
   "titlePlaceholder": "Enter task title",
   "descriptionField": "Description",

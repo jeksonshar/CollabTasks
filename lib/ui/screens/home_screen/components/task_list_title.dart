@@ -22,7 +22,9 @@ class TaskListTile extends StatelessWidget {
 
     return ListTile(
       key: ValueKey(task.id),
-      leading: Icon(Icons.task_alt, color: priorityColor),
+      leading: task.isCompleted
+          ? Icon(Icons.task_alt, color: priorityColor)
+          : Icon(Icons.circle_outlined, color: priorityColor),
       title: Text(task.title),
       trailing: task.attachments.isNotEmpty ? const Icon(Icons.attach_file) : null,
       onTap: onTap,

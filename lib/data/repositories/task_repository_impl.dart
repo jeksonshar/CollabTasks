@@ -17,6 +17,7 @@ class TaskRepositoryImpl implements TaskRepository {
       taskText: task.text,
       taskPriority: Value(task.priority),
       taskAttachments: task.attachments,
+      taskIsCompleted: Value(task.isCompleted),
     );
 
     return _db.into(_db.taskEntity).insert(companion, onConflict: DoUpdate((old) => companion));
@@ -46,8 +47,17 @@ class TaskRepositoryImpl implements TaskRepository {
             text: row.taskText,
             priority: row.taskPriority,
             attachments: row.taskAttachments,
+            isCompleted: row.taskIsCompleted,
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<void> toggleTask(String id) async {
+    final task = await (_db.select(_db.taskEntity)..where((t) => t.taskId.equals(id))).getSingle();
+    await (_db.update(_db.taskEntity)..where((t) => t.taskId.equals(id))).write(
+      TaskEntityCompanion(taskIsCompleted: Value(!task.taskIsCompleted)),
+    );
   }
 }

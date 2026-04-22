@@ -39,6 +39,10 @@ class AppDatabase extends _$AppDatabase {
           'ALTER TABLE task_entity ADD COLUMN task_title TEXT NOT NULL DEFAULT ""',
         );
       }
+
+      if (from < 5) {
+        await m.addColumn(taskEntity, taskEntity.taskIsCompleted);
+      }
     },
   );
 

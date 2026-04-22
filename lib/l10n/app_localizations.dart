@@ -110,6 +110,12 @@ abstract class AppLocalizations {
   /// **'Edit Task'**
   String get editTaskTitle;
 
+  /// No description provided for @completedTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completedTaskTitle;
+
   /// No description provided for @titleField.
   ///
   /// In en, this message translates to:

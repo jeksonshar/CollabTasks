@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_completed_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
@@ -18,6 +19,7 @@ class TaskDialog extends StatefulWidget {
   final String? initialDeltaJson;
   final List<TaskAttachment> initialAttachments;
   final int initialPriority;
+  final bool initialIsCompletedState;
 
   const TaskDialog({
     super.key,
@@ -25,6 +27,7 @@ class TaskDialog extends StatefulWidget {
     this.initialDeltaJson,
     this.initialAttachments = const [],
     this.initialPriority = 0,
+    this.initialIsCompletedState = false,
   });
 
   @override
@@ -41,6 +44,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
   final List<TaskAttachment> _attachments = [];
   int _priority = 0;
+  bool _isCompleted = false;
 
   @override
   void initState() {
@@ -49,6 +53,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
     _attachments.addAll(widget.initialAttachments);
     _priority = widget.initialPriority;
+    _isCompleted = widget.initialIsCompletedState;
   }
 
   @override
@@ -62,6 +67,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
 
     if (oldWidget.initialPriority != widget.initialPriority) {
       _priority = widget.initialPriority;
+    }
+
+    if (oldWidget.initialIsCompletedState != widget.initialIsCompletedState) {
+      _isCompleted = widget.initialIsCompletedState;
     }
   }
 
@@ -99,6 +108,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         title: _titleController.text.trim(),
         textJson: jsonEncode(trimmedDelta.toJson()),
         priority: _priority,
+        isCompleted: _isCompleted,
         attachments: List.unmodifiable(_attachments),
       ),
     );
@@ -113,6 +123,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void _onPriorityChanged(TaskPriority newPriority) {
     setState(() {
       _priority = newPriority.value;
+    });
+  }
+
+  void onIsTaskCompleteChanged(bool value) {
+    setState(() {
+      _isCompleted = value;
     });
   }
 
@@ -151,6 +167,13 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                 editorPlaceholder: localization.editorPlaceholder,
               ),
               const SizedBox(height: 4),
+              if (isEdit) ...[
+                TaskCompletedSection(
+                  title: localization.completedTaskTitle,
+                  isCompleted: _isCompleted,
+                  onChanged: onIsTaskCompleteChanged,
+                ),
+              ],
               TaskPrioritySection(
                 title: localization.priorityTitle,
                 priority: TaskPriority.fromValue(_priority),

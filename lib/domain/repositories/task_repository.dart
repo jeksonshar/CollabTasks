@@ -8,4 +8,6 @@ abstract class TaskRepository {
   Future<void> updateTask(Task task);
 
   Future<void> deleteTask(String id);
+
+  Future<void> toggleTask(String id);
 }

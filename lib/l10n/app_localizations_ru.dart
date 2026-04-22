@@ -15,6 +15,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editTaskTitle => 'Редактировать задачу';
 
   @override
+  String get completedTaskTitle => 'Выполнена';
+
+  @override
   String get titleField => 'Название';
 
   @override
