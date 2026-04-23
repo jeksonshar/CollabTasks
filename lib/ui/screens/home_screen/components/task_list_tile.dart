@@ -135,7 +135,7 @@ class _TaskListTileState extends State<TaskListTile> {
 
   Widget _buildExpandedContent(BuildContext context, AppLocalizations localization) {
     return Padding(
-      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+      padding: const EdgeInsets.only(left: 24, right: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
