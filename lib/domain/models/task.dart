@@ -13,6 +13,7 @@ class Task extends Equatable {
   final List<TaskAttachment> attachments;
   final bool isCompleted;
   final DateTime? deadline;
+  final bool isPinned;
 
   const Task({
     required this.id,
@@ -23,6 +24,7 @@ class Task extends Equatable {
     this.attachments = const [],
     this.isCompleted = false,
     this.deadline,
+    this.isPinned = false,
   });
 
   Task copyWith({
@@ -34,6 +36,7 @@ class Task extends Equatable {
     List<TaskAttachment>? attachments,
     bool? isCompleted,
     DateTime? deadline,
+    bool? isPinned,
   }) {
     return Task(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class Task extends Equatable {
       attachments: attachments ?? this.attachments,
       isCompleted: isCompleted ?? this.isCompleted,
       deadline: deadline ?? this.deadline,
+      isPinned: isPinned ?? this.isPinned,
     );
   }
 
@@ -56,6 +60,7 @@ class Task extends Equatable {
     'attachments': attachments.map((e) => e.toJson()).toList(),
     'isCompleted': isCompleted,
     'deadline': deadline?.toIso8601String(),
+    'isPinned': isPinned,
   };
 
   factory Task.fromMap(Map<String, dynamic> map) {
@@ -72,6 +77,7 @@ class Task extends Equatable {
           : const [],
       isCompleted: map['isCompleted'] as bool? ?? false,
       deadline: map['deadline'] != null ? DateTime.parse(map['deadline'] as String) : null,
+      isPinned: map['isPinned'] as bool? ?? false,
     );
   }
 
@@ -89,5 +95,6 @@ class Task extends Equatable {
     attachments,
     isCompleted,
     deadline,
+    isPinned,
   ];
 }

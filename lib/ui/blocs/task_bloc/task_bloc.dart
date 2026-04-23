@@ -31,6 +31,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskUpdated>(_onUpdateTask);
     on<TaskDeleted>(_onDeleteTask);
     on<SortChanged>(_onSortChanged);
+    on<TaskPinToggled>(_onToggleTaskPin);
     on<ErrorCleared>((event, emit) => emit(state.copyWith(errorType: null)));
     on<ActionCleared>(
       (event, emit) => emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
@@ -85,6 +86,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onUpdateTask(TaskUpdated event, Emitter<TaskState> emit) async {
+    final oldTask = state.tasks.firstWhere((t) => t.id == event.id);
     final task = Task(
       id: event.id,
       createdAt: event.createdAt,
@@ -94,6 +96,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       attachments: event.draft.attachments,
       isCompleted: event.draft.isCompleted,
       deadline: event.draft.deadline,
+      isPinned: oldTask.isPinned,
     );
 
     try {
@@ -137,6 +140,26 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
+  Future<void> _onToggleTaskPin(TaskPinToggled event, Emitter<TaskState> emit) async {
+    final index = state.tasks.indexWhere((t) => t.id == event.id);
+    if (index == -1) return;
+
+    final task = state.tasks[index];
+    final updatedTask = task.copyWith(isPinned: !task.isPinned);
+
+    try {
+      await updateTaskUseCase(updatedTask);
+
+      final newTasks = [...state.tasks];
+      newTasks[index] = updatedTask;
+
+      emit(state.copyWith(tasks: _sortTasks(newTasks, state.sortType, state.sortDirection)));
+    } catch (e, s) {
+      debugPrint('TaskBloc.toggleTaskPin ERROR: $e\n$s');
+      emit(state.copyWith(errorType: TaskErrorType.update));
+    }
+  }
+
   void _onSortChanged(SortChanged event, Emitter<TaskState> emit) {
     TaskSortDirection newDirection = state.sortDirection;
     if (state.sortType == event.sortType) {
@@ -159,19 +182,27 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   List<Task> _sortTasks(List<Task> tasks, TaskSortType type, TaskSortDirection dir) {
-    final sorted = [...tasks];
+    final pinned = tasks.where((t) => t.isPinned).toList();
+    final others = tasks.where((t) => !t.isPinned).toList();
+
     int compare<T extends Comparable>(T a, T b) {
       return dir.isAscending ? b.compareTo(a) : a.compareTo(b);
     }
 
-    switch (type) {
-      case TaskSortType.byDateCreated:
-        sorted.sort((a, b) => compare(a.createdAt, b.createdAt));
-      case TaskSortType.byPriority:
-        sorted.sort((a, b) => compare(a.priority, b.priority));
-      case TaskSortType.byTitle:
-        sorted.sort((a, b) => compare(a.title, b.title));
+    void sortList(List<Task> list) {
+      switch (type) {
+        case TaskSortType.byDateCreated:
+          list.sort((a, b) => compare(a.createdAt, b.createdAt));
+        case TaskSortType.byPriority:
+          list.sort((a, b) => compare(a.priority, b.priority));
+        case TaskSortType.byTitle:
+          list.sort((a, b) => compare(a.title, b.title));
+      }
     }
-    return sorted;
+
+    sortList(pinned);
+    sortList(others);
+
+    return [...pinned, ...others];
   }
 }

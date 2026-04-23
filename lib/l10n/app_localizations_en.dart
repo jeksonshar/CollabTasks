@@ -202,4 +202,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearDeadline => 'Clear Deadline';
+
+  @override
+  String get pin => 'Pin';
+
+  @override
+  String get unpin => 'Unpin';
+
+  @override
+  String get edit => 'Edit';
 }

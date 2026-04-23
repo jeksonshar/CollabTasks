@@ -33,6 +33,8 @@ class TaskEntity extends Table {
 
   DateTimeColumn get taskDeadline => dateTime().nullable()();
 
+  BoolColumn get taskIsPinned => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {taskId};
 }

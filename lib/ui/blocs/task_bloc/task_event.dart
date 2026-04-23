@@ -43,3 +43,12 @@ class ErrorCleared extends TaskEvent {}
 class ActionCleared extends TaskEvent {
   const ActionCleared();
 }
+
+class TaskPinToggled extends TaskEvent {
+  final String id;
+
+  const TaskPinToggled(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}

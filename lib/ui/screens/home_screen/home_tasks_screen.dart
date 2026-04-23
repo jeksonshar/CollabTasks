@@ -118,7 +118,8 @@ class HomeTasksScreen extends StatelessWidget {
         return TaskListTile(
           task: item,
           onTap: () => _showTaskDialog(context, editIndex: index),
-          onLongPress: () => _showDeleteDialog(context, index),
+          onDelete: () => _showDeleteDialog(context, index),
+          onPinToggled: () => context.read<TaskBloc>().add(TaskPinToggled(item.id)),
         );
       },
     );

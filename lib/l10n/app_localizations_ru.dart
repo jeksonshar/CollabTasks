@@ -202,4 +202,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get clearDeadline => 'Очистить дедлайн';
+
+  @override
+  String get pin => 'Закрепить';
+
+  @override
+  String get unpin => 'Открепить';
+
+  @override
+  String get edit => 'Редактировать';
 }
