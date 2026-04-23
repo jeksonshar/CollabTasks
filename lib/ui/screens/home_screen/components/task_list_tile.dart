@@ -1,104 +1,202 @@
 import 'package:collab_tasks/domain/models/task.dart';
+import 'package:collab_tasks/ui/screens/home_screen/components/task_rich_preview.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/attachment_files/attachment_utils.dart';
 import '../../../../core/task_priority/task_priority_utils.dart';
 import '../../../../l10n/app_localizations.dart';
 
 enum TaskMenuAction { pin, edit, delete }
 
-class TaskListTile extends StatelessWidget {
+class TaskListTile extends StatefulWidget {
   const TaskListTile({
     super.key,
     required this.task,
-    required this.onTap,
+    required this.onEdit,
     required this.onDelete,
     required this.onPinToggled,
   });
 
   final Task task;
-  final VoidCallback onTap;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onPinToggled;
 
   @override
+  State<TaskListTile> createState() => _TaskListTileState();
+}
+
+class _TaskListTileState extends State<TaskListTile> {
+  bool _isExpanded = false;
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
-    final priority = TaskPriority.fromValue(task.priority);
+    final priority = TaskPriority.fromValue(widget.task.priority);
     final priorityColor = priority.borderColor ?? Theme.of(context).iconTheme.color;
 
     final List<Widget> statusWidgets = [];
 
-    if (task.isPinned) {
+    if (widget.task.isPinned) {
       if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
       statusWidgets.add(const Icon(Icons.push_pin, size: 16, color: Colors.black87));
     }
 
-    if (task.deadline != null) {
+    if (widget.task.deadline != null) {
       if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
       statusWidgets.add(const Icon(Icons.alarm, size: 16));
     }
 
-    if (task.attachments.isNotEmpty) {
+    if (widget.task.attachments.isNotEmpty) {
+      if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
       statusWidgets.add(const Icon(Icons.attach_file, size: 16));
     }
 
-    return ListTile(
-      key: ValueKey(task.id),
-      leading: task.isCompleted
-          ? Icon(Icons.task_alt, color: priorityColor)
-          : Icon(Icons.circle_outlined, color: priorityColor),
-      title: Text(
-        task.title,
-        style: TextStyle(fontWeight: task.isPinned ? FontWeight.bold : FontWeight.normal),
-      ),
-      subtitle: statusWidgets.isNotEmpty
-          ? Row(mainAxisSize: MainAxisSize.min, children: statusWidgets)
-          : null,
-      trailing: PopupMenuButton<TaskMenuAction>(
-        icon: const Icon(Icons.more_vert),
-        onSelected: (action) {
-          switch (action) {
-            case TaskMenuAction.pin:
-              onPinToggled();
-              break;
-            case TaskMenuAction.edit:
-              onTap();
-              break;
-            case TaskMenuAction.delete:
-              onDelete();
-              break;
-          }
-        },
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: TaskMenuAction.pin,
-            child: Row(
-              children: [
-                Icon(task.isPinned ? Icons.push_pin_outlined : Icons.push_pin),
-                const SizedBox(width: 8),
-                Text(task.isPinned ? localization.unpin : localization.pin),
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Column(
+        children: [
+          ListTile(
+            key: ValueKey(widget.task.id),
+            leading: widget.task.isCompleted
+                ? Icon(Icons.task_alt, color: priorityColor)
+                : Icon(Icons.circle_outlined, color: priorityColor),
+            title: Text(
+              widget.task.title,
+              style: TextStyle(
+                fontWeight: widget.task.isPinned ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            subtitle: statusWidgets.isNotEmpty && !_isExpanded
+                ? Row(mainAxisSize: MainAxisSize.min, children: statusWidgets)
+                : null,
+            trailing: PopupMenuButton<TaskMenuAction>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (action) {
+                switch (action) {
+                  case TaskMenuAction.pin:
+                    widget.onPinToggled();
+                    break;
+                  case TaskMenuAction.edit:
+                    widget.onEdit();
+                    break;
+                  case TaskMenuAction.delete:
+                    widget.onDelete();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: TaskMenuAction.pin,
+                  child: Row(
+                    children: [
+                      Icon(widget.task.isPinned ? Icons.push_pin_outlined : Icons.push_pin),
+                      const SizedBox(width: 8),
+                      Text(widget.task.isPinned ? localization.unpin : localization.pin),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: TaskMenuAction.edit,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit),
+                      const SizedBox(width: 8),
+                      Text(localization.edit),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: TaskMenuAction.delete,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Text(localization.delete, style: const TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
               ],
             ),
+            onTap: _toggleExpanded,
           ),
-          PopupMenuItem(
-            value: TaskMenuAction.edit,
-            child: Row(
-              children: [const Icon(Icons.edit), const SizedBox(width: 8), Text(localization.edit)],
-            ),
-          ),
-          PopupMenuItem(
-            value: TaskMenuAction.delete,
-            child: Row(
-              children: [
-                const Icon(Icons.delete, color: Colors.red),
-                const SizedBox(width: 8),
-                Text(localization.delete, style: const TextStyle(color: Colors.red)),
-              ],
-            ),
-          ),
+          if (_isExpanded) _buildExpandedContent(context, localization),
         ],
       ),
-      onTap: onTap,
+    );
+  }
+
+  Widget _buildExpandedContent(BuildContext context, AppLocalizations localization) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            color: Colors.white,
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TaskRichPreview(deltaJson: widget.task.text),
+            ),
+          ),
+          if (widget.task.deadline != null) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.alarm, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  "${localization.deadlineTitle}: ${DateFormat.yMMMd(localization.localeName).format(widget.task.deadline!)}",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ],
+          if (widget.task.attachments.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(localization.attachmentsTitle, style: Theme.of(context).textTheme.titleSmall),
+            ...widget.task.attachments.map(
+              (attachment) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(iconForExtension(attachment.extension)),
+                title: Text(attachment.name),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.visibility),
+                      onPressed: () => handleViewAttachment(
+                        context: context,
+                        attachment: attachment,
+                        localization: localization,
+                      ),
+                      tooltip: localization.viewFileTitle,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.download),
+                      onPressed: () => handleDownloadAttachment(
+                        context: context,
+                        attachment: attachment,
+                        localization: localization,
+                      ),
+                      tooltip: localization.downloadFileTitle,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

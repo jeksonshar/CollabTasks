@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/attachment_files/attachment_utils.dart';
 import '../../../../domain/models/task_attachment.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -21,7 +22,7 @@ class TaskAttachmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = _iconForExtension(attachment.extension);
+    final icon = iconForExtension(attachment.extension);
     final localization = AppLocalizations.of(context)!;
 
     return Material(
@@ -56,21 +57,6 @@ class TaskAttachmentTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _iconForExtension(String extension) {
-    switch (extension.toLowerCase()) {
-      case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx':
-      case 'txt':
-        return Icons.description;
-      case 'xml':
-        return Icons.code;
-      default:
-        return Icons.insert_drive_file;
-    }
   }
 
   String _formatBytes(int bytes) {

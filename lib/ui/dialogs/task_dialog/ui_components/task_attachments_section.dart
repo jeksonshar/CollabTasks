@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/attachment_files/attachment_file_service.dart';
+import '../../../../core/attachment_files/attachment_utils.dart';
 import '../../../../domain/models/task_attachment.dart';
 import 'task_attachment_tile.dart';
 
@@ -57,63 +58,6 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
         context,
       )?.showSnackBar(SnackBar(content: Text(localization.taskAddedError(e))));
       debugPrint('Failed to pick attachments: $e');
-    }
-  }
-
-  Future<void> _viewAttachment(TaskAttachment attachment) async {
-    try {
-      final content = await tryReadTextAttachment(attachment);
-
-      if (content != null) {
-        if (!mounted) return;
-
-        showDialog<void>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: Text(attachment.name),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: SelectableText(content, style: const TextStyle(fontFamily: 'monospace')),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(localization.cancel),
-                ),
-              ],
-            );
-          },
-        );
-        return;
-      }
-
-      await openAttachment(attachment);
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(localization.fileOpenError(e))));
-    }
-  }
-
-  Future<void> _downloadAttachment(TaskAttachment attachment) async {
-    try {
-      final saved = await downloadAttachmentFile(attachment);
-
-      if (!saved || !mounted) return;
-
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(localization.fileDownloaded)));
-    } catch (e) {
-      debugPrint('Не удалось скачать файл: $e');
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(localization.fileDownloadError(e))));
     }
   }
 
@@ -175,19 +119,21 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
           ],
         ),
         if (_attachments.isNotEmpty) ...[
-          // const SizedBox(height: 8),
-          // Text(
-          //   localization.attachmentsTitle,
-          //   style: AppTextStyles.bold16Black87Roboto,
-          // ),
-          // const SizedBox(height: 8),
           ..._attachments.map(
             (attachment) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: TaskAttachmentTile(
                 attachment: attachment,
-                onView: () => _viewAttachment(attachment),
-                onDownload: () => _downloadAttachment(attachment),
+                onView: () => handleViewAttachment(
+                  context: context,
+                  attachment: attachment,
+                  localization: localization,
+                ),
+                onDownload: () => handleDownloadAttachment(
+                  context: context,
+                  attachment: attachment,
+                  localization: localization,
+                ),
                 onDelete: () => _removeAttachment(attachment),
               ),
             ),

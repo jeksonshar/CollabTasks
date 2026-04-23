@@ -67,7 +67,7 @@ class HomeTasksScreen extends StatelessWidget {
         ),
       ],
       child: Scaffold(
-        appBar: TasksAppBar(),
+        appBar: const TasksAppBar(),
         body: BlocBuilder<TaskBloc, TaskState>(
           builder: (context, state) {
             if (state.status == TaskStatus.loading) {
@@ -98,7 +98,7 @@ class HomeTasksScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inbox, size: 64, color: Colors.grey),
+          const Icon(Icons.inbox, size: 64, color: Colors.grey),
           const SizedBox(height: 12),
           Text(
             localization.emptyTaskTitle,
@@ -112,15 +112,15 @@ class HomeTasksScreen extends StatelessWidget {
   }
 
   Widget _tasksListView(List<dynamic> tasks) {
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tasks.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
+      // separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = tasks[index];
         return TaskListTile(
           task: item,
-          onTap: () => _showTaskDialog(context, taskToEdit: item),
+          onEdit: () => _showTaskDialog(context, taskToEdit: item),
           onDelete: () => _showDeleteDialog(context, item),
           onPinToggled: () => context.read<TaskBloc>().add(TaskPinToggled(item.id)),
         );
