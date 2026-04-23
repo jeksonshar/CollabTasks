@@ -17,6 +17,7 @@ class TaskState extends Equatable {
   final TaskSortType sortType;
   final TaskSortDirection sortDirection;
   final TaskFilterType filterType;
+  final String searchQuery;
   final TaskAction lastAction;
   final String? lastActionTaskTitle;
 
@@ -27,27 +28,45 @@ class TaskState extends Equatable {
     this.sortType = TaskSortType.byDateCreated,
     this.sortDirection = TaskSortDirection.topToBottom,
     this.filterType = TaskFilterType.all,
+    this.searchQuery = '',
     this.lastAction = TaskAction.none,
     this.lastActionTaskTitle,
   });
 
   List<Task> get filteredTasks {
+    List<Task> result = tasks;
+
+    // Apply Filter
     switch (filterType) {
       case TaskFilterType.all:
-        return tasks;
+        break;
       case TaskFilterType.completed:
-        return tasks.where((t) => t.isCompleted).toList();
+        result = result.where((t) => t.isCompleted).toList();
+        break;
       case TaskFilterType.incomplete:
-        return tasks.where((t) => !t.isCompleted).toList();
+        result = result.where((t) => !t.isCompleted).toList();
+        break;
       case TaskFilterType.withFiles:
-        return tasks.where((t) => t.attachments.isNotEmpty).toList();
+        result = result.where((t) => t.attachments.isNotEmpty).toList();
+        break;
       case TaskFilterType.withoutFiles:
-        return tasks.where((t) => t.attachments.isEmpty).toList();
+        result = result.where((t) => t.attachments.isEmpty).toList();
+        break;
       case TaskFilterType.withDeadline:
-        return tasks.where((t) => t.deadline != null).toList();
+        result = result.where((t) => t.deadline != null).toList();
+        break;
       case TaskFilterType.withoutDeadline:
-        return tasks.where((t) => t.deadline == null).toList();
+        result = result.where((t) => t.deadline == null).toList();
+        break;
     }
+
+    // Apply Search (only if 3 or more characters)
+    if (searchQuery.length >= 3) {
+      final query = searchQuery.toLowerCase();
+      result = result.where((t) => t.title.toLowerCase().contains(query)).toList();
+    }
+
+    return result;
   }
 
   TaskState copyWith({
@@ -57,6 +76,7 @@ class TaskState extends Equatable {
     TaskSortType? sortType,
     TaskSortDirection? sortDirection,
     TaskFilterType? filterType,
+    String? searchQuery,
     TaskAction? lastAction,
     String? lastActionTaskTitle,
   }) {
@@ -67,6 +87,7 @@ class TaskState extends Equatable {
       sortType: sortType ?? this.sortType,
       sortDirection: sortDirection ?? this.sortDirection,
       filterType: filterType ?? this.filterType,
+      searchQuery: searchQuery ?? this.searchQuery,
       lastAction: lastAction ?? this.lastAction,
       lastActionTaskTitle: lastActionTaskTitle ?? this.lastActionTaskTitle,
     );
@@ -80,6 +101,7 @@ class TaskState extends Equatable {
     sortType,
     sortDirection,
     filterType,
+    searchQuery,
     lastAction,
     lastActionTaskTitle,
   ];

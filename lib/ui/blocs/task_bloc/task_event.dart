@@ -48,6 +48,15 @@ class FilterChanged extends TaskEvent {
   List<Object?> get props => [filterType];
 }
 
+class SearchChanged extends TaskEvent {
+  final String query;
+
+  const SearchChanged(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
 class ErrorCleared extends TaskEvent {}
 
 class ActionCleared extends TaskEvent {

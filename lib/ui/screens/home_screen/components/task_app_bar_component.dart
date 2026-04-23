@@ -9,18 +9,58 @@ import '../../../blocs/task_bloc/task_bloc.dart';
 import '../../../blocs/task_bloc/task_event.dart';
 import '../../../blocs/task_bloc/task_state.dart';
 
-class TasksAppBar extends StatelessWidget implements PreferredSizeWidget {
+class TasksAppBar extends StatefulWidget implements PreferredSizeWidget {
   const TasksAppBar({super.key});
+
+  @override
+  State<TasksAppBar> createState() => _TasksAppBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _TasksAppBarState extends State<TasksAppBar> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        context.read<TaskBloc>().add(const SearchChanged(''));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
 
     return AppBar(
-      title: Text(localization.my_tasks),
+      title: _isSearching
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: localization.titlePlaceholder,
+                border: InputBorder.none,
+              ),
+              onChanged: (value) {
+                context.read<TaskBloc>().add(SearchChanged(value));
+              },
+            )
+          : Text(localization.my_tasks),
       scrolledUnderElevation: 0.0,
       centerTitle: false,
       actions: [
+        IconButton(icon: Icon(_isSearching ? Icons.close : Icons.search), onPressed: _toggleSearch),
         BlocBuilder<TaskBloc, TaskState>(
           buildWhen: (previous, current) => previous.filterType != current.filterType,
           builder: (context, state) {
@@ -42,9 +82,6 @@ class TasksAppBar extends StatelessWidget implements PreferredSizeWidget {
       ],
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 class _FilterMenu extends StatelessWidget {
@@ -57,8 +94,9 @@ class _FilterMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<TaskFilterType>(
       icon: Icon(
-        Icons.filter_alt,
-        color: filterType != TaskFilterType.all ? Theme.of(context).colorScheme.primary : null,
+        filterType != TaskFilterType.all ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
+        // color: filterType != TaskFilterType.all ? Theme.of(context).colorScheme.primary : null,
+        color: filterType != TaskFilterType.all ? Colors.indigo : null,
       ),
       initialValue: filterType,
       onSelected: (type) {

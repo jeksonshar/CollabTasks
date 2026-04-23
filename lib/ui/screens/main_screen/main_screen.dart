@@ -35,7 +35,7 @@ class _MainScreenState extends State<MainScreen> with L10nMixin {
         onTap: _onItemTapped,
         elevation: 12,
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-        // selectedItemColor: Colors.white,
+        selectedItemColor: Colors.indigo,
         // unselectedItemColor: Colors.blue.shade200,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: localization.home),

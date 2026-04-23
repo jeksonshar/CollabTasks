@@ -32,11 +32,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskDeleted>(_onDeleteTask);
     on<SortChanged>(_onSortChanged);
     on<FilterChanged>((event, emit) => emit(state.copyWith(filterType: event.filterType)));
+    on<SearchChanged>((event, emit) => emit(state.copyWith(searchQuery: event.query)));
     on<TaskPinToggled>(_onToggleTaskPin);
     on<ErrorCleared>((event, emit) => emit(state.copyWith(errorType: null)));
     on<ActionCleared>(
-          (event, emit) =>
-          emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
+      (event, emit) => emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
     );
   }
 
@@ -127,9 +127,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   Future<void> _onDeleteTask(TaskDeleted event, Emitter<TaskState> emit) async {
     try {
       await deleteTaskUseCase(event.id);
-      final taskTitle = state.tasks
-          .firstWhere((t) => t.id == event.id)
-          .title;
+      final taskTitle = state.tasks.firstWhere((t) => t.id == event.id).title;
 
       emit(
         state.copyWith(

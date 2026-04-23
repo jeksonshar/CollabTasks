@@ -28,8 +28,9 @@ class TaskListTile extends StatelessWidget {
 
     final List<Widget> statusWidgets = [];
 
-    if (task.attachments.isNotEmpty) {
-      statusWidgets.add(const Icon(Icons.attach_file, size: 16));
+    if (task.isPinned) {
+      if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
+      statusWidgets.add(const Icon(Icons.push_pin, size: 16, color: Colors.black87));
     }
 
     if (task.deadline != null) {
@@ -37,9 +38,8 @@ class TaskListTile extends StatelessWidget {
       statusWidgets.add(const Icon(Icons.alarm, size: 16));
     }
 
-    if (task.isPinned) {
-      if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
-      statusWidgets.add(const Icon(Icons.push_pin, size: 16, color: Colors.orange));
+    if (task.attachments.isNotEmpty) {
+      statusWidgets.add(const Icon(Icons.attach_file, size: 16));
     }
 
     return ListTile(
