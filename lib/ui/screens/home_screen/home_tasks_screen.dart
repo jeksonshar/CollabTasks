@@ -73,10 +73,13 @@ class HomeTasksScreen extends StatelessWidget {
             if (state.status == TaskStatus.loading) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (state.tasks.isEmpty) {
+
+            final filteredTasks = state.filteredTasks;
+
+            if (filteredTasks.isEmpty) {
               return _emptyState(context);
             }
-            return _tasksListView(state);
+            return _tasksListView(filteredTasks);
           },
         ),
         floatingActionButtonLocation: fabLocation,
@@ -108,28 +111,25 @@ class HomeTasksScreen extends StatelessWidget {
     );
   }
 
-  Widget _tasksListView(TaskState state) {
+  Widget _tasksListView(List<dynamic> tasks) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: state.tasks.length,
+      itemCount: tasks.length,
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final item = state.tasks[index];
+        final item = tasks[index];
         return TaskListTile(
           task: item,
-          onTap: () => _showTaskDialog(context, editIndex: index),
-          onDelete: () => _showDeleteDialog(context, index),
+          onTap: () => _showTaskDialog(context, taskToEdit: item),
+          onDelete: () => _showDeleteDialog(context, item),
           onPinToggled: () => context.read<TaskBloc>().add(TaskPinToggled(item.id)),
         );
       },
     );
   }
 
-  Future<void> _showTaskDialog(BuildContext context, {int? editIndex}) async {
+  Future<void> _showTaskDialog(BuildContext context, {dynamic taskToEdit}) async {
     final bloc = context.read<TaskBloc>();
-    final state = bloc.state;
-
-    final taskToEdit = editIndex != null ? state.tasks[editIndex] : null;
 
     final result = await showDialog<TaskDraft>(
       context: context,
@@ -148,45 +148,41 @@ class HomeTasksScreen extends StatelessWidget {
 
     if (result == null || !context.mounted) return;
 
-    if (editIndex == null) {
+    if (taskToEdit == null) {
       bloc.add(TaskAdded(result));
     } else {
-      if (taskToEdit != null) {
-        bloc.add(TaskUpdated(taskToEdit.id, taskToEdit.createdAt, result));
-      }
+      bloc.add(TaskUpdated(taskToEdit.id, taskToEdit.createdAt, result));
     }
   }
-}
 
-Future<void> _showDeleteDialog(BuildContext context, int index) async {
-  final bloc = context.read<TaskBloc>();
-  final state = bloc.state;
-  final taskToRemove = state.tasks[index];
-  final localization = AppLocalizations.of(context)!;
+  Future<void> _showDeleteDialog(BuildContext context, dynamic taskToRemove) async {
+    final bloc = context.read<TaskBloc>();
+    final localization = AppLocalizations.of(context)!;
 
-  final shouldDelete = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(localization.deleteTaskTitle),
-      content: TaskRichPreview(deltaJson: taskToRemove.text),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(localization.cancel),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.black,
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(localization.deleteTaskTitle),
+        content: TaskRichPreview(deltaJson: taskToRemove.text),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(localization.cancel),
           ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(localization.delete),
-        ),
-      ],
-    ),
-  );
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(localization.delete),
+          ),
+        ],
+      ),
+    );
 
-  if (shouldDelete != true || !context.mounted) return;
+    if (shouldDelete != true || !context.mounted) return;
 
-  bloc.add(TaskDeleted(taskToRemove.id));
+    bloc.add(TaskDeleted(taskToRemove.id));
+  }
 }

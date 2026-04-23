@@ -211,4 +211,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get edit => 'Edit';
+
+  @override
+  String get filterAll => 'All tasks';
+
+  @override
+  String get filterCompleted => 'Completed';
+
+  @override
+  String get filterIncomplete => 'Incomplete';
+
+  @override
+  String get filterWithFiles => 'With files';
+
+  @override
+  String get filterWithoutFiles => 'Without files';
+
+  @override
+  String get filterWithDeadline => 'With deadlines';
+
+  @override
+  String get filterWithoutDeadline => 'Without deadlines';
 }

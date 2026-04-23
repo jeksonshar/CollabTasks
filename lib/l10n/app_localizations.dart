@@ -463,6 +463,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit'**
   String get edit;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All tasks'**
+  String get filterAll;
+
+  /// No description provided for @filterCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get filterCompleted;
+
+  /// No description provided for @filterIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get filterIncomplete;
+
+  /// No description provided for @filterWithFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'With files'**
+  String get filterWithFiles;
+
+  /// No description provided for @filterWithoutFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Without files'**
+  String get filterWithoutFiles;
+
+  /// No description provided for @filterWithDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'With deadlines'**
+  String get filterWithDeadline;
+
+  /// No description provided for @filterWithoutDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Without deadlines'**
+  String get filterWithoutDeadline;
 }
 
 class _AppLocalizationsDelegate

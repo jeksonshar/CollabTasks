@@ -102,5 +102,12 @@
   "clearDeadline": "Clear Deadline",
   "pin": "Pin",
   "unpin": "Unpin",
-  "edit": "Edit"
+  "edit": "Edit",
+  "filterAll": "All tasks",
+  "filterCompleted": "Completed",
+  "filterIncomplete": "Incomplete",
+  "filterWithFiles": "With files",
+  "filterWithoutFiles": "Without files",
+  "filterWithDeadline": "With deadlines",
+  "filterWithoutDeadline": "Without deadlines"
 }

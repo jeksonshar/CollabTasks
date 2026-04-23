@@ -102,5 +102,12 @@
   "clearDeadline": "Очистить дедлайн",
   "pin": "Закрепить",
   "unpin": "Открепить",
-  "edit": "Редактировать"
+  "edit": "Редактировать",
+  "filterAll": "Все задачи",
+  "filterCompleted": "Выполненные",
+  "filterIncomplete": "Невыполненные",
+  "filterWithFiles": "С файлами",
+  "filterWithoutFiles": "Без файлов",
+  "filterWithDeadline": "С крайним сроком",
+  "filterWithoutDeadline": "Без крайнего срока"
 }

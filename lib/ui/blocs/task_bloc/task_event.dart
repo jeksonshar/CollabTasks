@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../core/enums/task_filter_type.dart';
 import '../../../core/enums/task_sort_type.dart';
 import '../../../domain/models/task_draft.dart';
 
@@ -36,6 +37,15 @@ class SortChanged extends TaskEvent {
   final TaskSortType sortType;
 
   const SortChanged(this.sortType);
+}
+
+class FilterChanged extends TaskEvent {
+  final TaskFilterType filterType;
+
+  const FilterChanged(this.filterType);
+
+  @override
+  List<Object?> get props => [filterType];
 }
 
 class ErrorCleared extends TaskEvent {}

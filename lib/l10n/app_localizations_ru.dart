@@ -211,4 +211,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get edit => 'Редактировать';
+
+  @override
+  String get filterAll => 'Все задачи';
+
+  @override
+  String get filterCompleted => 'Выполненные';
+
+  @override
+  String get filterIncomplete => 'Невыполненные';
+
+  @override
+  String get filterWithFiles => 'С файлами';
+
+  @override
+  String get filterWithoutFiles => 'Без файлов';
+
+  @override
+  String get filterWithDeadline => 'С крайним сроком';
+
+  @override
+  String get filterWithoutDeadline => 'Без крайнего срока';
 }

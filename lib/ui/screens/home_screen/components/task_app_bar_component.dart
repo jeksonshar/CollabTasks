@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/enums/task_filter_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -20,7 +21,12 @@ class TasksAppBar extends StatelessWidget implements PreferredSizeWidget {
       scrolledUnderElevation: 0.0,
       centerTitle: false,
       actions: [
-        // Используем BlocBuilder для изоляции перерисовок
+        BlocBuilder<TaskBloc, TaskState>(
+          buildWhen: (previous, current) => previous.filterType != current.filterType,
+          builder: (context, state) {
+            return _FilterMenu(filterType: state.filterType, localization: localization);
+          },
+        ),
         BlocBuilder<TaskBloc, TaskState>(
           buildWhen: (previous, current) =>
               previous.sortType != current.sortType ||
@@ -41,6 +47,39 @@ class TasksAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
+class _FilterMenu extends StatelessWidget {
+  final TaskFilterType filterType;
+  final AppLocalizations localization;
+
+  const _FilterMenu({required this.filterType, required this.localization});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<TaskFilterType>(
+      icon: Icon(
+        Icons.filter_alt,
+        color: filterType != TaskFilterType.all ? Theme.of(context).colorScheme.primary : null,
+      ),
+      initialValue: filterType,
+      onSelected: (type) {
+        context.read<TaskBloc>().add(FilterChanged(type));
+      },
+      itemBuilder: (context) => TaskFilterType.values.map((type) {
+        final isSelected = filterType == type;
+        return PopupMenuItem(
+          value: type,
+          child: Row(
+            children: [
+              Expanded(child: Text(type.label(localization))),
+              if (isSelected) const Icon(Icons.check, size: 18),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _SortMenu extends StatelessWidget {
   final TaskSortType sortType;
   final TaskSortDirection sortDirection;
@@ -55,12 +94,11 @@ class _SortMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.only(right: 8),
       child: PopupMenuButton<TaskSortType>(
         icon: const Icon(Icons.sort),
         initialValue: sortType,
         onSelected: (type) {
-          // Вызываем ивент через контекст
           context.read<TaskBloc>().add(SortChanged(type));
         },
         itemBuilder: (context) => TaskSortType.values.map((type) {
