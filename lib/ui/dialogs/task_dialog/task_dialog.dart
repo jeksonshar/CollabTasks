@@ -6,6 +6,7 @@ import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_completed
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_deadline_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_formatter_editor_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_priority_section.dart';
+import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_subtasks_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
@@ -13,6 +14,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import '../../../core/task_priority/task_priority_utils.dart';
 import '../../../domain/models/task_attachment.dart';
 import '../../../domain/models/task_draft.dart';
+import '../../../domain/models/task_subtask.dart';
 import '../../screens/home_screen/utils/json_helpers.dart';
 
 class TaskDialog extends StatefulWidget {
@@ -22,6 +24,7 @@ class TaskDialog extends StatefulWidget {
   final int initialPriority;
   final bool initialIsCompletedState;
   final DateTime? initialDeadline;
+  final List<TaskSubtask> initialSubtasks;
 
   const TaskDialog({
     super.key,
@@ -31,6 +34,7 @@ class TaskDialog extends StatefulWidget {
     this.initialPriority = 0,
     this.initialIsCompletedState = false,
     this.initialDeadline,
+    this.initialSubtasks = const [],
   });
 
   @override
@@ -46,6 +50,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   final GlobalKey _editorKey = GlobalKey();
 
   final List<TaskAttachment> _attachments = [];
+  final List<TaskSubtask> _subtasks = [];
   int _priority = 0;
   bool _isCompleted = false;
   DateTime? _deadline;
@@ -56,6 +61,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     _controller = _createController(widget.initialDeltaJson);
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
     _attachments.addAll(widget.initialAttachments);
+    _subtasks.addAll(widget.initialSubtasks);
     _priority = widget.initialPriority;
     _isCompleted = widget.initialIsCompletedState;
     _deadline = widget.initialDeadline;
@@ -111,6 +117,10 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     if (_isEmpty) return;
 
     final trimmedDelta = trimDelta(_controller.document.toDelta());
+    final normalizedSubtasks = _subtasks
+        .map((subtask) => subtask.copyWith(title: subtask.title.trim()))
+        .where((subtask) => subtask.title.isNotEmpty)
+        .toList(growable: false);
 
     Navigator.of(context).pop(
       TaskDraft(
@@ -119,6 +129,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
         priority: _priority,
         isCompleted: _isCompleted,
         attachments: List.unmodifiable(_attachments),
+        subtasks: List.unmodifiable(normalizedSubtasks),
         deadline: _deadline,
       ),
     );
@@ -145,6 +156,14 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   void _onDeadlineChanged(DateTime? newDeadline) {
     setState(() {
       _deadline = newDeadline;
+    });
+  }
+
+  void _onSubtasksChanged(List<TaskSubtask> list) {
+    setState(() {
+      _subtasks
+        ..clear()
+        ..addAll(list);
     });
   }
 
@@ -191,6 +210,12 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
                   onChanged: onIsTaskCompleteChanged,
                 ),
               ],
+              TaskSubtasksSection(
+                subtasks: _subtasks,
+                onChanged: _onSubtasksChanged,
+                canToggleCompletion: isEdit,
+              ),
+              const SizedBox(height: 8),
               TaskPrioritySection(
                 title: localization.priorityTitle,
                 priority: TaskPriority.fromValue(_priority),

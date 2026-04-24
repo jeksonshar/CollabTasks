@@ -160,6 +160,30 @@ abstract class AppLocalizations {
   /// **'Priority: '**
   String get priorityTitle;
 
+  /// No description provided for @addSubtaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addSubtaskTitle;
+
+  /// No description provided for @subtasksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtasks'**
+  String get subtasksTitle;
+
+  /// No description provided for @noSubtasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No subtasks'**
+  String get noSubtasks;
+
+  /// No description provided for @removeSubtaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeSubtaskTitle;
+
   /// No description provided for @taskPriorityNone.
   ///
   /// In en, this message translates to:

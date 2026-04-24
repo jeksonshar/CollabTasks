@@ -78,6 +78,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       text: event.draft.textJson,
       priority: event.draft.priority,
       attachments: event.draft.attachments,
+      subtasks: event.draft.subtasks,
       isCompleted: event.draft.isCompleted,
       deadline: event.draft.deadline,
     );
@@ -108,6 +109,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       text: event.draft.textJson,
       priority: event.draft.priority,
       attachments: event.draft.attachments,
+      subtasks: event.draft.subtasks,
       isCompleted: event.draft.isCompleted,
       deadline: event.draft.deadline,
       isPinned: oldTask.isPinned,

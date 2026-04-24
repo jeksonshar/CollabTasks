@@ -39,6 +39,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priorityTitle => 'Priority: ';
 
   @override
+  String get addSubtaskTitle => 'Add';
+
+  @override
+  String get subtasksTitle => 'Subtasks';
+
+  @override
+  String get noSubtasks => 'No subtasks';
+
+  @override
+  String get removeSubtaskTitle => 'Remove';
+
+  @override
   String get taskPriorityNone => 'No priority';
 
   @override

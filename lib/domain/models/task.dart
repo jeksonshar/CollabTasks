@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 import 'task_attachment.dart';
+import 'task_subtask.dart';
 
 class Task extends Equatable {
   final String id;
@@ -11,6 +12,7 @@ class Task extends Equatable {
   final String text;
   final int priority;
   final List<TaskAttachment> attachments;
+  final List<TaskSubtask> subtasks;
   final bool isCompleted;
   final DateTime? deadline;
   final bool isPinned;
@@ -22,6 +24,7 @@ class Task extends Equatable {
     required this.text,
     this.priority = 0,
     this.attachments = const [],
+    this.subtasks = const [],
     this.isCompleted = false,
     this.deadline,
     this.isPinned = false,
@@ -34,6 +37,7 @@ class Task extends Equatable {
     String? text,
     int? priority,
     List<TaskAttachment>? attachments,
+    List<TaskSubtask>? subtasks,
     bool? isCompleted,
     DateTime? deadline,
     bool? isPinned,
@@ -45,6 +49,7 @@ class Task extends Equatable {
       text: text ?? this.text,
       priority: priority ?? this.priority,
       attachments: attachments ?? this.attachments,
+      subtasks: subtasks ?? this.subtasks,
       isCompleted: isCompleted ?? this.isCompleted,
       deadline: deadline ?? this.deadline,
       isPinned: isPinned ?? this.isPinned,
@@ -58,6 +63,7 @@ class Task extends Equatable {
     'text': text,
     'priority': priority,
     'attachments': attachments.map((e) => e.toJson()).toList(),
+    'subtasks': subtasks.map((e) => e.toMap()).toList(),
     'isCompleted': isCompleted,
     'deadline': deadline?.toIso8601String(),
     'isPinned': isPinned,
@@ -65,6 +71,7 @@ class Task extends Equatable {
 
   factory Task.fromMap(Map<String, dynamic> map) {
     final rawAttachments = map['attachments'];
+    final rawSubtasks = map['subtasks'];
 
     return Task(
       id: map['id'] as String,
@@ -74,6 +81,9 @@ class Task extends Equatable {
       priority: map['priority'] as int,
       attachments: rawAttachments is List
           ? rawAttachments.whereType<Map<String, dynamic>>().map(TaskAttachment.fromJson).toList()
+          : const [],
+      subtasks: rawSubtasks is List
+          ? rawSubtasks.whereType<Map<String, dynamic>>().map(TaskSubtask.fromMap).toList()
           : const [],
       isCompleted: map['isCompleted'] as bool? ?? false,
       deadline: map['deadline'] != null ? DateTime.parse(map['deadline'] as String) : null,
@@ -93,6 +103,7 @@ class Task extends Equatable {
     text,
     priority,
     attachments,
+    subtasks,
     isCompleted,
     deadline,
     isPinned,

@@ -39,6 +39,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get priorityTitle => 'Приоритет: ';
 
   @override
+  String get addSubtaskTitle => 'Добавить';
+
+  @override
+  String get subtasksTitle => 'Подзадачи';
+
+  @override
+  String get noSubtasks => 'Нет подзадач';
+
+  @override
+  String get removeSubtaskTitle => 'Удалить';
+
+  @override
   String get taskPriorityNone => 'Без приоритета';
 
   @override

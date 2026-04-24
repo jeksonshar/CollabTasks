@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../domain/models/task_attachment.dart';
+import '../../../domain/models/task_subtask.dart';
 import 'entities/task_entity.dart';
 
 part 'app_database.g.dart';
@@ -12,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -50,6 +51,10 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 7) {
         await m.addColumn(taskEntity, taskEntity.taskIsPinned);
+      }
+
+      if (from < 8) {
+        await m.addColumn(taskEntity, taskEntity.taskSubtasks);
       }
     },
   );

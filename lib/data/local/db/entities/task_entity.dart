@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../domain/models/task_attachment.dart';
+import '../../../../domain/models/task_subtask.dart';
 
 class TaskAttachmentListConverter extends TypeConverter<List<TaskAttachment>, String> {
   const TaskAttachmentListConverter();
@@ -16,6 +17,24 @@ class TaskAttachmentListConverter extends TypeConverter<List<TaskAttachment>, St
   }
 }
 
+class TaskSubtaskListConverter extends TypeConverter<List<TaskSubtask>, String> {
+  const TaskSubtaskListConverter();
+
+  @override
+  List<TaskSubtask> fromSql(String fromDb) {
+    if (fromDb.isEmpty) {
+      return const [];
+    }
+
+    return TaskSubtaskCodec.decodeList(fromDb);
+  }
+
+  @override
+  String toSql(List<TaskSubtask> value) {
+    return TaskSubtaskCodec.encodeList(value);
+  }
+}
+
 class TaskEntity extends Table {
   TextColumn get taskId => text()();
 
@@ -28,6 +47,9 @@ class TaskEntity extends Table {
   DateTimeColumn get taskCreatedAt => dateTime()();
 
   TextColumn get taskAttachments => text().map(const TaskAttachmentListConverter())();
+
+  TextColumn get taskSubtasks =>
+      text().withDefault(const Constant('[]')).map(const TaskSubtaskListConverter())();
 
   BoolColumn get taskIsCompleted => boolean().withDefault(const Constant(false))();
 

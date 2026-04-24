@@ -61,6 +61,11 @@ class _TaskListTileState extends State<TaskListTile> {
       statusWidgets.add(const Icon(Icons.push_pin, size: 16, color: Colors.black87));
     }
 
+    if (widget.task.subtasks.isNotEmpty) {
+      if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
+      statusWidgets.add(const Icon(Icons.checklist, size: 16));
+    }
+
     if (widget.task.deadline != null) {
       if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
       statusWidgets.add(const Icon(Icons.alarm, size: 16));
@@ -189,6 +194,34 @@ class _TaskListTileState extends State<TaskListTile> {
               child: TaskRichPreview(deltaJson: widget.task.text),
             ),
           ),
+          if (widget.task.subtasks.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(localization.subtasksTitle, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...widget.task.subtasks.map(
+              (subtask) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      subtask.isCompleted ? Icons.check_box : Icons.check_box_outline_blank,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        subtask.title,
+                        style: TextStyle(
+                          decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
+                          color: subtask.isCompleted ? Colors.black54 : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (widget.task.deadline != null) ...[
             const SizedBox(height: 16),
             Row(

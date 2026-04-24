@@ -161,6 +161,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
         initialDeltaJson: taskToEdit?.text,
         initialPriority: taskToEdit?.priority ?? 0,
         initialAttachments: taskToEdit?.attachments ?? const [],
+        initialSubtasks: taskToEdit?.subtasks ?? const [],
         initialIsCompletedState: taskToEdit?.isCompleted ?? false,
         initialDeadline: taskToEdit?.deadline,
       ),
