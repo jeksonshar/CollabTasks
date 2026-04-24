@@ -13,8 +13,15 @@ import 'components/task_fab_component.dart';
 import 'components/task_list_tile.dart';
 import 'components/task_rich_preview.dart';
 
-class HomeTasksScreen extends StatelessWidget {
+class HomeTasksScreen extends StatefulWidget {
   const HomeTasksScreen({super.key});
+
+  @override
+  State<HomeTasksScreen> createState() => _HomeTasksScreenState();
+}
+
+class _HomeTasksScreenState extends State<HomeTasksScreen> {
+  int _expansionResetVersion = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +70,19 @@ class HomeTasksScreen extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
             context.read<TaskBloc>().add(const ActionCleared());
+          },
+        ),
+        BlocListener<TaskBloc, TaskState>(
+          listenWhen: (prev, curr) =>
+              prev.tasks != curr.tasks ||
+              prev.sortType != curr.sortType ||
+              prev.sortDirection != curr.sortDirection ||
+              prev.filterType != curr.filterType ||
+              prev.searchQuery != curr.searchQuery,
+          listener: (context, state) {
+            setState(() {
+              _expansionResetVersion++;
+            });
           },
         ),
       ],
@@ -119,10 +139,12 @@ class HomeTasksScreen extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = tasks[index];
         return TaskListTile(
+          key: ValueKey(item.id),
           task: item,
           onEdit: () => _showTaskDialog(context, taskToEdit: item),
           onDelete: () => _showDeleteDialog(context, item),
           onPinToggled: () => context.read<TaskBloc>().add(TaskPinToggled(item.id)),
+          expansionResetVersion: _expansionResetVersion,
         );
       },
     );

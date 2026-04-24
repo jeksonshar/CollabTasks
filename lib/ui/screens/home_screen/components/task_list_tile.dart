@@ -16,12 +16,14 @@ class TaskListTile extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onPinToggled,
+    required this.expansionResetVersion,
   });
 
   final Task task;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onPinToggled;
+  final int expansionResetVersion;
 
   @override
   State<TaskListTile> createState() => _TaskListTileState();
@@ -29,6 +31,16 @@ class TaskListTile extends StatefulWidget {
 
 class _TaskListTileState extends State<TaskListTile> {
   bool _isExpanded = false;
+
+  @override
+  void didUpdateWidget(covariant TaskListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expansionResetVersion != widget.expansionResetVersion && _isExpanded) {
+      setState(() {
+        _isExpanded = false;
+      });
+    }
+  }
 
   void _toggleExpanded() {
     setState(() {
