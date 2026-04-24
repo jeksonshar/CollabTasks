@@ -35,6 +35,8 @@
   "statusTitle": "Статус",
   "groups": "Проекты",
   "profile": "Профиль",
+  "settings": "Настройки",
+  "language": "Язык",
   "userProfile": "Профиль пользователя",
   "editProfile": "Редактировать профиль",
   "my_tasks": "Moи задачи",

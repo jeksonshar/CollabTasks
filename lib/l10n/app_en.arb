@@ -35,6 +35,8 @@
   "statusTitle": "Status",
   "groups": "Groups",
   "profile": "Profile",
+  "settings": "Settings",
+  "language": "Language",
   "userProfile": "User Profile",
   "editProfile": "Edit Profile",
   "my_tasks": "My tasks",

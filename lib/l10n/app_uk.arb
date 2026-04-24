@@ -1,0 +1,115 @@
+{
+  "@@locale": "uk",
+  "addTaskTitle": "Додати задачу",
+  "editTaskTitle": "Редагувати задачу",
+  "completedTaskTitle": "Виконано",
+  "titleField": "Назва",
+  "titlePlaceholder": "Введіть назву задачі",
+  "descriptionField": "Опис",
+  "formattingTitle": "Параметри форматування: ",
+  "attachFileTitle": "Прикріпити файл: ",
+  "attachmentsTitle": "Вкладення: ",
+  "priorityTitle": "Пріоритет: ",
+  "taskPriorityNone": "Без пріоритету",
+  "taskPriorityLow": "Низький пріоритет",
+  "taskPriorityMedium": "Середній пріоритет",
+  "taskPriorityHigh": "Високий пріоритет",
+  "sortByDate": "За датою",
+  "sortByPriority": "За пріоритетом",
+  "sortByTitle": "За назвою",
+  "viewFileTitle": "Переглянути",
+  "openFileTitle": "Відкрити",
+  "downloadFileTitle": "Завантажити",
+  "deleteFileTitle": "Видалити",
+  "fileDeleted": "Файл видалено",
+  "fileDownloaded": "Файл збережено",
+  "deleteFileFailed": "Не вдалося видалити файл",
+  "loadTasksError": "Не вдалося завантажити задачі",
+  "addTaskError": "Не вдалося додати задачу",
+  "updateTaskError": "Не вдалося оновити задачу",
+  "deleteTaskError": "Не вдалося видалити задачу",
+  "cancel": "Скасувати",
+  "home": "Головна",
+  "nameTitle": "Ім'я",
+  "emailTitle": "Email",
+  "statusTitle": "Статус",
+  "groups": "Групи",
+  "profile": "Профіль",
+  "settings": "Налаштування",
+  "language": "Мова",
+  "userProfile": "Профіль користувача",
+  "editProfile": "Редагувати профіль",
+  "my_tasks": "Мої задачі",
+  "enter": "Додати",
+  "update": "Оновити",
+  "delete": "Видалити",
+  "emptyTaskTitle": "Поки немає задач",
+  "emptyGroupsTitle": "Поки немає груп",
+  "emptyTaskDescription": "Натисніть \"Додати задачу\", щоб створити її",
+  "taskAdded": "Задачу додано: \"{task}\"",
+  "@taskAdded": {
+    "description": "Показується після додавання задачі",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "taskUpdated": "Задачу оновлено: \"{task}\"",
+  "@taskUpdated": {
+    "description": "Показується після оновлення задачі",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "taskDeleted": "Задачу видалено: \"{task}\"",
+  "@taskDeleted": {
+    "description": "Показується після видалення задачі",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "taskAddedError": "Не вдалося додати файл: \"{task}\"",
+  "@taskAddedError": {
+    "description": "Показується після отримання помилки під час додавання задачі",
+    "placeholders": {
+      "task": {}
+    }
+  },
+  "fileDownloadError": "Не вдалося зберегти файл: \"{file}\"",
+  "@fileDownloadError": {
+    "description": "Показується після отримання помилки під час збереження файлу",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "fileOpenError": "Не вдалося відкрити файл: \"{file}\"",
+  "@fileOpenError": {
+    "description": "Показується після отримання помилки під час відкриття файлу",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "editorPlaceholder": "Введіть текст задачі...",
+  "deleteTaskTitle": "Видалити задачу?",
+  "noTasksYet": "Поки немає задач",
+  "tapAddTaskHint": "Натисніть \"Додати задачу\", щоб створити її",
+  "tasksCount": "{count, plural, =0{Немає задач} =1{1 задача} other{{count} задач}}",
+  "@tasksCount": {
+    "description": "Кількість задач",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "deadlineTitle": "Дедлайн",
+  "setDeadline": "Встановити дедлайн",
+  "clearDeadline": "Очистити дедлайн",
+  "pin": "Закріпити",
+  "unpin": "Відкріпити",
+  "edit": "Редагувати",
+  "filterAll": "Усі задачі",
+  "filterCompleted": "Виконані",
+  "filterIncomplete": "Невиконані",
+  "filterWithFiles": "З файлами",
+  "filterWithoutFiles": "Без файлів",
+  "filterWithDeadline": "З дедлайном",
+  "filterWithoutDeadline": "Без дедлайну"
+}
