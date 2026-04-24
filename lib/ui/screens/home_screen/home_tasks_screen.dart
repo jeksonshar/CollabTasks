@@ -11,7 +11,6 @@ import '../../dialogs/task_dialog/task_dialog.dart';
 import 'components/task_app_bar_component.dart';
 import 'components/task_fab_component.dart';
 import 'components/task_list_tile.dart';
-import 'components/task_rich_preview.dart';
 
 class HomeTasksScreen extends StatefulWidget {
   const HomeTasksScreen({super.key});
@@ -186,7 +185,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(localization.deleteTaskTitle),
-        content: TaskRichPreview(deltaJson: taskToRemove.text),
+        content: Text(taskToRemove.title),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
