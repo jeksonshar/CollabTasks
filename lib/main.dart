@@ -6,13 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'di/service_locator.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  setupLocator();
+  final sharedPreferences = await SharedPreferences.getInstance();
+  setupLocator(sharedPreferences);
   runApp(const MyApp());
 }
 
@@ -24,7 +26,7 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<TaskBloc>(create: (_) => getIt<TaskBloc>()..add(LoadTasksStarted())),
-        BlocProvider<LocaleCubit>(create: (_) => LocaleCubit()),
+        BlocProvider<LocaleCubit>(create: (_) => getIt<LocaleCubit>()),
       ],
       child: BlocBuilder<LocaleCubit, Locale?>(
         builder: (context, locale) {

@@ -3,12 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/enums/task_error_type.dart';
+import '../../../core/enums/task_filter_type.dart';
 import '../../../core/enums/task_sort_direction.dart';
 import '../../../core/enums/task_sort_type.dart';
 import '../../../domain/models/task.dart';
+import '../../../domain/models/task_view_preferences.dart';
 import '../../../domain/use_cases/add_task_use_case.dart';
 import '../../../domain/use_cases/delete_task_use_case.dart';
+import '../../../domain/use_cases/get_task_view_preferences_use_case.dart';
 import '../../../domain/use_cases/get_tasks_use_case.dart';
+import '../../../domain/use_cases/set_task_view_preferences_use_case.dart';
 import '../../../domain/use_cases/update_task_use_case.dart';
 import 'task_event.dart';
 import 'task_state.dart';
@@ -18,12 +22,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final AddTaskUseCase addTaskUseCase;
   final UpdateTaskUseCase updateTaskUseCase;
   final DeleteTaskUseCase deleteTaskUseCase;
+  final GetTaskViewPreferencesUseCase getTaskViewPreferencesUseCase;
+  final SetTaskViewPreferencesUseCase setTaskViewPreferencesUseCase;
 
   TaskBloc({
     required this.getTasksUseCase,
     required this.addTaskUseCase,
     required this.updateTaskUseCase,
     required this.deleteTaskUseCase,
+    required this.getTaskViewPreferencesUseCase,
+    required this.setTaskViewPreferencesUseCase,
   }) : super(const TaskState()) {
     // Listen to the flow of events and transform them into states
     on<LoadTasksStarted>(_onLoadTasks);
@@ -31,7 +39,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskUpdated>(_onUpdateTask);
     on<TaskDeleted>(_onDeleteTask);
     on<SortChanged>(_onSortChanged);
-    on<FilterChanged>((event, emit) => emit(state.copyWith(filterType: event.filterType)));
+    on<FilterChanged>(_onFilterChanged);
     on<SearchChanged>((event, emit) => emit(state.copyWith(searchQuery: event.query)));
     on<TaskPinToggled>(_onToggleTaskPin);
     on<ErrorCleared>((event, emit) => emit(state.copyWith(errorType: null)));
@@ -43,11 +51,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   Future<void> _onLoadTasks(LoadTasksStarted event, Emitter<TaskState> emit) async {
     emit(state.copyWith(status: TaskStatus.loading));
     try {
+      final preferences = await getTaskViewPreferencesUseCase();
       final tasks = await getTasksUseCase();
       emit(
         state.copyWith(
           status: TaskStatus.success,
-          tasks: _sortTasks(tasks, state.sortType, state.sortDirection),
+          sortType: preferences.sortType,
+          sortDirection: preferences.sortDirection,
+          filterType: preferences.filterType,
+          tasks: _sortTasks(tasks, preferences.sortType, preferences.sortDirection),
         ),
       );
       debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
@@ -162,7 +174,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-  void _onSortChanged(SortChanged event, Emitter<TaskState> emit) {
+  Future<void> _onSortChanged(SortChanged event, Emitter<TaskState> emit) async {
     TaskSortDirection newDirection = state.sortDirection;
     if (state.sortType == event.sortType) {
       newDirection = state.sortDirection.isAscending
@@ -181,6 +193,39 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         lastActionTaskTitle: null,
       ),
     );
+
+    await _saveTaskViewPreferences(
+      sortType: event.sortType,
+      sortDirection: newDirection,
+      filterType: state.filterType,
+    );
+  }
+
+  Future<void> _onFilterChanged(FilterChanged event, Emitter<TaskState> emit) async {
+    emit(state.copyWith(filterType: event.filterType));
+    await _saveTaskViewPreferences(
+      sortType: state.sortType,
+      sortDirection: state.sortDirection,
+      filterType: event.filterType,
+    );
+  }
+
+  Future<void> _saveTaskViewPreferences({
+    required TaskSortType sortType,
+    required TaskSortDirection sortDirection,
+    required TaskFilterType filterType,
+  }) async {
+    try {
+      await setTaskViewPreferencesUseCase(
+        TaskViewPreferences(
+          sortType: sortType,
+          sortDirection: sortDirection,
+          filterType: filterType,
+        ),
+      );
+    } catch (e, s) {
+      debugPrint('TaskBloc.saveTaskViewPreferences ERROR: $e\n$s');
+    }
   }
 
   List<Task> _sortTasks(List<Task> tasks, TaskSortType type, TaskSortDirection dir) {
