@@ -49,9 +49,7 @@ class TaskSubtasksSection extends StatelessWidget {
             ),
           ],
         ),
-        if (subtasks.isEmpty)
-          Text(localization.noSubtasks, style: TextStyle(color: Colors.black54))
-        else
+        if (subtasks.isNotEmpty)
           ...subtasks.map(
             (subtask) => Padding(
               key: ValueKey(subtask.id),

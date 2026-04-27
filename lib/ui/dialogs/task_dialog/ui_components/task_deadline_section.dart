@@ -57,17 +57,15 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(localization.deadlineTitle, style: AppTextStyles.bold16Black87Roboto),
+        Expanded(child: Text(localization.deadlineTitle, style: AppTextStyles.bold16Black87Roboto)),
         const SizedBox(width: 16),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => _selectDate(context),
-            child: Text(
-              _selectedDeadline == null
-                  ? localization.setDeadline
-                  : DateFormat.yMMMd(localization.localeName).format(_selectedDeadline!),
-              textAlign: TextAlign.center,
-            ),
+        OutlinedButton(
+          onPressed: () => _selectDate(context),
+          child: Text(
+            _selectedDeadline == null
+                ? localization.setDeadline
+                : DateFormat.yMMMd(localization.localeName).format(_selectedDeadline!),
+            textAlign: TextAlign.center,
           ),
         ),
         if (_selectedDeadline != null) ...[

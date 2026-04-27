@@ -180,53 +180,58 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final isEdit = widget.initialDeltaJson != null;
+    final dialogWidth = (media.size.width - 32).clamp(343.0, 700.0);
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      constraints: BoxConstraints(
+        minWidth: dialogWidth,
+        maxWidth: dialogWidth,
+        maxHeight: media.size.height * 0.9,
+      ),
       title: Text(isEdit ? localization.editTaskTitle : localization.addTaskTitle),
-      content: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 700, maxHeight: media.size.height * 0.8),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Title input field
-              TaskTitleSection(controller: _titleController),
-              const SizedBox(height: 8),
-              TaskFormatterEditorSection(
-                editorKey: _editorKey,
-                controller: _controller,
-                focusNode: _focusNode,
-                scrollController: _editorScrollController,
-                formattingTitle: localization.formattingTitle,
-                editorPlaceholder: localization.editorPlaceholder,
-              ),
-              const SizedBox(height: 4),
-              TaskDeadlineSection(initialDeadline: _deadline, onChanged: _onDeadlineChanged),
-              if (isEdit) ...[
-                TaskCompletedSection(
-                  title: localization.completedTaskTitle,
-                  isCompleted: _isCompleted,
-                  onChanged: onIsTaskCompleteChanged,
-                ),
-              ],
-              TaskSubtasksSection(
-                subtasks: _subtasks,
-                onChanged: _onSubtasksChanged,
-                canToggleCompletion: isEdit,
-              ),
-              const SizedBox(height: 8),
-              TaskPrioritySection(
-                title: localization.priorityTitle,
-                priority: TaskPriority.fromValue(_priority),
-                onChanged: _onPriorityChanged,
-              ),
-              TaskAttachmentsSection(
-                initialAttachments: widget.initialAttachments,
-                onChanged: _onAttachmentsChanged,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Title input field
+            TaskTitleSection(controller: _titleController),
+            const SizedBox(height: 8),
+            TaskFormatterEditorSection(
+              editorKey: _editorKey,
+              controller: _controller,
+              focusNode: _focusNode,
+              scrollController: _editorScrollController,
+              formattingTitle: localization.formattingTitle,
+              editorPlaceholder: localization.editorPlaceholder,
+            ),
+            const SizedBox(height: 4),
+            TaskDeadlineSection(initialDeadline: _deadline, onChanged: _onDeadlineChanged),
+            if (isEdit) ...[
+              TaskCompletedSection(
+                title: localization.completedTaskTitle,
+                isCompleted: _isCompleted,
+                onChanged: onIsTaskCompleteChanged,
               ),
             ],
-          ),
+            const SizedBox(height: 2),
+            TaskSubtasksSection(
+              subtasks: _subtasks,
+              onChanged: _onSubtasksChanged,
+              canToggleCompletion: isEdit,
+            ),
+            const SizedBox(height: 2),
+            TaskPrioritySection(
+              title: localization.priorityTitle,
+              priority: TaskPriority.fromValue(_priority),
+              onChanged: _onPriorityChanged,
+            ),
+            TaskAttachmentsSection(
+              initialAttachments: widget.initialAttachments,
+              onChanged: _onAttachmentsChanged,
+            ),
+          ],
         ),
       ),
       actions: [
