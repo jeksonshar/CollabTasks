@@ -32,6 +32,11 @@ class TaskListTile extends StatefulWidget {
 class _TaskListTileState extends State<TaskListTile> {
   bool _isExpanded = false;
 
+  bool get _isDeadlineOverdue {
+    final deadline = widget.task.deadline;
+    return deadline != null && deadline.isBefore(DateTime.now());
+  }
+
   @override
   void didUpdateWidget(covariant TaskListTile oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -68,7 +73,7 @@ class _TaskListTileState extends State<TaskListTile> {
 
     if (widget.task.deadline != null) {
       if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
-      statusWidgets.add(const Icon(Icons.alarm, size: 16));
+      statusWidgets.add(Icon(Icons.alarm, size: 16, color: _isDeadlineOverdue ? Colors.red : null));
     }
 
     if (widget.task.attachments.isNotEmpty) {
@@ -226,7 +231,7 @@ class _TaskListTileState extends State<TaskListTile> {
             const SizedBox(height: 16),
             Row(
               children: [
-                const Icon(Icons.alarm, size: 18),
+                Icon(Icons.alarm, size: 18, color: _isDeadlineOverdue ? Colors.red : null),
                 const SizedBox(width: 8),
                 Text(
                   "${localization.deadlineTitle}: ${DateFormat.yMMMd(localization.localeName).format(widget.task.deadline!)}",
