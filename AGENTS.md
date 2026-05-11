@@ -9,9 +9,10 @@
 ## Architecture Overview
 
 - **Clean Architecture**: strict separation into `domain/` (business logic), `data/` (implementations), `ui/` (presentation).
-- **Dependency Injection**: GetIt service locator (`di/service_locator.dart`).
-- **State Management**: `flutter_bloc` (`TaskBloc`, `LocaleCubit`), not Provider/ViewModel as default pattern.
-- **Data Flow**: UI -> Bloc/Cubit -> UseCase -> Repository -> DataSource (unidirectional).
+- **Dependency Injection**: GetIt service locator (`di/service_locator.dart`). Register all repositories, use cases, and blocs in `setupLocator()`.
+- **State Management**: `flutter_bloc` (`TaskBloc`, `LocaleCubit`). Riverpod is listed in dependencies but **not currently used**.
+- **Data Flow**: UI → BlocListener/BlocBuilder → Bloc/Cubit → UseCase → Repository → DataSource (unidirectional).
+- **App Initialization**: In `main()`, initialize `SharedPreferences`, call `setupLocator()`, initialize `NotificationsManager`, then create `MultiBlocProvider` in root widget.
 
 ## Layer Rules
 
@@ -22,10 +23,17 @@
 ## Key Components
 
 - **Domain Models**: immutable classes in `domain/models/` with `copyWith()`, `toMap()`, `fromMap()` (e.g., `Task`).
-- **Use Cases**: thin wrappers around repository calls (e.g., `GetTasksUseCase`).
+- **Use Cases**: thin wrappers around repository calls (e.g., `GetTasksUseCase`). No Result wrapper pattern; exceptions propagate directly.
 - **Repository Pattern**: interfaces in `domain/repositories/`, implementations in `data/repositories/`.
 - **Persistence**: Drift ORM with SQLite, entities in `data/local/db/entities/`, migrations in `AppDatabase`.
-- **UI Structure**: screens in `ui/screens/`, dialogs in `ui/dialogs/`, state in `ui/blocs/`.
+- **UI Structure**: screens in `ui/screens/` (often StatefulWidget for managing UI state), dialogs in `ui/dialogs/`, blocs in `ui/blocs/`.
+- **Bloc Listeners**: use `MultiBlocListener` and `BlocListener` for side effects (errors, navigation, dialogs). Use `BlocBuilder` for state rendering.
+
+## Testing Patterns
+
+- **Widget Tests**: Reset `getIt` before each test, set mock `SharedPreferences`, manually call `setupLocator()`, use `tester.pumpWidget()` with initialized blocs.
+- **Bloc Tests**: Use `blocTest` package. Seed state, verify state transitions, test event listeners.
+- **Setup Example**: `SharedPreferences.setMockInitialValues({})` → `getIt.reset()` → `setupLocator()` → test.
 
 ## Critical Workflows
 
@@ -47,8 +55,10 @@
 
 - **Serialization**: JSON via `toMap()`/`fromMap()`, attachments encoded as JSON strings.
 - **Upsert**: use Drift `insertOnConflictUpdate` for add/update (`TaskRepositoryImpl._upsertTask`).
-- **Localization Access**: use `L10nMixin` / `AppLocalizations` accessors.
-- **Immutable Updates**: always create new lists/objects when updating state.
+- **Localization Access**: use `L10nMixin` / `AppLocalizations` accessors. Run `flutter gen-l10n` after ARB file changes.
+- **Immutable Updates**: always create new lists/objects when updating bloc state.
+- **Use Case Naming**: `[Action][Target]UseCase` (e.g., `GetTasksUseCase`, `AddTaskUseCase`). File names match class name in snake_case.
+- **Bloc/Cubit File Organization**: separate files for events (`task_event.dart`), state (`task_state.dart`), and bloc (`task_bloc.dart`) in a feature folder.
 
 ## Documentation Sync
 

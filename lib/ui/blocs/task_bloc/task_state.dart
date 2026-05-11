@@ -20,6 +20,8 @@ class TaskState extends Equatable {
   final String searchQuery;
   final TaskAction lastAction;
   final String? lastActionTaskTitle;
+  final String? highlightedTaskId;
+  final int highlightedTaskVersion;
 
   const TaskState({
     this.status = TaskStatus.initial,
@@ -31,6 +33,8 @@ class TaskState extends Equatable {
     this.searchQuery = '',
     this.lastAction = TaskAction.none,
     this.lastActionTaskTitle,
+    this.highlightedTaskId,
+    this.highlightedTaskVersion = 0,
   });
 
   List<Task> get filteredTasks {
@@ -79,6 +83,8 @@ class TaskState extends Equatable {
     String? searchQuery,
     TaskAction? lastAction,
     String? lastActionTaskTitle,
+    String? highlightedTaskId,
+    int? highlightedTaskVersion,
   }) {
     return TaskState(
       status: status ?? this.status,
@@ -90,6 +96,8 @@ class TaskState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       lastAction: lastAction ?? this.lastAction,
       lastActionTaskTitle: lastActionTaskTitle ?? this.lastActionTaskTitle,
+      highlightedTaskId: highlightedTaskId ?? this.highlightedTaskId,
+      highlightedTaskVersion: highlightedTaskVersion ?? this.highlightedTaskVersion,
     );
   }
 
@@ -104,5 +112,7 @@ class TaskState extends Equatable {
     searchQuery,
     lastAction,
     lastActionTaskTitle,
+    highlightedTaskId,
+    highlightedTaskVersion,
   ];
 }

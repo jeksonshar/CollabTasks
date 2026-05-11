@@ -543,6 +543,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Without deadlines'**
   String get filterWithoutDeadline;
+
+  /// No description provided for @deadlineIn30MinutesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline in 30 minutes'**
+  String get deadlineIn30MinutesTitle;
+
+  /// No description provided for @deadlineReachedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline reached'**
+  String get deadlineReachedTitle;
 }
 
 class _AppLocalizationsDelegate

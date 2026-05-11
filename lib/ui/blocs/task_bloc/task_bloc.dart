@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -6,6 +8,7 @@ import '../../../core/enums/task_error_type.dart';
 import '../../../core/enums/task_filter_type.dart';
 import '../../../core/enums/task_sort_direction.dart';
 import '../../../core/enums/task_sort_type.dart';
+import '../../../core/notifications/notifications_manager.dart';
 import '../../../domain/models/task.dart';
 import '../../../domain/models/task_view_preferences.dart';
 import '../../../domain/use_cases/add_task_use_case.dart';
@@ -24,6 +27,10 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final DeleteTaskUseCase deleteTaskUseCase;
   final GetTaskViewPreferencesUseCase getTaskViewPreferencesUseCase;
   final SetTaskViewPreferencesUseCase setTaskViewPreferencesUseCase;
+  final NotificationsManager notificationsManager;
+  final String notificationReminderTitle;
+  final String notificationDeadlineTitle;
+  StreamSubscription? _notificationTapSubscription;
 
   TaskBloc({
     required this.getTasksUseCase,
@@ -32,6 +39,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.deleteTaskUseCase,
     required this.getTaskViewPreferencesUseCase,
     required this.setTaskViewPreferencesUseCase,
+    required this.notificationsManager,
+    required this.notificationReminderTitle,
+    required this.notificationDeadlineTitle,
   }) : super(const TaskState()) {
     // Listen to the flow of events and transform them into states
     on<LoadTasksStarted>(_onLoadTasks);
@@ -46,6 +56,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<ActionCleared>(
       (event, emit) => emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
     );
+    on<NotificationTaskOpened>(_onNotificationTaskOpened);
+
+    _notificationTapSubscription = notificationsManager.notificationTapStream.listen((payload) {
+      add(NotificationTaskOpened(payload.taskId));
+    });
+
+    final initialPayload = notificationsManager.consumeInitialTapPayload();
+    if (initialPayload != null) {
+      add(NotificationTaskOpened(initialPayload.taskId));
+    }
   }
 
   Future<void> _onLoadTasks(LoadTasksStarted event, Emitter<TaskState> emit) async {
@@ -53,6 +73,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     try {
       final preferences = await getTaskViewPreferencesUseCase();
       final tasks = await getTasksUseCase();
+      await _syncNotifications(tasks);
       emit(
         state.copyWith(
           status: TaskStatus.success,
@@ -85,9 +106,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
     try {
       await addTaskUseCase(task);
+      await notificationsManager.scheduleTaskDeadlineNotifications(
+        task,
+        reminderTitle: notificationReminderTitle,
+        deadlineTitle: notificationDeadlineTitle,
+      );
 
       final taskTitle = event.draft.title;
-      final newTasks = [...state.tasks, task];
+      final newTasks = [...state.tasks];
+      newTasks.add(task);
       emit(
         state.copyWith(
           tasks: _sortTasks(newTasks, state.sortType, state.sortDirection),
@@ -117,6 +144,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
     try {
       await updateTaskUseCase(task);
+      await notificationsManager.scheduleTaskDeadlineNotifications(
+        task,
+        reminderTitle: notificationReminderTitle,
+        deadlineTitle: notificationDeadlineTitle,
+      );
       final taskTitle = event.draft.title; // Use the new title from draft
 
       final index = state.tasks.indexWhere((t) => t.id == event.id);
@@ -141,6 +173,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   Future<void> _onDeleteTask(TaskDeleted event, Emitter<TaskState> emit) async {
     try {
       await deleteTaskUseCase(event.id);
+      await notificationsManager.cancelTaskDeadlineNotifications(event.id);
       final taskTitle = state.tasks.firstWhere((t) => t.id == event.id).title;
 
       emit(
@@ -212,6 +245,20 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     );
   }
 
+  Future<void> _onNotificationTaskOpened(
+    NotificationTaskOpened event,
+    Emitter<TaskState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        filterType: TaskFilterType.all,
+        searchQuery: '',
+        highlightedTaskId: event.taskId,
+        highlightedTaskVersion: state.highlightedTaskVersion + 1,
+      ),
+    );
+  }
+
   Future<void> _saveTaskViewPreferences({
     required TaskSortType sortType,
     required TaskSortDirection sortDirection,
@@ -253,5 +300,23 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     sortList(others);
 
     return [...pinned, ...others];
+  }
+
+  Future<void> _syncNotifications(List<Task> tasks) async {
+    try {
+      await notificationsManager.syncTaskDeadlineNotifications(
+        tasks,
+        reminderTitle: notificationReminderTitle,
+        deadlineTitle: notificationDeadlineTitle,
+      );
+    } catch (e, s) {
+      debugPrint('TaskBloc.syncNotifications ERROR: $e\n$s');
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _notificationTapSubscription?.cancel();
+    return super.close();
   }
 }

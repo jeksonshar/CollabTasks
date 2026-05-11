@@ -250,4 +250,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get filterWithoutDeadline => 'Без крайнего срока';
+
+  @override
+  String get deadlineIn30MinutesTitle => 'Дедлайн через 30 минут';
+
+  @override
+  String get deadlineReachedTitle => 'Дедлайн наступил';
 }

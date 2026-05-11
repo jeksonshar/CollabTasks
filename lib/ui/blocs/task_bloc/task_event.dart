@@ -71,3 +71,12 @@ class TaskPinToggled extends TaskEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class NotificationTaskOpened extends TaskEvent {
+  final String taskId;
+
+  const NotificationTaskOpened(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}

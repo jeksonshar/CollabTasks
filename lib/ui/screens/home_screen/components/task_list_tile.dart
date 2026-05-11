@@ -17,6 +17,8 @@ class TaskListTile extends StatefulWidget {
     required this.onDelete,
     required this.onPinToggled,
     required this.expansionResetVersion,
+    required this.forcedExpandedTaskId,
+    required this.forcedExpansionVersion,
   });
 
   final Task task;
@@ -24,6 +26,8 @@ class TaskListTile extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onPinToggled;
   final int expansionResetVersion;
+  final String? forcedExpandedTaskId;
+  final int forcedExpansionVersion;
 
   @override
   State<TaskListTile> createState() => _TaskListTileState();
@@ -38,8 +42,22 @@ class _TaskListTileState extends State<TaskListTile> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _isExpanded =
+        widget.forcedExpansionVersion > 0 && widget.task.id == widget.forcedExpandedTaskId;
+  }
+
+  @override
   void didUpdateWidget(covariant TaskListTile oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.forcedExpansionVersion != widget.forcedExpansionVersion) {
+      setState(() {
+        _isExpanded = widget.task.id == widget.forcedExpandedTaskId;
+      });
+      return;
+    }
+
     if (oldWidget.expansionResetVersion != widget.expansionResetVersion && _isExpanded) {
       setState(() {
         _isExpanded = false;
@@ -234,7 +252,7 @@ class _TaskListTileState extends State<TaskListTile> {
                 Icon(Icons.alarm, size: 18, color: _isDeadlineOverdue ? Colors.red : null),
                 const SizedBox(width: 8),
                 Text(
-                  "${localization.deadlineTitle}: ${DateFormat.yMMMd(localization.localeName).format(widget.task.deadline!)}",
+                  "${localization.deadlineTitle}: ${DateFormat.yMMMd(localization.localeName).add_jm().format(widget.task.deadline!)}",
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],

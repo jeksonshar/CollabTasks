@@ -31,14 +31,42 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectDateTime() async {
+    final current = _selectedDeadline ?? DateTime.now();
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDeadline ?? DateTime.now(),
+      initialDate: current,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != _selectedDeadline) {
+
+    if (pickedDate == null) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(current),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+
+    final picked = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    if (picked != _selectedDeadline) {
       setState(() {
         _selectedDeadline = picked;
       });
@@ -57,15 +85,20 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(localization.deadlineTitle, style: AppTextStyles.bold16Black87Roboto)),
+        Text(localization.deadlineTitle, style: AppTextStyles.bold16Black87Roboto),
         const SizedBox(width: 16),
-        OutlinedButton(
-          onPressed: () => _selectDate(context),
-          child: Text(
-            _selectedDeadline == null
-                ? localization.setDeadline
-                : DateFormat.yMMMd(localization.localeName).format(_selectedDeadline!),
-            textAlign: TextAlign.center,
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: _selectDateTime,
+              child: Text(
+                _selectedDeadline == null
+                    ? localization.setDeadline
+                    : DateFormat.yMMMd(localization.localeName).add_jm().format(_selectedDeadline!),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ),
         if (_selectedDeadline != null) ...[

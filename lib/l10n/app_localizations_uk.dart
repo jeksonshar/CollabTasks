@@ -251,4 +251,10 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get filterWithoutDeadline => 'Без дедлайну';
+
+  @override
+  String get deadlineIn30MinutesTitle => 'Дедлайн через 30 хвилин';
+
+  @override
+  String get deadlineReachedTitle => 'Дедлайн настав';
 }

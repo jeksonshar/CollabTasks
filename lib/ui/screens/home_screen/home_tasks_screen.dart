@@ -3,6 +3,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../domain/models/task.dart';
 import '../../../domain/models/task_draft.dart';
 import '../../blocs/task_bloc/task_bloc.dart';
 import '../../blocs/task_bloc/task_event.dart';
@@ -21,6 +22,8 @@ class HomeTasksScreen extends StatefulWidget {
 
 class _HomeTasksScreenState extends State<HomeTasksScreen> {
   int _expansionResetVersion = 0;
+  int _forcedExpansionVersion = 0;
+  String? _forcedExpandedTaskId;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +87,16 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
             });
           },
         ),
+        BlocListener<TaskBloc, TaskState>(
+          listenWhen: (prev, curr) => prev.highlightedTaskVersion != curr.highlightedTaskVersion,
+          listener: (context, state) {
+            setState(() {
+              _forcedExpandedTaskId = state.highlightedTaskId;
+              _forcedExpansionVersion = state.highlightedTaskVersion;
+              _expansionResetVersion++;
+            });
+          },
+        ),
       ],
       child: Scaffold(
         appBar: const TasksAppBar(),
@@ -130,7 +143,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
     );
   }
 
-  Widget _tasksListView(List<dynamic> tasks) {
+  Widget _tasksListView(List<Task> tasks) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tasks.length,
@@ -144,6 +157,8 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
           onDelete: () => _showDeleteDialog(context, item),
           onPinToggled: () => context.read<TaskBloc>().add(TaskPinToggled(item.id)),
           expansionResetVersion: _expansionResetVersion,
+          forcedExpandedTaskId: _forcedExpandedTaskId,
+          forcedExpansionVersion: _forcedExpansionVersion,
         );
       },
     );

@@ -115,5 +115,7 @@
   "filterWithFiles": "With files",
   "filterWithoutFiles": "Without files",
   "filterWithDeadline": "With deadlines",
-  "filterWithoutDeadline": "Without deadlines"
+  "filterWithoutDeadline": "Without deadlines",
+  "deadlineIn30MinutesTitle": "Deadline in 30 minutes",
+  "deadlineReachedTitle": "Deadline reached"
 }

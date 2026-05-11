@@ -115,5 +115,7 @@
   "filterWithFiles": "З файлами",
   "filterWithoutFiles": "Без файлів",
   "filterWithDeadline": "З дедлайном",
-  "filterWithoutDeadline": "Без дедлайну"
+  "filterWithoutDeadline": "Без дедлайну",
+  "deadlineIn30MinutesTitle": "Дедлайн через 30 хвилин",
+  "deadlineReachedTitle": "Дедлайн настав"
 }
