@@ -2,10 +2,16 @@ import 'package:collab_tasks/core/theme/app_text_styles.dart';
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/attachment_files/attachment_file_service.dart';
 import '../../../../core/attachment_files/attachment_utils.dart';
+import '../../../../di/service_locator.dart';
 import '../../../../domain/models/task_attachment.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
+import '../../../blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
+import '../../confirmation_dialog.dart';
 import 'task_attachment_tile.dart';
 
 class TaskAttachmentsSection extends StatefulWidget {
@@ -99,6 +105,40 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
     }
   }
 
+  void _showRemoveConfirmation(BuildContext context, TaskAttachment attachment) {
+    final localization = AppLocalizations.of(context)!;
+
+    // Get the ConfirmationDialogBloc from service locator
+    final confirmationDialogBloc = getIt<ConfirmationDialogBloc>();
+
+    // Initialize the dialog with appropriate text
+    confirmationDialogBloc.add(
+      InitializeConfirmationDialog(
+        title: localization.attentionTitle,
+        message: localization.confirmDeleteFile(attachment.name),
+        confirmButtonLabel: localization.delete,
+        cancelButtonLabel: localization.cancel,
+      ),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => BlocProvider.value(
+        value: confirmationDialogBloc,
+        child: ConfirmationDialog(
+          onConfirm: () {
+            _removeAttachment(attachment);
+          },
+          onCancel: () {
+            confirmationDialogBloc.add(const ResetConfirmationDialog());
+          },
+        ),
+      ),
+    ).then((_) {
+      confirmationDialogBloc.add(const ResetConfirmationDialog());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -134,7 +174,7 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
                   attachment: attachment,
                   localization: localization,
                 ),
-                onDelete: () => _removeAttachment(attachment),
+                onDelete: () => _showRemoveConfirmation(context, attachment),
               ),
             ),
           ),

@@ -1,7 +1,12 @@
 import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
+import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
+import 'package:collab_tasks/ui/dialogs/confirmation_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../di/service_locator.dart';
 import '../../../../domain/models/task_subtask.dart';
 
 class TaskSubtasksSection extends StatelessWidget {
@@ -30,6 +35,40 @@ class TaskSubtasksSection extends StatelessWidget {
 
   void _removeSubtask(String id) {
     onChanged(subtasks.where((subtask) => subtask.id != id).toList(growable: false));
+  }
+
+  void _showRemoveConfirmation(BuildContext context, String subtaskId) {
+    final localization = AppLocalizations.of(context)!;
+
+    // Get the ConfirmationDialogBloc from service locator
+    final confirmationDialogBloc = getIt<ConfirmationDialogBloc>();
+
+    // Initialize the dialog with appropriate text
+    confirmationDialogBloc.add(
+      InitializeConfirmationDialog(
+        title: localization.attentionTitle,
+        message: localization.confirmDeleteSubtask,
+        confirmButtonLabel: localization.delete,
+        cancelButtonLabel: localization.cancel,
+      ),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => BlocProvider.value(
+        value: confirmationDialogBloc,
+        child: ConfirmationDialog(
+          onConfirm: () {
+            _removeSubtask(subtaskId);
+          },
+          onCancel: () {
+            confirmationDialogBloc.add(const ResetConfirmationDialog());
+          },
+        ),
+      ),
+    ).then((_) {
+      confirmationDialogBloc.add(const ResetConfirmationDialog());
+    });
   }
 
   @override
@@ -67,12 +106,15 @@ class TaskSubtasksSection extends StatelessWidget {
                   Expanded(
                     child: TextFormField(
                       initialValue: subtask.title,
-                      decoration: const InputDecoration(hintText: 'Subtask title', isDense: true),
+                      decoration: InputDecoration(
+                        hintText: localization.subtaskTitle,
+                        isDense: true,
+                      ),
                       onChanged: (value) => _updateSubtask(subtask.copyWith(title: value)),
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _removeSubtask(subtask.id),
+                    onPressed: () => _showRemoveConfirmation(context, subtask.id),
                     icon: const Icon(Icons.close),
                     tooltip: localization.removeSubtaskTitle,
                   ),

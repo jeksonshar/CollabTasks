@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
+import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_attachments_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_completed_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_deadline_section.dart';
@@ -9,9 +10,11 @@ import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_priority_
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_subtasks_section.dart';
 import 'package:collab_tasks/ui/dialogs/task_dialog/ui_components/task_title_section.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 import '../../../core/task_priority/task_priority_utils.dart';
+import '../../../di/service_locator.dart';
 import '../../../domain/models/task_attachment.dart';
 import '../../../domain/models/task_draft.dart';
 import '../../../domain/models/task_subtask.dart';
@@ -182,70 +185,74 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     final isEdit = widget.initialDeltaJson != null;
     final dialogWidth = (media.size.width - 32).clamp(343.0, 700.0);
 
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      constraints: BoxConstraints(
-        minWidth: dialogWidth,
-        maxWidth: dialogWidth,
-        maxHeight: media.size.height * 0.9,
-      ),
-      title: Text(isEdit ? localization.editTaskTitle : localization.addTaskTitle),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Title input field
-            TaskTitleSection(controller: _titleController),
-            const SizedBox(height: 8),
-            TaskFormatterEditorSection(
-              editorKey: _editorKey,
-              controller: _controller,
-              focusNode: _focusNode,
-              scrollController: _editorScrollController,
-              formattingTitle: localization.formattingTitle,
-              editorPlaceholder: localization.editorPlaceholder,
-            ),
-            const SizedBox(height: 4),
-            TaskDeadlineSection(initialDeadline: _deadline, onChanged: _onDeadlineChanged),
-            if (isEdit) ...[
-              TaskCompletedSection(
-                title: localization.completedTaskTitle,
-                isCompleted: _isCompleted,
-                onChanged: onIsTaskCompleteChanged,
+    return BlocProvider<ConfirmationDialogBloc>(
+      create: (_) => getIt<ConfirmationDialogBloc>(),
+      child: AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        constraints: BoxConstraints(
+          minWidth: dialogWidth,
+          maxWidth: dialogWidth,
+          maxHeight: media.size.height * 0.9,
+        ),
+        title: Text(isEdit ? localization.editTaskTitle : localization.addTaskTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ...existing code...
+              TaskTitleSection(controller: _titleController),
+              const SizedBox(height: 8),
+              TaskFormatterEditorSection(
+                editorKey: _editorKey,
+                controller: _controller,
+                focusNode: _focusNode,
+                scrollController: _editorScrollController,
+                formattingTitle: localization.formattingTitle,
+                editorPlaceholder: localization.editorPlaceholder,
               ),
+              const SizedBox(height: 4),
+              TaskDeadlineSection(initialDeadline: _deadline, onChanged: _onDeadlineChanged),
+              if (isEdit) ...[
+                TaskCompletedSection(
+                  title: localization.completedTaskTitle,
+                  isCompleted: _isCompleted,
+                  onChanged: onIsTaskCompleteChanged,
+                ),
+              ],
+              const SizedBox(height: 2),
+              TaskSubtasksSection(
+                subtasks: _subtasks,
+                onChanged: _onSubtasksChanged,
+                canToggleCompletion: isEdit,
+              ),
+              const SizedBox(height: 2),
+              TaskPrioritySection(
+                title: localization.priorityTitle,
+                priority: TaskPriority.fromValue(_priority),
+                onChanged: _onPriorityChanged,
+              ),
+              TaskAttachmentsSection(
+                initialAttachments: widget.initialAttachments,
+                onChanged: _onAttachmentsChanged,
+              ),
+              // ...existing code...
             ],
-            const SizedBox(height: 2),
-            TaskSubtasksSection(
-              subtasks: _subtasks,
-              onChanged: _onSubtasksChanged,
-              canToggleCompletion: isEdit,
-            ),
-            const SizedBox(height: 2),
-            TaskPrioritySection(
-              title: localization.priorityTitle,
-              priority: TaskPriority.fromValue(_priority),
-              onChanged: _onPriorityChanged,
-            ),
-            TaskAttachmentsSection(
-              initialAttachments: widget.initialAttachments,
-              onChanged: _onAttachmentsChanged,
-            ),
-          ],
+          ),
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(localization.cancel)),
+          AnimatedBuilder(
+            animation: Listenable.merge([_controller, _titleController]),
+            builder: (_, _) {
+              return ElevatedButton(
+                onPressed: _isEmpty ? null : _submit,
+                child: Text(isEdit ? localization.update : localization.enter),
+              );
+            },
+          ),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(localization.cancel)),
-        AnimatedBuilder(
-          animation: Listenable.merge([_controller, _titleController]),
-          builder: (_, _) {
-            return ElevatedButton(
-              onPressed: _isEmpty ? null : _submit,
-              child: Text(isEdit ? localization.update : localization.enter),
-            );
-          },
-        ),
-      ],
     );
   }
 }

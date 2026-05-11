@@ -45,6 +45,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get subtasksTitle => 'Підзадачі';
 
   @override
+  String get subtaskTitle => 'Назва пiдзадачи';
+
+  @override
   String get noSubtasks => 'Немає підзадач';
 
   @override
@@ -257,4 +260,20 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get deadlineReachedTitle => 'Дедлайн настав';
+
+  @override
+  String get confirmDeleteSubtask =>
+      'Ви впевнені, що хочете видалити підзадачу?';
+
+  @override
+  String get confirmDeleteDeadline =>
+      'Ви впевнені, що хочете видалити deadline?';
+
+  @override
+  String confirmDeleteFile(Object file) {
+    return 'Ви впевнені, що хочете видалити файл \"$file\"?';
+  }
+
+  @override
+  String get attentionTitle => 'Увага!';
 }

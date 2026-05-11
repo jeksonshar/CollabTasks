@@ -172,6 +172,12 @@ abstract class AppLocalizations {
   /// **'Subtasks'**
   String get subtasksTitle;
 
+  /// No description provided for @subtaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtask title'**
+  String get subtaskTitle;
+
   /// No description provided for @noSubtasks.
   ///
   /// In en, this message translates to:
@@ -555,6 +561,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deadline reached'**
   String get deadlineReachedTitle;
+
+  /// No description provided for @confirmDeleteSubtask.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the subtask?'**
+  String get confirmDeleteSubtask;
+
+  /// No description provided for @confirmDeleteDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the deadline?'**
+  String get confirmDeleteDeadline;
+
+  /// Shown when a file need to delete
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the file \"{file}\"?'**
+  String confirmDeleteFile(Object file);
+
+  /// No description provided for @attentionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attention!'**
+  String get attentionTitle;
 }
 
 class _AppLocalizationsDelegate

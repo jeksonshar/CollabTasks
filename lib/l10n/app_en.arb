@@ -12,6 +12,7 @@
   "priorityTitle": "Priority: ",
   "addSubtaskTitle": "Add",
   "subtasksTitle": "Subtasks",
+  "subtaskTitle": "Subtask title",
   "noSubtasks": "No subtasks",
   "removeSubtaskTitle": "Remove",
   "taskPriorityNone": "No priority",
@@ -117,5 +118,15 @@
   "filterWithDeadline": "With deadlines",
   "filterWithoutDeadline": "Without deadlines",
   "deadlineIn30MinutesTitle": "Deadline in 30 minutes",
-  "deadlineReachedTitle": "Deadline reached"
+  "deadlineReachedTitle": "Deadline reached",
+  "confirmDeleteSubtask": "Are you sure you want to delete the subtask?",
+  "confirmDeleteDeadline": "Are you sure you want to delete the deadline?",
+  "confirmDeleteFile": "Are you sure you want to delete the file \"{file}\"?",
+  "@confirmDeleteFile": {
+    "description": "Shown when a file need to delete",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "attentionTitle": "Attention!"
 }

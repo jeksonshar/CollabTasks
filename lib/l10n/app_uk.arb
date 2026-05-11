@@ -12,6 +12,7 @@
   "priorityTitle": "Пріоритет: ",
   "addSubtaskTitle": "Добавити",
   "subtasksTitle": "Підзадачі",
+  "subtaskTitle": "Назва пiдзадачи",
   "noSubtasks": "Немає підзадач",
   "removeSubtaskTitle": "Видалити",
   "taskPriorityNone": "Без пріоритету",
@@ -117,5 +118,15 @@
   "filterWithDeadline": "З дедлайном",
   "filterWithoutDeadline": "Без дедлайну",
   "deadlineIn30MinutesTitle": "Дедлайн через 30 хвилин",
-  "deadlineReachedTitle": "Дедлайн настав"
+  "deadlineReachedTitle": "Дедлайн настав",
+  "confirmDeleteSubtask": "Ви впевнені, що хочете видалити підзадачу?",
+  "confirmDeleteDeadline": "Ви впевнені, що хочете видалити deadline?",
+  "confirmDeleteFile": "Ви впевнені, що хочете видалити файл \"{file}\"?",
+  "@confirmDeleteFile": {
+    "description": "Показывается при удалении файла",
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "attentionTitle": "Увага!"
 }

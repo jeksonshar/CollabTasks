@@ -1,8 +1,14 @@
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../di/service_locator.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
+import '../../../blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
+import '../../confirmation_dialog.dart';
 
 class TaskDeadlineSection extends StatefulWidget {
   final DateTime? initialDeadline;
@@ -81,6 +87,40 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
     widget.onChanged(null);
   }
 
+  void _showRemoveConfirmation(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+
+    // Get the ConfirmationDialogBloc from service locator
+    final confirmationDialogBloc = getIt<ConfirmationDialogBloc>();
+
+    // Initialize the dialog with appropriate text
+    confirmationDialogBloc.add(
+      InitializeConfirmationDialog(
+        title: localization.attentionTitle,
+        message: localization.confirmDeleteDeadline,
+        confirmButtonLabel: localization.delete,
+        cancelButtonLabel: localization.cancel,
+      ),
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => BlocProvider.value(
+        value: confirmationDialogBloc,
+        child: ConfirmationDialog(
+          onConfirm: () {
+            _clearDeadline();
+          },
+          onCancel: () {
+            confirmationDialogBloc.add(const ResetConfirmationDialog());
+          },
+        ),
+      ),
+    ).then((_) {
+      confirmationDialogBloc.add(const ResetConfirmationDialog());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -104,7 +144,7 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
         if (_selectedDeadline != null) ...[
           IconButton(
             icon: const Icon(Icons.clear),
-            onPressed: _clearDeadline,
+            onPressed: () => _showRemoveConfirmation(context),
             tooltip: localization.clearDeadline,
           ),
         ],

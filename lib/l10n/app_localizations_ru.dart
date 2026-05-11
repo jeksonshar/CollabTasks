@@ -45,6 +45,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subtasksTitle => 'Подзадачи';
 
   @override
+  String get subtaskTitle => 'Название подзадачи';
+
+  @override
   String get noSubtasks => 'Нет подзадач';
 
   @override
@@ -256,4 +259,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deadlineReachedTitle => 'Дедлайн наступил';
+
+  @override
+  String get confirmDeleteSubtask => 'Вы уверены, что хотите удалить подтаск?';
+
+  @override
+  String get confirmDeleteDeadline =>
+      'Вы уверены, что хотите удалить deadline?';
+
+  @override
+  String confirmDeleteFile(Object file) {
+    return 'Вы уверены, что хотите удалить файл \"$file\"?';
+  }
+
+  @override
+  String get attentionTitle => 'Внимание!';
 }

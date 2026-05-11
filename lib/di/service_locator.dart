@@ -13,6 +13,7 @@ import 'package:collab_tasks/domain/use_cases/get_tasks_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/set_saved_language_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
+import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
@@ -42,6 +43,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
   getIt.registerFactory(
     () => LocaleCubit(getSavedLanguageUseCase: getIt(), setSavedLanguageUseCase: getIt()),
   );
+
+  getIt.registerFactory(() => ConfirmationDialogBloc());
 
   getIt.registerFactoryParam<TaskBloc, String, String>(
     (notificationReminderTitle, notificationDeadlineTitle) => TaskBloc(
