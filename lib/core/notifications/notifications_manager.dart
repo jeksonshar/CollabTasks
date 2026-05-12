@@ -77,7 +77,7 @@ class NotificationsManager {
       _initialTapPayload = parsedPayload;
     }
 
-    _isInitialized = true;
+    // _isInitialized = true; // when app is open notifications doesn't arrive
   }
 
   Future<void> syncTaskDeadlineNotifications(

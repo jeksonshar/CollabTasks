@@ -32,10 +32,11 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # Working with strings, dates, and numbers
   intl: ^0.20.2
-
+  # formatting
   flutter_quill: ^11.5.0
-
+  # data persist
   drift: ^2.32.1
   drift_flutter: ^0.3.0
   path_provider: ^2.1.5
@@ -47,19 +48,20 @@ dependencies:
   cupertino_icons: ^1.0.9
   get_it: ^9.2.1
   provider: ^6.1.5+1
-
+  #  Working with file
   file_picker: ^10.3.10
   open_filex: ^4.7.0
   path: ^1.9.1
   shared_preferences: ^2.5.3
-
+  # BLoC principles
   flutter_bloc: ^9.1.1
   equatable: ^2.0.8
 
   uuid: ^4.5.3
-
+  #  Reactive state management.
   riverpod: ^3.2.1
   riverpod_annotation: ^4.0.2
+  #  Notifications and Time
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
   flutter_timezone: ^4.1.1
