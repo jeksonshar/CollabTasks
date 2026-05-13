@@ -13,11 +13,14 @@ class GroupScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.groups, size: 64, color: Colors.grey),
+            const Icon(Icons.groups, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(localization.groups, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              localization.groups,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(localization.emptyGroupsTitle, style: TextStyle(color: Colors.grey)),
+            Text(localization.emptyGroupsTitle, style: const TextStyle(color: Colors.grey)),
           ],
         ),
       ),

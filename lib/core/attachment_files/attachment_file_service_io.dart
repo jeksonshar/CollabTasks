@@ -1,19 +1,19 @@
 import 'dart:io';
 
+import 'package:collab_tasks/domain/models/task_attachment.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../domain/models/task_attachment.dart';
 import 'attachment_utils.dart';
 
 Future<String?> attachmentsDirectory() async {
   final docs = await getApplicationDocumentsDirectory();
   final dir = Directory(p.join(docs.path, 'task_attachments'));
 
-  if (!await dir.exists()) {
+  if (!dir.existsSync()) {
     await dir.create(recursive: true);
   }
 
@@ -103,7 +103,7 @@ Future<bool> removeAttachmentFile(TaskAttachment attachment) async {
 
     final file = File(path);
 
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       debugPrint('Cannot remove attachment: file does not exist at $path');
       return false;
     }

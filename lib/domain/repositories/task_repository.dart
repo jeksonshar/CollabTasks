@@ -1,7 +1,7 @@
-import '../models/task.dart';
+import 'package:collab_tasks/domain/models/task.dart';
 
 abstract class TaskRepository {
-  Future<List<Task>> getTasks();
+  Stream<List<Task>> watchTasks();
 
   Future<void> addTask(Task task);
 

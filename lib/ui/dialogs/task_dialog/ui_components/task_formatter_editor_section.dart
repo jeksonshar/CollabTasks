@@ -46,8 +46,9 @@ class _TaskFormatterEditorSectionState extends State<TaskFormatterEditorSection>
 
   @override
   void dispose() {
-    _toolbarScrollController.removeListener(_updateToolbarScrollIndicators);
-    _toolbarScrollController.dispose();
+    _toolbarScrollController
+      ..removeListener(_updateToolbarScrollIndicators)
+      ..dispose();
     super.dispose();
   }
 

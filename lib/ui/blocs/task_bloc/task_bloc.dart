@@ -1,27 +1,27 @@
 import 'dart:async';
 
+import 'package:collab_tasks/core/enums/task_error_type.dart';
+import 'package:collab_tasks/core/enums/task_filter_type.dart';
+import 'package:collab_tasks/core/enums/task_sort_direction.dart';
+import 'package:collab_tasks/core/enums/task_sort_type.dart';
+import 'package:collab_tasks/core/notifications/notifications_manager.dart';
+import 'package:collab_tasks/domain/models/task.dart';
+import 'package:collab_tasks/domain/models/task_view_preferences.dart';
+import 'package:collab_tasks/domain/use_cases/add_task_use_case.dart';
+import 'package:collab_tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/domain/use_cases/get_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
+import 'package:collab_tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/enums/task_error_type.dart';
-import '../../../core/enums/task_filter_type.dart';
-import '../../../core/enums/task_sort_direction.dart';
-import '../../../core/enums/task_sort_type.dart';
-import '../../../core/notifications/notifications_manager.dart';
-import '../../../domain/models/task.dart';
-import '../../../domain/models/task_view_preferences.dart';
-import '../../../domain/use_cases/add_task_use_case.dart';
-import '../../../domain/use_cases/delete_task_use_case.dart';
-import '../../../domain/use_cases/get_task_view_preferences_use_case.dart';
-import '../../../domain/use_cases/get_tasks_use_case.dart';
-import '../../../domain/use_cases/set_task_view_preferences_use_case.dart';
-import '../../../domain/use_cases/update_task_use_case.dart';
 import 'task_event.dart';
 import 'task_state.dart';
 
 class TaskBloc extends Bloc<TaskEvent, TaskState> {
-  final GetTasksUseCase getTasksUseCase;
+  final WatchTasksUseCase watchTasksUseCase;
   final AddTaskUseCase addTaskUseCase;
   final UpdateTaskUseCase updateTaskUseCase;
   final DeleteTaskUseCase deleteTaskUseCase;
@@ -30,10 +30,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final NotificationsManager notificationsManager;
   final String notificationReminderTitle;
   final String notificationDeadlineTitle;
+
   StreamSubscription? _notificationTapSubscription;
 
   TaskBloc({
-    required this.getTasksUseCase,
+    required this.watchTasksUseCase,
     required this.addTaskUseCase,
     required this.updateTaskUseCase,
     required this.deleteTaskUseCase,
@@ -43,27 +44,37 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.notificationReminderTitle,
     required this.notificationDeadlineTitle,
   }) : super(const TaskState()) {
-    // Listen to the flow of events and transform them into states
+    // 1. Main Event: Base Surveillance Launch
     on<LoadTasksStarted>(_onLoadTasks);
+    // 2. The remaining events now only perform an Action.
     on<TaskAdded>(_onAddTask);
     on<TaskUpdated>(_onUpdateTask);
     on<TaskDeleted>(_onDeleteTask);
+    on<TaskPinToggled>(_onToggleTaskPin);
+    // UI events
     on<SortChanged>(_onSortChanged);
     on<FilterChanged>(_onFilterChanged);
     on<SearchChanged>((event, emit) => emit(state.copyWith(searchQuery: event.query)));
-    on<TaskPinToggled>(_onToggleTaskPin);
     on<ErrorCleared>((event, emit) => emit(state.copyWith(errorType: null)));
     on<ActionCleared>(
       (event, emit) => emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
     );
     on<NotificationTaskOpened>(_onNotificationTaskOpened);
 
+    _initNotificationListeners();
+  }
+
+  void _initNotificationListeners() {
+    if (isClosed) return;
+
     _notificationTapSubscription = notificationsManager.notificationTapStream.listen((payload) {
-      add(NotificationTaskOpened(payload.taskId));
+      if (!isClosed) {
+        add(NotificationTaskOpened(payload.taskId));
+      }
     });
 
     final initialPayload = notificationsManager.consumeInitialTapPayload();
-    if (initialPayload != null) {
+    if (!isClosed && initialPayload != null) {
       add(NotificationTaskOpened(initialPayload.taskId));
     }
   }
@@ -72,18 +83,36 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     emit(state.copyWith(status: TaskStatus.loading));
     try {
       final preferences = await getTaskViewPreferencesUseCase();
-      final tasks = await getTasksUseCase();
-      await _syncNotifications(tasks);
+      // We set the initial settings
       emit(
         state.copyWith(
-          status: TaskStatus.success,
           sortType: preferences.sortType,
           sortDirection: preferences.sortDirection,
           filterType: preferences.filterType,
-          tasks: _sortTasks(tasks, preferences.sortType, preferences.sortDirection),
         ),
       );
-      debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
+
+      // SUBSCRIBE TO STREAM
+      // This block will work forever as long as Bloc is alive.
+      // Every change in the database will call this code.
+      await emit.forEach<List<Task>>(
+        watchTasksUseCase(),
+        onData: (tasks) {
+          // With each database update, we synchronize notifications and update the state
+          _syncNotifications(tasks);
+
+          debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
+
+          return state.copyWith(
+            status: TaskStatus.success,
+            tasks: _sortTasks(tasks, state.sortType, state.sortDirection),
+          );
+        },
+        onError: (e, s) {
+          debugPrint('TaskBloc.watchTasks ERROR: $e');
+          return state.copyWith(status: TaskStatus.failure, errorType: TaskErrorType.load);
+        },
+      );
     } catch (e, s) {
       debugPrint('TaskBloc.loadTasks ERROR: $e\n$s');
       emit(state.copyWith(status: TaskStatus.failure, errorType: TaskErrorType.load));
@@ -91,9 +120,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onAddTask(TaskAdded event, Emitter<TaskState> emit) async {
-    var uuid = const Uuid();
     final task = Task(
-      id: uuid.v4(),
+      id: const Uuid().v4(),
       createdAt: DateTime.now(),
       title: event.draft.title,
       text: event.draft.textJson,
@@ -112,58 +140,50 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         deadlineTitle: notificationDeadlineTitle,
       );
 
-      final taskTitle = event.draft.title;
-      final newTasks = [...state.tasks];
-      newTasks.add(task);
-      emit(
-        state.copyWith(
-          tasks: _sortTasks(newTasks, state.sortType, state.sortDirection),
-          lastAction: TaskAction.add,
-          lastActionTaskTitle: taskTitle,
-        ),
-      );
-    } catch (_) {
+      // With the watcher we only notify about the fact of the action
+      emit(state.copyWith(lastAction: TaskAction.add, lastActionTaskTitle: task.title));
+    } catch (e, s) {
+      debugPrint('TaskBloc._onAddTask ERROR: $e\n$s');
       emit(state.copyWith(errorType: TaskErrorType.add));
     }
   }
 
   Future<void> _onUpdateTask(TaskUpdated event, Emitter<TaskState> emit) async {
-    final oldTask = state.tasks.firstWhere((t) => t.id == event.id);
-    final task = Task(
-      id: event.id,
-      createdAt: event.createdAt,
-      title: event.draft.title,
-      text: event.draft.textJson,
-      priority: event.draft.priority,
-      attachments: event.draft.attachments,
-      subtasks: event.draft.subtasks,
-      isCompleted: event.draft.isCompleted,
-      deadline: event.draft.deadline,
-      isPinned: oldTask.isPinned,
-    );
-
     try {
-      await updateTaskUseCase(task);
+      // 1. Find the old task to save the 'isPinned' status (if it's not in the Draft)
+      // Do this BEFORE updating to avoid a StateError if the stream updates too quickly
+      final taskToUpdate = state.tasks.cast<Task?>().firstWhere(
+        (t) => t?.id == event.id,
+        orElse: () => null,
+      );
+
+      if (taskToUpdate == null) return;
+      // 2. We are creating an updated model
+      final updatedTask = Task(
+        id: event.id,
+        createdAt: event.createdAt,
+        title: event.draft.title,
+        text: event.draft.textJson,
+        priority: event.draft.priority,
+        attachments: event.draft.attachments,
+        subtasks: event.draft.subtasks,
+        isCompleted: event.draft.isCompleted,
+        deadline: event.draft.deadline,
+        isPinned: taskToUpdate.isPinned,
+      );
+
+      // 3. Sending to the database via UseCase
+      await updateTaskUseCase(updatedTask);
+      // 4. Synchronizing notifications
       await notificationsManager.scheduleTaskDeadlineNotifications(
-        task,
+        updatedTask,
         reminderTitle: notificationReminderTitle,
         deadlineTitle: notificationDeadlineTitle,
       );
-      final taskTitle = event.draft.title; // Use the new title from draft
 
-      final index = state.tasks.indexWhere((t) => t.id == event.id);
-      if (index == -1) return;
-
-      final newTasks = [...state.tasks];
-      newTasks[index] = task;
-
-      emit(
-        state.copyWith(
-          tasks: _sortTasks(newTasks, state.sortType, state.sortDirection),
-          lastAction: TaskAction.update,
-          lastActionTaskTitle: taskTitle,
-        ),
-      );
+      // 5. We only notify about the fact of the action for the UI (for example, to show the Snack bar)
+      // The tasks list will be updated automatically via WatchTasksUseCase
+      emit(state.copyWith(lastAction: TaskAction.update, lastActionTaskTitle: updatedTask.title));
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
       emit(state.copyWith(errorType: TaskErrorType.update));
@@ -172,17 +192,18 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onDeleteTask(TaskDeleted event, Emitter<TaskState> emit) async {
     try {
+      final taskToDelete = state.tasks.cast<Task?>().firstWhere(
+        (t) => t?.id == event.id,
+        orElse: () => null,
+      );
+
+      if (taskToDelete == null) return;
+      final taskTitle = taskToDelete.title;
+
       await deleteTaskUseCase(event.id);
       await notificationsManager.cancelTaskDeadlineNotifications(event.id);
-      final taskTitle = state.tasks.firstWhere((t) => t.id == event.id).title;
 
-      emit(
-        state.copyWith(
-          tasks: state.tasks.where((task) => task.id != event.id).toList(),
-          lastAction: TaskAction.delete,
-          lastActionTaskTitle: taskTitle,
-        ),
-      );
+      emit(state.copyWith(lastAction: TaskAction.delete, lastActionTaskTitle: taskTitle));
     } catch (e, s) {
       debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
       emit(state.copyWith(errorType: TaskErrorType.delete));
@@ -190,19 +211,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onToggleTaskPin(TaskPinToggled event, Emitter<TaskState> emit) async {
-    final index = state.tasks.indexWhere((t) => t.id == event.id);
-    if (index == -1) return;
-
-    final task = state.tasks[index];
-    final updatedTask = task.copyWith(isPinned: !task.isPinned);
-
     try {
+      final task = state.tasks.firstWhere((t) => t.id == event.id);
+      final updatedTask = task.copyWith(isPinned: !task.isPinned);
+
+      // just update BD
       await updateTaskUseCase(updatedTask);
-
-      final newTasks = [...state.tasks];
-      newTasks[index] = updatedTask;
-
-      emit(state.copyWith(tasks: _sortTasks(newTasks, state.sortType, state.sortDirection)));
     } catch (e, s) {
       debugPrint('TaskBloc.toggleTaskPin ERROR: $e\n$s');
       emit(state.copyWith(errorType: TaskErrorType.update));

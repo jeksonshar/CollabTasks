@@ -1,6 +1,5 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-
-import '../../../l10n/app_localizations.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -24,7 +23,7 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 localization.userProfile,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Card(

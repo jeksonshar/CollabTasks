@@ -1,11 +1,11 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 
+import 'package:collab_tasks/domain/models/task_attachment.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:web/web.dart' as web;
 
-import '../../domain/models/task_attachment.dart';
 import 'attachment_utils.dart';
 
 Future<String?> attachmentsDirectory() async {
@@ -103,11 +103,10 @@ Future<bool> downloadAttachmentFile(TaskAttachment attachment) async {
   final blob = _createBlob(attachment, bytes);
   final url = web.URL.createObjectURL(blob);
 
-  final anchor = web.HTMLAnchorElement()
+  final _ = web.HTMLAnchorElement()
     ..href = url
-    ..download = attachment.name;
-
-  anchor.click();
+    ..download = attachment.name
+    ..click();
 
   Future.delayed(const Duration(seconds: 1), () {
     web.URL.revokeObjectURL(url);

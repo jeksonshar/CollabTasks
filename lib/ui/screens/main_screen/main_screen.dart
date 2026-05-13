@@ -1,3 +1,4 @@
+import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:collab_tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:collab_tasks/ui/blocs/task_bloc/task_event.dart';
@@ -7,8 +8,6 @@ import 'package:collab_tasks/ui/screens/home_screen/home_tasks_screen.dart';
 import 'package:collab_tasks/ui/screens/settings_screen/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../../di/service_locator.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -62,9 +61,12 @@ class _MainScreenState extends State<MainScreen> with L10nMixin {
             selectedItemColor: Colors.indigo,
             // unselectedItemColor: Colors.blue.shade200,
             items: [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: localization.home),
-              BottomNavigationBarItem(icon: Icon(Icons.group), label: localization.groups),
-              BottomNavigationBarItem(icon: Icon(Icons.settings), label: localization.settings),
+              BottomNavigationBarItem(icon: const Icon(Icons.home), label: localization.home),
+              BottomNavigationBarItem(icon: const Icon(Icons.group), label: localization.groups),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.settings),
+                label: localization.settings,
+              ),
             ],
           ),
         ),

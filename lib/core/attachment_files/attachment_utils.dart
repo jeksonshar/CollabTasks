@@ -1,7 +1,7 @@
+import 'package:collab_tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
-import '../../domain/models/task_attachment.dart';
-import '../../l10n/app_localizations.dart';
 import 'attachment_file_service.dart';
 
 const List<String> documentAttachmentExtensions = ['pdf', 'doc', 'docx', 'xml', 'txt'];
@@ -55,7 +55,7 @@ Future<void> handleViewAttachment({
     if (content != null) {
       if (!context.mounted) return;
 
-      showDialog<void>(
+      await showDialog<void>(
         context: context,
         builder: (context) {
           return AlertDialog(

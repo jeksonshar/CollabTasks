@@ -9,6 +9,19 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  # делаем важные ошибки фатальными, чтобы проект не собрался с мусором
+  errors:
+    todo: ignore
+    unused_local_variable: error
+    unused_import: error
+    invalid_annotation_target: ignore
+    use_build_context_synchronously: error # Это база для Flutter
+  exclude:
+    - "bin/cache/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart" # Исключаем кодогенерацию
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
@@ -21,8 +34,27 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # --- SECURITY AND BUGS (What really crashes the prod) ---
+    - cancel_subscriptions        # Forgot to unsubscribe to dispose? Get a leak.
+    - close_sinks                 # Streams need to be closed.
+    - unawaited_futures           # You're not expecting the future? That means you don't control the flow.
+    - avoid_slow_async_io         # File I/O in asynchronous code must be fast.
+    - throw_in_finally            # Throwing errors in finally is architectural suicide.
+
+    # --- STYLE AND PURE ARCHITECTURE ---
+    - always_declare_return_types # developer always writes what the function returns.
+    - prefer_final_locals         # Immutability is the key to no bugs.
+    - prefer_final_fields         # Class fields must be final unless they are state.
+    - avoid_relative_lib_imports  # Package imports ONLY. No ../../../
+    - cascade_invocations         # Cleaner code when working with a single object.
+    - directives_ordering         # Order in imports = order in your head.
+
+    # --- FLUTTER RULES ---
+    - prefer_const_constructors             # We save FPS, help the engine.
+    - prefer_const_declarations             # Constants instead of final where possible.
+    - prefer_const_literals_to_create_immutables
+    - sized_box_for_whitespace              # Don't use Container where you just need indentation.
+    - use_key_in_widget_constructors        # The basis for the widget tree.
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

@@ -19,4 +19,24 @@ class TaskDraft {
     required this.isCompleted,
     this.deadline,
   });
+
+  TaskDraft copyWith({
+    String? title,
+    String? textJson,
+    int? priority,
+    List<TaskAttachment>? attachments,
+    List<TaskSubtask>? subtasks,
+    bool? isCompleted,
+    DateTime? deadline,
+  }) {
+    return TaskDraft(
+      title: title ?? this.title,
+      textJson: textJson ?? this.textJson,
+      priority: priority ?? this.priority,
+      attachments: attachments ?? this.attachments,
+      subtasks: subtasks ?? this.subtasks,
+      isCompleted: isCompleted ?? this.isCompleted,
+      deadline: deadline ?? this.deadline,
+    );
+  }
 }

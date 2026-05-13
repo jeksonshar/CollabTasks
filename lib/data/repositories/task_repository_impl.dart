@@ -1,29 +1,34 @@
+import 'package:collab_tasks/data/local/db/app_database.dart';
+import 'package:collab_tasks/domain/models/errors/data_exception.dart';
+import 'package:collab_tasks/domain/models/task.dart';
+import 'package:collab_tasks/domain/repositories/task_repository.dart';
 import 'package:drift/drift.dart';
-
-import '../../domain/models/task.dart';
-import '../../domain/repositories/task_repository.dart';
-import '../local/db/app_database.dart';
+import 'package:flutter/cupertino.dart';
 
 class TaskRepositoryImpl implements TaskRepository {
   final AppDatabase _db;
 
   TaskRepositoryImpl(this._db);
 
-  Future<void> _upsertTask(Task task) {
-    final companion = TaskEntityCompanion.insert(
-      taskId: task.id,
-      taskTitle: Value(task.title),
-      taskCreatedAt: task.createdAt,
-      taskText: task.text,
-      taskPriority: Value(task.priority),
-      taskAttachments: task.attachments,
-      taskSubtasks: Value(task.subtasks),
-      taskIsCompleted: Value(task.isCompleted),
-      taskDeadline: Value(task.deadline),
-      taskIsPinned: Value(task.isPinned),
-    );
+  Future<void> _upsertTask(Task task) async {
+    try {
+      final companion = TaskEntityCompanion.insert(
+        taskId: task.id,
+        taskTitle: Value(task.title),
+        taskCreatedAt: task.createdAt,
+        taskText: task.text,
+        taskPriority: Value(task.priority),
+        taskAttachments: task.attachments,
+        taskSubtasks: Value(task.subtasks),
+        taskIsCompleted: Value(task.isCompleted),
+        taskDeadline: Value(task.deadline),
+        taskIsPinned: Value(task.isPinned),
+      );
 
-    return _db.into(_db.taskEntity).insert(companion, onConflict: DoUpdate((old) => companion));
+      await _db.into(_db.taskEntity).insert(companion, onConflict: DoUpdate((old) => companion));
+    } catch (e) {
+      throw DataException("Failed to upsert task: $e");
+    }
   }
 
   @override
@@ -33,37 +38,61 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<void> updateTask(Task task) => _upsertTask(task);
 
   @override
-  Future<void> deleteTask(String id) {
-    return (_db.delete(_db.taskEntity)..where((t) => t.taskId.equals(id))).go();
+  Future<void> deleteTask(String id) async {
+    try {
+      final deletedRows = await (_db.delete(
+        _db.taskEntity,
+      )..where((t) => t.taskId.equals(id))).go();
+
+      if (deletedRows == 0) {
+        debugPrint("Warning: No task found with id $id to delete");
+      }
+    } catch (e) {
+      throw DataException("Database error during deletion: $e");
+    }
   }
 
   @override
-  Future<List<Task>> getTasks() async {
-    final rows = await _db.select(_db.taskEntity).get();
-
-    return rows
-        .map(
-          (row) => Task(
-            id: row.taskId,
-            createdAt: row.taskCreatedAt,
-            title: row.taskTitle,
-            text: row.taskText,
-            priority: row.taskPriority,
-            attachments: row.taskAttachments,
-            subtasks: row.taskSubtasks,
-            isCompleted: row.taskIsCompleted,
-            deadline: row.taskDeadline,
-            isPinned: row.taskIsPinned,
-          ),
-        )
-        .toList();
+  Stream<List<Task>> watchTasks() {
+    return _db
+        .select(_db.taskEntity)
+        .watch()
+        .map((rows) => rows.map((row) => row.toModel()).toList());
   }
 
   @override
   Future<void> toggleTask(String id) async {
-    final task = await (_db.select(_db.taskEntity)..where((t) => t.taskId.equals(id))).getSingle();
-    await (_db.update(_db.taskEntity)..where((t) => t.taskId.equals(id))).write(
-      TaskEntityCompanion(taskIsCompleted: Value(!task.taskIsCompleted)),
-    );
+    try {
+      await _db.transaction(() async {
+        final query = _db.select(_db.taskEntity)..where((t) => t.taskId.equals(id));
+        final task = await query.getSingleOrNull(); // Безопасный метод вместо getSingle
+
+        if (task == null) {
+          throw DataException("Task with id $id not found");
+        }
+
+        await (_db.update(_db.taskEntity)..where((t) => t.taskId.equals(id))).write(
+          TaskEntityCompanion(taskIsCompleted: Value(!task.taskIsCompleted)),
+        );
+      });
+    } on DataException catch (e) {
+      throw DataException("Toggle failed: ${e.message}");
+    }
   }
+}
+
+// TODO move to mappers (create it)
+extension on TaskEntityData {
+  Task toModel() => Task(
+    id: taskId,
+    createdAt: taskCreatedAt,
+    title: taskTitle,
+    text: taskText,
+    priority: taskPriority,
+    attachments: taskAttachments,
+    subtasks: taskSubtasks,
+    isCompleted: taskIsCompleted,
+    deadline: taskDeadline,
+    isPinned: taskIsPinned,
+  );
 }

@@ -1,13 +1,12 @@
+import 'package:collab_tasks/core/theme/app_text_styles.dart';
+import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/domain/models/task_subtask.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
 import 'package:collab_tasks/ui/dialogs/confirmation_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../di/service_locator.dart';
-import '../../../../domain/models/task_subtask.dart';
 
 class TaskSubtasksSection extends StatelessWidget {
   final List<TaskSubtask> subtasks;
@@ -41,17 +40,16 @@ class TaskSubtasksSection extends StatelessWidget {
     final localization = AppLocalizations.of(context)!;
 
     // Get the ConfirmationDialogBloc from service locator
-    final confirmationDialogBloc = getIt<ConfirmationDialogBloc>();
-
-    // Initialize the dialog with appropriate text
-    confirmationDialogBloc.add(
-      InitializeConfirmationDialog(
-        title: localization.attentionTitle,
-        message: localization.confirmDeleteSubtask,
-        confirmButtonLabel: localization.delete,
-        cancelButtonLabel: localization.cancel,
-      ),
-    );
+    final confirmationDialogBloc = getIt<ConfirmationDialogBloc>()
+      // Initialize the dialog with appropriate text
+      ..add(
+        InitializeConfirmationDialog(
+          title: localization.attentionTitle,
+          message: localization.confirmDeleteSubtask,
+          confirmButtonLabel: localization.delete,
+          cancelButtonLabel: localization.cancel,
+        ),
+      );
 
     showDialog(
       context: context,
