@@ -134,11 +134,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
     try {
       await addTaskUseCase(task);
-      await notificationsManager.scheduleTaskDeadlineNotifications(
-        task,
-        reminderTitle: notificationReminderTitle,
-        deadlineTitle: notificationDeadlineTitle,
-      );
+      try {
+        await notificationsManager.scheduleTaskDeadlineNotifications(
+          task,
+          reminderTitle: notificationReminderTitle,
+          deadlineTitle: notificationDeadlineTitle,
+        );
+      } catch (e, s) {
+        debugPrint('TaskBloc.syncNotifications ERROR: $e\n$s');
+      }
 
       // With the watcher we only notify about the fact of the action
       emit(state.copyWith(lastAction: TaskAction.add, lastActionTaskTitle: task.title));

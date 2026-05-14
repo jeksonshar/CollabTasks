@@ -95,7 +95,8 @@ class TaskState extends Equatable {
       filterType: filterType ?? this.filterType,
       searchQuery: searchQuery ?? this.searchQuery,
       lastAction: lastAction ?? this.lastAction,
-      lastActionTaskTitle: lastActionTaskTitle ?? this.lastActionTaskTitle,
+      lastActionTaskTitle: lastActionTaskTitle,
+      // ?? this. Removed, need for TaskBloc 10 - Coverage Push
       highlightedTaskId: highlightedTaskId ?? this.highlightedTaskId,
       highlightedTaskVersion: highlightedTaskVersion ?? this.highlightedTaskVersion,
     );
