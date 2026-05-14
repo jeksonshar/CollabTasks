@@ -109,12 +109,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           );
         },
         onError: (e, s) {
-          debugPrint('TaskBloc.watchTasks ERROR: $e');
+          _logError('watchTasks', e, s);
           return state.copyWith(status: TaskStatus.failure, errorType: TaskErrorType.load);
         },
       );
     } catch (e, s) {
-      debugPrint('TaskBloc.loadTasks ERROR: $e\n$s');
+      _logError('loadTasks', e, s);
       emit(state.copyWith(status: TaskStatus.failure, errorType: TaskErrorType.load));
     }
   }
@@ -141,13 +141,13 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           deadlineTitle: notificationDeadlineTitle,
         );
       } catch (e, s) {
-        debugPrint('TaskBloc.syncNotifications ERROR: $e\n$s');
+        _logError('syncNotifications', e, s);
       }
 
       // With the watcher we only notify about the fact of the action
       emit(state.copyWith(lastAction: TaskAction.add, lastActionTaskTitle: task.title));
     } catch (e, s) {
-      debugPrint('TaskBloc._onAddTask ERROR: $e\n$s');
+      _logError('_onAddTask', e, s);
       emit(state.copyWith(errorType: TaskErrorType.add, status: TaskStatus.failure));
     }
   }
@@ -189,7 +189,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       // The tasks list will be updated automatically via WatchTasksUseCase
       emit(state.copyWith(lastAction: TaskAction.update, lastActionTaskTitle: updatedTask.title));
     } catch (e, s) {
-      debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
+      _logError('updateTask', e, s);
       emit(state.copyWith(errorType: TaskErrorType.update, status: TaskStatus.failure));
     }
   }
@@ -209,7 +209,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
       emit(state.copyWith(lastAction: TaskAction.delete, lastActionTaskTitle: taskTitle));
     } catch (e, s) {
-      debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
+      _logError('deleteTask', e, s);
       emit(state.copyWith(errorType: TaskErrorType.delete, status: TaskStatus.failure));
     }
   }
@@ -222,7 +222,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       // just update BD
       await updateTaskUseCase(updatedTask);
     } catch (e, s) {
-      debugPrint('TaskBloc.toggleTaskPin ERROR: $e\n$s');
+      _logError('toggleTaskPin', e, s);
       emit(state.copyWith(errorType: TaskErrorType.update, status: TaskStatus.failure));
     }
   }
@@ -291,7 +291,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         ),
       );
     } catch (e, s) {
-      debugPrint('TaskBloc.saveTaskViewPreferences ERROR: $e\n$s');
+      _logError('saveTaskViewPreferences', e, s);
     }
   }
 
@@ -328,8 +328,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         deadlineTitle: notificationDeadlineTitle,
       );
     } catch (e, s) {
-      debugPrint('TaskBloc.syncNotifications ERROR: $e\n$s');
+      _logError('syncNotifications', e, s);
     }
+  }
+
+  void _logError(String context, Object error, [StackTrace? stackTrace]) {
+    debugPrint(
+      'TaskBloc.$context ERROR: $error'
+      '${stackTrace != null ? '\n$stackTrace' : ''}',
+    );
   }
 
   @override

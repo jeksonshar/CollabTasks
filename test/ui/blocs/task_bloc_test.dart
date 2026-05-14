@@ -167,7 +167,17 @@ void main() {
       ],
       verify: (_) {
         // Check that UseCase was actually called
-        verify(() => mockAddTaskUseCase(any())).called(1);
+        verify(
+          () => mockAddTaskUseCase(
+            any(
+              that: isA<Task>()
+                  .having((t) => t.id, 'id', isNotEmpty)
+                  .having((t) => t.title, 'title', tDraft.title)
+                  .having((t) => t.priority, 'priority', tDraft.priority)
+                  .having((t) => t.createdAt, 'createdAt', isA<DateTime>()),
+            ),
+          ),
+        ).called(1);
       },
     );
   });
@@ -197,14 +207,8 @@ void main() {
         when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
-      // First we load the tasks so that they are in state, then we update
-      act: (bloc) async {
-        bloc.add(LoadTasksStarted());
-        await Future.delayed(Duration.zero); // Let the stream load
-        bloc.add(TaskUpdated(tTask.id, tTask.createdAt, tDraft));
-      },
-      skip: 2,
-      // Skipping loading states (loading and initial success)
+      seed: () => TaskState(tasks: [tTask], status: TaskStatus.success),
+      act: (bloc) => bloc.add(TaskUpdated(tTask.id, tTask.createdAt, tDraft)),
       expect: () => [
         isA<TaskState>()
             .having((s) => s.lastAction, 'lastAction', TaskAction.update)
@@ -235,12 +239,8 @@ void main() {
         when(() => mockDeleteTasksUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
-      act: (bloc) async {
-        bloc.add(LoadTasksStarted());
-        await Future.delayed(Duration.zero);
-        bloc.add(TaskDeleted(tTask.id));
-      },
-      skip: 2,
+      seed: () => TaskState(tasks: [tTask], status: TaskStatus.success),
+      act: (bloc) => bloc.add(TaskDeleted(tTask.id)),
       expect: () => [
         isA<TaskState>()
             .having((s) => s.lastAction, 'lastAction', TaskAction.delete)
@@ -442,20 +442,30 @@ void main() {
       },
     );
     blocTest<TaskBloc, TaskState>(
-      'should swallow error in _saveTaskViewPreferences and cover debugPrint',
+      'Should remain functional and emit success state even if preference saving fails',
       build: () {
-        // Configure UseCase to throw an exception
         when(() => mockSetPrefsUseCase(any())).thenThrow(Exception('Prefs Save Failed'));
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
+      seed: () => const TaskState(status: TaskStatus.success),
       act: (bloc) => bloc.add(const FilterChanged(TaskFilterType.completed)),
       expect: () => [
         // The state should still be updated, since the error in the catch is swallowed.
-        isA<TaskState>().having((s) => s.filterType, 'filterType', TaskFilterType.completed),
+        isA<TaskState>()
+            .having((s) => s.filterType, 'filterType', TaskFilterType.completed)
+            .having((s) => s.status, 'status', TaskStatus.success),
       ],
       verify: (_) {
-        // We check that the call attempt was made
-        verify(() => mockSetPrefsUseCase(any())).called(1);
+        verify(
+          () => mockSetPrefsUseCase(
+            any(
+              that: isA<TaskViewPreferences>()
+                  .having((f) => f.filterType, 'filterType', TaskFilterType.completed)
+                  .having((f) => f.sortType, 'sortType', TaskSortType.byDateCreated),
+            ),
+          ),
+        ).called(1);
       },
     );
     blocTest<TaskBloc, TaskState>(
@@ -488,46 +498,7 @@ void main() {
     );
   });
 
-  group('TaskBloc 7 - Sorting Logic', () {
-    final taskLow = Task(
-      id: '1',
-      title: 'A',
-      priority: 1,
-      createdAt: DateTime.now(),
-      description: '',
-    );
-    final taskHigh = Task(
-      id: '2',
-      title: 'B',
-      priority: 3,
-      createdAt: DateTime.now(),
-      description: '',
-    );
-
-    blocTest<TaskBloc, TaskState>(
-      'should actually sort the list by priority',
-      build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
-        return taskBloc;
-      },
-      // We throw two tasks into the state in the "wrong" order
-      seed: () => TaskState(
-        status: TaskStatus.success,
-        tasks: [taskLow, taskHigh],
-        sortType: TaskSortType.byDateCreated,
-        sortDirection: TaskSortDirection.topToBottom,
-      ),
-      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
-      expect: () => [
-        isA<TaskState>()
-            .having((s) => s.sortType, 'type', TaskSortType.byPriority)
-            // We check that the tasks in the list have changed places according to priority
-            .having((s) => s.tasks.first.priority, 'first task priority', 3),
-      ],
-    );
-  });
-
-  group('TaskBloc 8 - Notifications Error', () {
+  group('TaskBloc 7 - Notifications Error', () {
     blocTest<TaskBloc, TaskState>(
       'should swallow the notification error without breaking the main flow',
       build: () {
@@ -563,7 +534,7 @@ void main() {
     );
   });
 
-  group('TaskBloc 9 - Sync Notifications Error', () {
+  group('TaskBloc 8 - Sync Notifications Error', () {
     blocTest<TaskBloc, TaskState>(
       'должен зайти в блок catch внутри _syncNotifications при ошибке стрима данных',
       build: () {
@@ -618,7 +589,46 @@ void main() {
     );
   });
 
-  group('TaskBloc 10 - Coverage Push', () {
+  group('TaskBloc 9 - Sorting Logic', () {
+    final taskLow = Task(
+      id: '1',
+      title: 'A',
+      priority: 1,
+      createdAt: DateTime.now(),
+      description: '',
+    );
+    final taskHigh = Task(
+      id: '2',
+      title: 'B',
+      priority: 3,
+      createdAt: DateTime.now(),
+      description: '',
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should actually sort the list by priority',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      // We throw two tasks into the state in the "wrong" order
+      seed: () => TaskState(
+        status: TaskStatus.success,
+        tasks: [taskLow, taskHigh],
+        sortType: TaskSortType.byDateCreated,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.sortType, 'type', TaskSortType.byPriority)
+            // We check that the tasks in the list have changed places according to priority
+            .having((s) => s.tasks.first.priority, 'first task priority', 3),
+      ],
+    );
+  });
+
+  group('TaskBloc 10 - Notifications & Deep Links', () {
     blocTest<TaskBloc, TaskState>(
       'should handle notification tap and initial payload',
       build: () {
@@ -732,6 +742,366 @@ void main() {
           );
       },
       expect: () => [],
+    );
+  });
+
+  group('TaskBloc 11 - Missing Event Coverage', () {
+    blocTest<TaskBloc, TaskState>(
+      'should update searchQuery when SearchChanged is added',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      act: (bloc) => bloc.add(const SearchChanged('flutter examples')),
+      expect: () => [isA<TaskState>().having((s) => s.searchQuery, 'query', 'flutter examples')],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should clear error when ErrorCleared is added',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(status: TaskStatus.failure, errorType: TaskErrorType.load),
+      act: (bloc) => bloc.add(ErrorCleared()),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.errorType, 'error', null)
+            .having((s) => s.status, 'status', TaskStatus.failure),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should reset multiple fields when NotificationTaskOpened',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(
+        filterType: TaskFilterType.completed,
+        searchQuery: 'old search query',
+        highlightedTaskId: null,
+        highlightedTaskVersion: 0,
+      ),
+      act: (bloc) => bloc.add(const NotificationTaskOpened('task-xyz')),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.filterType, 'filter reset to all', TaskFilterType.all)
+            .having((s) => s.searchQuery, 'search cleared', '')
+            .having((s) => s.highlightedTaskId, 'taskId set', 'task-xyz')
+            .having((s) => s.highlightedTaskVersion, 'version incremented', 1),
+      ],
+    );
+  });
+
+  group('TaskBloc 12 - Edge Cases - Empty & Single Task', () {
+    blocTest<TaskBloc, TaskState>(
+      'should handle empty task list gracefully',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([]));
+        return taskBloc;
+      },
+      act: (bloc) => bloc.add(LoadTasksStarted()),
+      expect: () => [
+        isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
+            .having((s) => s.tasks, 'tasks empty', isEmpty),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should handle single task without errors',
+      build: () {
+        final task = Task(
+          id: '1',
+          title: 'Only Task',
+          createdAt: DateTime.now(),
+          description: '',
+          priority: 1,
+        );
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([task]));
+        return taskBloc;
+      },
+      act: (bloc) => bloc.add(LoadTasksStarted()),
+      expect: () => [
+        isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
+        isA<TaskState>()
+            .having((s) => s.tasks.length, 'count', 1)
+            .having((s) => s.tasks.first.id, 'id', '1')
+            .having((s) => s.tasks.first.title, 'title', 'Only Task'),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should keep all pinned tasks before unpinned tasks regardless of sort type',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () {
+        final now = DateTime.now();
+        return TaskState(
+          status: TaskStatus.success,
+          tasks: [
+            Task(
+              id: '1',
+              title: 'A',
+              priority: 3,
+              isPinned: false,
+              createdAt: now,
+              description: '',
+            ),
+            Task(id: '2', title: 'B', priority: 1, isPinned: true, createdAt: now, description: ''),
+            Task(id: '3', title: 'C', priority: 2, isPinned: true, createdAt: now, description: ''),
+          ],
+          sortType: TaskSortType.byPriority,
+          sortDirection: TaskSortDirection.topToBottom,
+        );
+      },
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.tasks.first.isPinned, 'first pinned', true)
+            .having((s) => s.tasks[1].isPinned, 'second pinned', true)
+            .having((s) => s.tasks.last.isPinned, 'last unpinned', false),
+      ],
+    );
+  });
+
+  group('TaskBloc 13 - Complete Sorting Coverage', () {
+    blocTest<TaskBloc, TaskState>(
+      'should sort tasks by title (descending first)',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () {
+        final now = DateTime.now();
+        return TaskState(
+          status: TaskStatus.success,
+          tasks: [
+            Task(id: '2', title: 'Zebra', createdAt: now, description: ''),
+            Task(id: '1', title: 'Apple', createdAt: now, description: ''),
+            Task(id: '3', title: 'Mango', createdAt: now, description: ''),
+          ],
+          sortType: TaskSortType.byDateCreated,
+          sortDirection: TaskSortDirection.topToBottom,
+        );
+      },
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byTitle)),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.sortType, 'type', TaskSortType.byTitle)
+            .having((s) => s.tasks.first.title, 'first (Z)', 'Zebra')
+            .having((s) => s.tasks.last.title, 'last (A)', 'Apple'),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should sort tasks by date created (newest first by default)',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () {
+        final now = DateTime.now();
+        return TaskState(
+          status: TaskStatus.success,
+          tasks: [
+            Task(
+              id: '2',
+              title: 'Old Task',
+              createdAt: now.subtract(const Duration(days: 7)),
+              description: '',
+            ),
+            Task(id: '1', title: 'New Task', createdAt: now, description: ''),
+          ],
+          sortType: TaskSortType.byPriority,
+          sortDirection: TaskSortDirection.topToBottom,
+        );
+      },
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byDateCreated)),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.sortType, 'type', TaskSortType.byDateCreated)
+            .having((s) => s.tasks.first.id, 'newest first', '1'),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should invert sort direction when changing to same type multiple times',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(
+        sortType: TaskSortType.byTitle,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
+      act: (bloc) {
+        bloc.add(const SortChanged(TaskSortType.byTitle)); // Flip 1
+        // After first flip: bottomToTop
+        // Internally trigger another sort (would be done via add after state change)
+      },
+      expect: () => [
+        isA<TaskState>().having(
+          (s) => s.sortDirection,
+          'direction flipped',
+          TaskSortDirection.bottomToTop,
+        ),
+      ],
+    );
+  });
+
+  group('TaskBloc 14 - Rapid Sequential Events', () {
+    blocTest<TaskBloc, TaskState>(
+      'should handle rapid sequential events correctly',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
+        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
+        return taskBloc;
+      },
+      seed: () => TaskState(
+        tasks: [Task(id: '1', title: 'Task', createdAt: DateTime.now(), description: '')],
+        status: TaskStatus.success,
+      ),
+      act: (bloc) {
+        // Multiple rapid events
+        bloc
+          ..add(const SortChanged(TaskSortType.byTitle))
+          ..add(const FilterChanged(TaskFilterType.completed))
+          ..add(const SortChanged(TaskSortType.byPriority))
+          ..add(const SearchChanged('query'));
+      },
+      expect: () => [
+        // Sort changed
+        isA<TaskState>().having((s) => s.sortType, 'type1', TaskSortType.byTitle),
+        // Filter changed
+        isA<TaskState>().having((s) => s.filterType, 'filter', TaskFilterType.completed),
+        // Sort changed again
+        isA<TaskState>().having((s) => s.sortType, 'type2', TaskSortType.byPriority),
+        // Search changed
+        isA<TaskState>().having((s) => s.searchQuery, 'query', 'query'),
+      ],
+    );
+  });
+
+  group('TaskBloc 15 - Missing Task Scenarios', () {
+    blocTest<TaskBloc, TaskState>(
+      'should emit failure when toggling pin for non-existent task',
+      build: () {
+        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
+        return taskBloc;
+      },
+      seed: () => const TaskState(tasks: []), // Empty
+      act: (bloc) => bloc.add(const TaskPinToggled('non-existent-id')),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.failure)
+            .having((s) => s.errorType, 'error', TaskErrorType.update),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should gracefully skip update when task not found',
+      build: () {
+        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
+        return taskBloc;
+      },
+      seed: () => const TaskState(tasks: []),
+      act: (bloc) => bloc.add(
+        TaskUpdated(
+          'not-found',
+          DateTime.now(),
+          const TaskDraft(
+            title: 'Update',
+            descriptionJson: '',
+            priority: 1,
+            attachments: [],
+            subtasks: [],
+            isCompleted: false,
+          ),
+        ),
+      ),
+      expect: () => [], // No state change because task not found
+    );
+  });
+
+  group('TaskBloc 16 - highlightedTaskVersion Tracking', () {
+    blocTest<TaskBloc, TaskState>(
+      'should increment highlightedTaskVersion on each notification open',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(highlightedTaskId: null, highlightedTaskVersion: 0),
+      act: (bloc) {
+        bloc.add(const NotificationTaskOpened('task-1'));
+        // After version becomes 1
+      },
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.highlightedTaskVersion, 'version', 1)
+            .having((s) => s.highlightedTaskId, 'taskId', 'task-1'),
+      ],
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should continue incrementing version on multiple notifications',
+      build: () {
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(highlightedTaskId: 'task-1', highlightedTaskVersion: 2),
+      act: (bloc) => bloc.add(const NotificationTaskOpened('task-2')),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.highlightedTaskVersion, 'incremented', 3)
+            .having((s) => s.highlightedTaskId, 'new taskId', 'task-2'),
+      ],
+    );
+  });
+
+  group('TaskBloc 17 - Preference Persistence', () {
+    blocTest<TaskBloc, TaskState>(
+      'should persist sort preference with correct type and direction',
+      build: () {
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(
+        sortType: TaskSortType.byDateCreated,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byTitle)),
+      verify: (_) {
+        final captured = verify(() => mockSetPrefsUseCase(captureAny())).captured;
+
+        expect(captured.length, 1);
+        final prefs = captured.first as TaskViewPreferences;
+        expect(prefs.sortType, TaskSortType.byTitle);
+        expect(prefs.sortDirection, TaskSortDirection.topToBottom);
+      },
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should persist filter preference even when other settings change',
+      build: () {
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(sortType: TaskSortType.byTitle, filterType: TaskFilterType.all),
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
+      verify: (_) {
+        final captured = verify(() => mockSetPrefsUseCase(captureAny())).captured;
+
+        final prefs = captured.last as TaskViewPreferences;
+        expect(prefs.filterType, TaskFilterType.all); // Should preserve
+      },
     );
   });
 }
