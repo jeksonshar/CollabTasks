@@ -3,7 +3,7 @@ import 'package:collab_tasks/domain/models/task_subtask.dart';
 
 class TaskDraft {
   final String title;
-  final String textJson;
+  final String descriptionJson;
   final int priority;
   final List<TaskAttachment> attachments;
   final List<TaskSubtask> subtasks;
@@ -12,7 +12,7 @@ class TaskDraft {
 
   const TaskDraft({
     required this.title,
-    required this.textJson,
+    required this.descriptionJson,
     required this.priority,
     required this.attachments,
     required this.subtasks,
@@ -22,7 +22,7 @@ class TaskDraft {
 
   TaskDraft copyWith({
     String? title,
-    String? textJson,
+    String? descriptionJson,
     int? priority,
     List<TaskAttachment>? attachments,
     List<TaskSubtask>? subtasks,
@@ -31,7 +31,7 @@ class TaskDraft {
   }) {
     return TaskDraft(
       title: title ?? this.title,
-      textJson: textJson ?? this.textJson,
+      descriptionJson: descriptionJson ?? this.descriptionJson,
       priority: priority ?? this.priority,
       attachments: attachments ?? this.attachments,
       subtasks: subtasks ?? this.subtasks,

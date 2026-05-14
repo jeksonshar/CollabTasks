@@ -172,7 +172,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
       builder: (context) => TaskDialog(
         // flutter_quill dialog
         initialTitle: taskToEdit?.title,
-        initialDeltaJson: taskToEdit?.text,
+        initialDeltaJson: taskToEdit?.description,
         initialPriority: taskToEdit?.priority ?? 0,
         initialAttachments: taskToEdit?.attachments ?? const [],
         initialSubtasks: taskToEdit?.subtasks ?? const [],

@@ -124,7 +124,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       id: const Uuid().v4(),
       createdAt: DateTime.now(),
       title: event.draft.title,
-      text: event.draft.textJson,
+      description: event.draft.descriptionJson,
       priority: event.draft.priority,
       attachments: event.draft.attachments,
       subtasks: event.draft.subtasks,
@@ -144,7 +144,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       emit(state.copyWith(lastAction: TaskAction.add, lastActionTaskTitle: task.title));
     } catch (e, s) {
       debugPrint('TaskBloc._onAddTask ERROR: $e\n$s');
-      emit(state.copyWith(errorType: TaskErrorType.add));
+      emit(state.copyWith(errorType: TaskErrorType.add, status: TaskStatus.failure));
     }
   }
 
@@ -163,7 +163,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         id: event.id,
         createdAt: event.createdAt,
         title: event.draft.title,
-        text: event.draft.textJson,
+        description: event.draft.descriptionJson,
         priority: event.draft.priority,
         attachments: event.draft.attachments,
         subtasks: event.draft.subtasks,
@@ -186,7 +186,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       emit(state.copyWith(lastAction: TaskAction.update, lastActionTaskTitle: updatedTask.title));
     } catch (e, s) {
       debugPrint('TaskViewModel.updateTask ERROR: $e\n$s');
-      emit(state.copyWith(errorType: TaskErrorType.update));
+      emit(state.copyWith(errorType: TaskErrorType.update, status: TaskStatus.failure));
     }
   }
 
@@ -206,7 +206,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       emit(state.copyWith(lastAction: TaskAction.delete, lastActionTaskTitle: taskTitle));
     } catch (e, s) {
       debugPrint('TaskViewModel.deleteTask ERROR: $e\n$s');
-      emit(state.copyWith(errorType: TaskErrorType.delete));
+      emit(state.copyWith(errorType: TaskErrorType.delete, status: TaskStatus.failure));
     }
   }
 
@@ -219,7 +219,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       await updateTaskUseCase(updatedTask);
     } catch (e, s) {
       debugPrint('TaskBloc.toggleTaskPin ERROR: $e\n$s');
-      emit(state.copyWith(errorType: TaskErrorType.update));
+      emit(state.copyWith(errorType: TaskErrorType.update, status: TaskStatus.failure));
     }
   }
 

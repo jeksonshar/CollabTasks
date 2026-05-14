@@ -80,6 +80,8 @@ dev_dependencies:
 
   flutter_launcher_icons: ^0.14.4
 
+  mocktail: ^1.0.5
+
   flutter_test:
     sdk: flutter
 

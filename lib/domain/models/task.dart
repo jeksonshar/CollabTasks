@@ -9,7 +9,7 @@ class Task extends Equatable {
   final String id;
   final DateTime createdAt;
   final String title;
-  final String text;
+  final String description;
   final int priority;
   final List<TaskAttachment> attachments;
   final List<TaskSubtask> subtasks;
@@ -21,7 +21,7 @@ class Task extends Equatable {
     required this.id,
     required this.createdAt,
     required this.title,
-    required this.text,
+    required this.description,
     this.priority = 0,
     this.attachments = const [],
     this.subtasks = const [],
@@ -34,7 +34,7 @@ class Task extends Equatable {
     String? id,
     DateTime? createdAt,
     String? title,
-    String? text,
+    String? description,
     int? priority,
     List<TaskAttachment>? attachments,
     List<TaskSubtask>? subtasks,
@@ -46,7 +46,7 @@ class Task extends Equatable {
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
       title: title ?? this.title,
-      text: text ?? this.text,
+      description: description ?? this.description,
       priority: priority ?? this.priority,
       attachments: attachments ?? this.attachments,
       subtasks: subtasks ?? this.subtasks,
@@ -60,7 +60,7 @@ class Task extends Equatable {
     'id': id,
     'createdAt': createdAt,
     'title': title,
-    'text': text,
+    'description': description,
     'priority': priority,
     'attachments': attachments.map((e) => e.toJson()).toList(),
     'subtasks': subtasks.map((e) => e.toMap()).toList(),
@@ -77,7 +77,7 @@ class Task extends Equatable {
       id: map['id'] as String,
       createdAt: map['createdAt'] as DateTime,
       title: map['title'] as String,
-      text: map['text'] as String,
+      description: map['description'] as String,
       priority: map['priority'] as int,
       attachments: rawAttachments is List
           ? rawAttachments.whereType<Map<String, dynamic>>().map(TaskAttachment.fromJson).toList()
@@ -100,7 +100,7 @@ class Task extends Equatable {
     id,
     createdAt,
     title,
-    text,
+    description,
     priority,
     attachments,
     subtasks,

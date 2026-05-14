@@ -7,17 +7,17 @@ class TaskModel extends Task {
   const TaskModel({
     required super.id,
     required super.title,
-    required super.text,
+    required super.description,
     required super.createdAt,
   });
 
   @override
-  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'text': text};
+  Map<String, dynamic> toMap() => {'id': id, 'title': title, 'description': description};
 
   factory TaskModel.fromMap(Map<String, dynamic> map) => TaskModel(
     id: map['id'] as String,
     title: map['title'] as String,
-    text: map['text'] as String,
+    description: map['description'] as String,
     createdAt: map['createdAt'],
   );
 

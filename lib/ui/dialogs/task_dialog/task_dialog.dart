@@ -128,7 +128,7 @@ class _TaskDialogState extends State<TaskDialog> with L10nMixin {
     Navigator.of(context).pop(
       TaskDraft(
         title: _titleController.text.trim(),
-        textJson: jsonEncode(trimmedDelta.toJson()),
+        descriptionJson: jsonEncode(trimmedDelta.toJson()),
         priority: _priority,
         isCompleted: _isCompleted,
         attachments: List.unmodifiable(_attachments),

@@ -214,7 +214,7 @@ class _TaskListTileState extends State<TaskListTile> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: TaskRichPreview(deltaJson: widget.task.text),
+              child: TaskRichPreview(deltaJson: widget.task.description),
             ),
           ),
           if (widget.task.subtasks.isNotEmpty) ...[
