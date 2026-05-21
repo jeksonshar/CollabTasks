@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "266279169943",
+    "project_id": "collabtasks-fda3f",
+    "storage_bucket": "collabtasks-fda3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:266279169943:android:b1a0ac60d881d40f485ed2",
+        "android_client_info": {
+          "package_name": "com.example.collab_tasks"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "266279169943-p6ugd9bc7356tare58m2k5qhhbb1okvk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.collab_tasks",
+            "certificate_hash": "69c640b9c24c2f81c26c71189a4cc83c08e4e81c"
+          }
+        },
+        {
+          "client_id": "266279169943-1u4q5429kgjh4ohrs2jq2t12o1vanp8v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDctNefsmn8z41vz9rcM31iICFC_GbXT7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "266279169943-1u4q5429kgjh4ohrs2jq2t12o1vanp8v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "266279169943-det05u6phg7ijca97p9t2bkd9modffri.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.taskManager"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

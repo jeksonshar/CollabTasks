@@ -74,6 +74,11 @@ dependencies:
   timezone: ^0.10.1
   flutter_timezone: ^4.1.1
 
+#  firebase
+  firebase_core: ^4.9.0
+  firebase_auth: ^6.5.1
+  google_sign_in: ^7.2.0
+
 dev_dependencies:
   drift_dev: ^2.32.1
   #  riverpod_generator: ^4.0.3
