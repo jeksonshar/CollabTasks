@@ -128,5 +128,26 @@
       "file": {}
     }
   },
-  "attentionTitle": "Увага!"
+  "attentionTitle": "Увага!",
+  "authTitle": "Авторизація",
+  "authLogin": "Вхід",
+  "authRegister": "Реєстрація",
+  "authPassword": "Пароль",
+  "authEnterEmail": "Введіть email",
+  "authInvalidEmail": "Некоректний email",
+  "authEnterPassword": "Введіть пароль",
+  "authPasswordMinLength": "Мінімум 6 символів",
+  "authSignIn": "Увійти",
+  "authCreateAccount": "Створити акаунт",
+  "authContinueWithGoogle": "Продовжити з Google",
+  "authForgotPassword": "Забули пароль?",
+  "authResetHint": "Скидання пароля працює лише для акаунтів із входом Email/Password. Для Google-акаунтів використовуйте вхід через Google.",
+  "authResetPasswordSent": "Якщо акаунт із таким email існує, посилання для скидання вже надіслано.",
+  "authEnterValidEmailToReset": "Введіть коректний email для скидання пароля.",
+  "authLogOut": "Вийти",
+  "authProviderTitle": "Спосіб авторизації",
+  "authProviderEmail": "Email/Пароль",
+  "authProviderGoogle": "Google",
+  "authProviderUnknown": "Невідомо",
+  "authNameNotProvided": "Не вказано"
 }

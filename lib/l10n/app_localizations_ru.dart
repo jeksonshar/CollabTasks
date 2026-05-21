@@ -274,4 +274,70 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get attentionTitle => 'Внимание!';
+
+  @override
+  String get authTitle => 'Авторизация';
+
+  @override
+  String get authLogin => 'Вход';
+
+  @override
+  String get authRegister => 'Регистрация';
+
+  @override
+  String get authPassword => 'Пароль';
+
+  @override
+  String get authEnterEmail => 'Введите email';
+
+  @override
+  String get authInvalidEmail => 'Некорректный email';
+
+  @override
+  String get authEnterPassword => 'Введите пароль';
+
+  @override
+  String get authPasswordMinLength => 'Минимум 6 символов';
+
+  @override
+  String get authSignIn => 'Войти';
+
+  @override
+  String get authCreateAccount => 'Создать аккаунт';
+
+  @override
+  String get authContinueWithGoogle => 'Продолжить с Google';
+
+  @override
+  String get authForgotPassword => 'Забыли пароль?';
+
+  @override
+  String get authResetHint =>
+      'Сброс пароля работает только для аккаунтов с входом Email/Password. Для Google-аккаунтов используйте вход через Google.';
+
+  @override
+  String get authResetPasswordSent =>
+      'Если аккаунт с таким email существует, ссылка для сброса уже отправлена.';
+
+  @override
+  String get authEnterValidEmailToReset =>
+      'Введите корректный email для сброса пароля.';
+
+  @override
+  String get authLogOut => 'Выйти';
+
+  @override
+  String get authProviderTitle => 'Способ авторизации';
+
+  @override
+  String get authProviderEmail => 'Email/Пароль';
+
+  @override
+  String get authProviderGoogle => 'Google';
+
+  @override
+  String get authProviderUnknown => 'Неизвестно';
+
+  @override
+  String get authNameNotProvided => 'Не указано';
 }

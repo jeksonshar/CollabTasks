@@ -585,6 +585,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Attention!'**
   String get attentionTitle;
+
+  /// No description provided for @authTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication'**
+  String get authTitle;
+
+  /// No description provided for @authLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get authLogin;
+
+  /// No description provided for @authRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get authRegister;
+
+  /// No description provided for @authPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPassword;
+
+  /// No description provided for @authEnterEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter email'**
+  String get authEnterEmail;
+
+  /// No description provided for @authInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email'**
+  String get authInvalidEmail;
+
+  /// No description provided for @authEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get authEnterPassword;
+
+  /// No description provided for @authPasswordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 6 characters'**
+  String get authPasswordMinLength;
+
+  /// No description provided for @authSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignIn;
+
+  /// No description provided for @authCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authCreateAccount;
+
+  /// No description provided for @authContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get authContinueWithGoogle;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get authForgotPassword;
+
+  /// No description provided for @authResetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset works only for accounts with Email/Password sign-in. Google accounts should use Google sign-in.'**
+  String get authResetHint;
+
+  /// No description provided for @authResetPasswordSent.
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for this email, a reset link has been sent.'**
+  String get authResetPasswordSent;
+
+  /// No description provided for @authEnterValidEmailToReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email to reset password.'**
+  String get authEnterValidEmailToReset;
+
+  /// No description provided for @authLogOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get authLogOut;
+
+  /// No description provided for @authProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auth method'**
+  String get authProviderTitle;
+
+  /// No description provided for @authProviderEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email/Password'**
+  String get authProviderEmail;
+
+  /// No description provided for @authProviderGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google'**
+  String get authProviderGoogle;
+
+  /// No description provided for @authProviderUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get authProviderUnknown;
+
+  /// No description provided for @authNameNotProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'Not provided'**
+  String get authNameNotProvided;
 }
 
 class _AppLocalizationsDelegate

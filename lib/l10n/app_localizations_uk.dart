@@ -276,4 +276,70 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get attentionTitle => 'Увага!';
+
+  @override
+  String get authTitle => 'Авторизація';
+
+  @override
+  String get authLogin => 'Вхід';
+
+  @override
+  String get authRegister => 'Реєстрація';
+
+  @override
+  String get authPassword => 'Пароль';
+
+  @override
+  String get authEnterEmail => 'Введіть email';
+
+  @override
+  String get authInvalidEmail => 'Некоректний email';
+
+  @override
+  String get authEnterPassword => 'Введіть пароль';
+
+  @override
+  String get authPasswordMinLength => 'Мінімум 6 символів';
+
+  @override
+  String get authSignIn => 'Увійти';
+
+  @override
+  String get authCreateAccount => 'Створити акаунт';
+
+  @override
+  String get authContinueWithGoogle => 'Продовжити з Google';
+
+  @override
+  String get authForgotPassword => 'Забули пароль?';
+
+  @override
+  String get authResetHint =>
+      'Скидання пароля працює лише для акаунтів із входом Email/Password. Для Google-акаунтів використовуйте вхід через Google.';
+
+  @override
+  String get authResetPasswordSent =>
+      'Якщо акаунт із таким email існує, посилання для скидання вже надіслано.';
+
+  @override
+  String get authEnterValidEmailToReset =>
+      'Введіть коректний email для скидання пароля.';
+
+  @override
+  String get authLogOut => 'Вийти';
+
+  @override
+  String get authProviderTitle => 'Спосіб авторизації';
+
+  @override
+  String get authProviderEmail => 'Email/Пароль';
+
+  @override
+  String get authProviderGoogle => 'Google';
+
+  @override
+  String get authProviderUnknown => 'Невідомо';
+
+  @override
+  String get authNameNotProvided => 'Не вказано';
 }

@@ -13,11 +13,22 @@ import 'package:collab_tasks/domain/use_cases/set_saved_language_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/watch_tasks_use_case.dart';
+import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/ui/blocs/task_bloc/task_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
 import 'package:get_it/get_it.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final getIt = GetIt.instance;
@@ -38,8 +49,29 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => SetTaskViewPreferencesUseCase(getIt()))
+    ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
+    ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance)
+    ..registerLazySingleton<AuthRepository>(
+      () => FirebaseAuthRepositoryImpl(firebaseAuth: getIt(), googleSignIn: getIt()),
+    )
+    ..registerLazySingleton(() => RegisterWithEmailUseCase(getIt()))
+    ..registerLazySingleton(() => LoginWithEmailUseCase(getIt()))
+    ..registerLazySingleton(() => SignInWithGoogleUseCase(getIt()))
+    ..registerLazySingleton(() => ResetPasswordUseCase(getIt()))
+    ..registerLazySingleton(() => LogOutUseCase(getIt()))
+    ..registerLazySingleton(() => WatchAuthStateUseCase(getIt()))
     ..registerFactory(
       () => LocaleCubit(getSavedLanguageUseCase: getIt(), setSavedLanguageUseCase: getIt()),
+    )
+    ..registerFactory(
+      () => AuthBloc(
+        registerWithEmailUseCase: getIt(),
+        loginWithEmailUseCase: getIt(),
+        signInWithGoogleUseCase: getIt(),
+        resetPasswordUseCase: getIt(),
+        logOutUseCase: getIt(),
+        watchAuthStateUseCase: getIt(),
+      ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())
     ..registerFactoryParam<TaskBloc, String, String>(

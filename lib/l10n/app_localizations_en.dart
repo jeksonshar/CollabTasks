@@ -275,4 +275,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get attentionTitle => 'Attention!';
+
+  @override
+  String get authTitle => 'Authentication';
+
+  @override
+  String get authLogin => 'Login';
+
+  @override
+  String get authRegister => 'Register';
+
+  @override
+  String get authPassword => 'Password';
+
+  @override
+  String get authEnterEmail => 'Enter email';
+
+  @override
+  String get authInvalidEmail => 'Invalid email';
+
+  @override
+  String get authEnterPassword => 'Enter password';
+
+  @override
+  String get authPasswordMinLength => 'Minimum 6 characters';
+
+  @override
+  String get authSignIn => 'Sign in';
+
+  @override
+  String get authCreateAccount => 'Create account';
+
+  @override
+  String get authContinueWithGoogle => 'Continue with Google';
+
+  @override
+  String get authForgotPassword => 'Forgot password?';
+
+  @override
+  String get authResetHint =>
+      'Password reset works only for accounts with Email/Password sign-in. Google accounts should use Google sign-in.';
+
+  @override
+  String get authResetPasswordSent =>
+      'If an account exists for this email, a reset link has been sent.';
+
+  @override
+  String get authEnterValidEmailToReset =>
+      'Enter a valid email to reset password.';
+
+  @override
+  String get authLogOut => 'Log out';
+
+  @override
+  String get authProviderTitle => 'Auth method';
+
+  @override
+  String get authProviderEmail => 'Email/Password';
+
+  @override
+  String get authProviderGoogle => 'Google';
+
+  @override
+  String get authProviderUnknown => 'Unknown';
+
+  @override
+  String get authNameNotProvided => 'Not provided';
 }

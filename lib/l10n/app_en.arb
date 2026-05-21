@@ -128,5 +128,26 @@
       "file": {}
     }
   },
-  "attentionTitle": "Attention!"
+  "attentionTitle": "Attention!",
+  "authTitle": "Authentication",
+  "authLogin": "Login",
+  "authRegister": "Register",
+  "authPassword": "Password",
+  "authEnterEmail": "Enter email",
+  "authInvalidEmail": "Invalid email",
+  "authEnterPassword": "Enter password",
+  "authPasswordMinLength": "Minimum 6 characters",
+  "authSignIn": "Sign in",
+  "authCreateAccount": "Create account",
+  "authContinueWithGoogle": "Continue with Google",
+  "authForgotPassword": "Forgot password?",
+  "authResetHint": "Password reset works only for accounts with Email/Password sign-in. Google accounts should use Google sign-in.",
+  "authResetPasswordSent": "If an account exists for this email, a reset link has been sent.",
+  "authEnterValidEmailToReset": "Enter a valid email to reset password.",
+  "authLogOut": "Log out",
+  "authProviderTitle": "Auth method",
+  "authProviderEmail": "Email/Password",
+  "authProviderGoogle": "Google",
+  "authProviderUnknown": "Unknown",
+  "authNameNotProvided": "Not provided"
 }

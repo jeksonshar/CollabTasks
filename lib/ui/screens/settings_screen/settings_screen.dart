@@ -1,4 +1,6 @@
 import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
+import 'package:collab_tasks/ui/blocs/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/ui/screens/profile_screen/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +56,12 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => context.read<AuthBloc>().add(const AuthLogOutRequested()),
+            icon: const Icon(Icons.logout),
+            label: Text(localization.authLogOut),
           ),
         ],
       ),

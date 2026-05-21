@@ -128,5 +128,26 @@
       "file": {}
     }
   },
-  "attentionTitle": "Внимание!"
+  "attentionTitle": "Внимание!",
+  "authTitle": "Авторизация",
+  "authLogin": "Вход",
+  "authRegister": "Регистрация",
+  "authPassword": "Пароль",
+  "authEnterEmail": "Введите email",
+  "authInvalidEmail": "Некорректный email",
+  "authEnterPassword": "Введите пароль",
+  "authPasswordMinLength": "Минимум 6 символов",
+  "authSignIn": "Войти",
+  "authCreateAccount": "Создать аккаунт",
+  "authContinueWithGoogle": "Продолжить с Google",
+  "authForgotPassword": "Забыли пароль?",
+  "authResetHint": "Сброс пароля работает только для аккаунтов с входом Email/Password. Для Google-аккаунтов используйте вход через Google.",
+  "authResetPasswordSent": "Если аккаунт с таким email существует, ссылка для сброса уже отправлена.",
+  "authEnterValidEmailToReset": "Введите корректный email для сброса пароля.",
+  "authLogOut": "Выйти",
+  "authProviderTitle": "Способ авторизации",
+  "authProviderEmail": "Email/Пароль",
+  "authProviderGoogle": "Google",
+  "authProviderUnknown": "Неизвестно",
+  "authNameNotProvided": "Не указано"
 }

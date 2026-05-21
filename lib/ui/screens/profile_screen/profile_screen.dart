@@ -1,5 +1,8 @@
+import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -7,6 +10,17 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
+    final authState = context.watch<AuthBloc>().state;
+    final user = authState.user;
+
+    final displayName = (user?.displayName?.trim().isNotEmpty ?? false)
+        ? user!.displayName!.trim()
+        : localization.authNameNotProvided;
+    final email = (user?.email.trim().isNotEmpty ?? false)
+        ? user!.email.trim()
+        : localization.authNameNotProvided;
+    final authProviderLabel = _mapProviderLabel(localization, user);
+
     return Scaffold(
       appBar: AppBar(title: Text(localization.profile), centerTitle: false),
       body: Center(
@@ -32,11 +46,11 @@ class ProfileScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildProfileField(localization.nameTitle, 'John Doe'),
+                      _buildProfileField(localization.nameTitle, displayName),
                       const Divider(),
-                      _buildProfileField(localization.emailTitle, 'john@example.com'),
+                      _buildProfileField(localization.emailTitle, email),
                       const Divider(),
-                      _buildProfileField(localization.statusTitle, 'Active'),
+                      _buildProfileField(localization.authProviderTitle, authProviderLabel),
                     ],
                   ),
                 ),
@@ -73,5 +87,17 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _mapProviderLabel(AppLocalizations localization, AuthUser? user) {
+    switch (user?.provider) {
+      case AuthProviderType.google:
+        return localization.authProviderGoogle;
+      case AuthProviderType.email:
+        return localization.authProviderEmail;
+      case AuthProviderType.unknown:
+      case null:
+        return localization.authProviderUnknown;
+    }
   }
 }
