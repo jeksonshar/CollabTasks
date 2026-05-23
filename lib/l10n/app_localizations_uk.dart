@@ -342,4 +342,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get authNameNotProvided => 'Не вказано';
+
+  @override
+  String get orTitle => 'або';
 }

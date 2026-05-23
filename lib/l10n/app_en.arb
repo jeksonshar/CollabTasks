@@ -149,5 +149,6 @@
   "authProviderEmail": "Email/Password",
   "authProviderGoogle": "Google",
   "authProviderUnknown": "Unknown",
-  "authNameNotProvided": "Not provided"
+  "authNameNotProvided": "Not provided",
+  "orTitle": "or"
 }

@@ -149,5 +149,6 @@
   "authProviderEmail": "Email/Пароль",
   "authProviderGoogle": "Google",
   "authProviderUnknown": "Невідомо",
-  "authNameNotProvided": "Не вказано"
+  "authNameNotProvided": "Не вказано",
+  "orTitle": "або"
 }

@@ -711,6 +711,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not provided'**
   String get authNameNotProvided;
+
+  /// No description provided for @orTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get orTitle;
 }
 
 class _AppLocalizationsDelegate

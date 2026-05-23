@@ -5,6 +5,7 @@ import 'package:collab_tasks/ui/blocs/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/ui/blocs/auth_bloc/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/svg.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -122,31 +123,106 @@ class _AuthScreenState extends State<AuthScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 8),
+                    Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _onResetPassword,
+                            child: Text(
+                              localization.authForgotPassword,
+                              style: const TextStyle(color: Colors.indigo),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         final loading = state.status == AuthStatus.loading;
-                        return FilledButton.icon(
-                          onPressed: loading ? null : _onSubmit,
-                          icon: const Icon(Icons.lock_open),
-                          label: Text(
-                            _isLoginMode ? localization.authSignIn : localization.authCreateAccount,
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4A06FA), Color(0xFFB794FF), Color(0xFF4A06FA)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: FilledButton.icon(
+                            onPressed: loading ? null : _onSubmit,
+                            style: FilledButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.transparent,
+                              disabledBackgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            label: Text(
+                              _isLoginMode
+                                  ? localization.authSignIn
+                                  : localization.authCreateAccount,
+                            ),
                           ),
                         );
                       },
                     ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _onGoogleSignIn,
-                      icon: const Icon(Icons.g_mobiledata),
-                      label: Text(localization.authContinueWithGoogle),
+                    const SizedBox(height: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SvgPicture.asset(
+                              'assets/icon/auth_divider.svg',
+                              width: 32,
+                              height: 2,
+                            ),
+                          ),
+                          Text(localization.orTitle),
+                          Expanded(
+                            child: SvgPicture.asset(
+                              'assets/icon/auth_divider.svg',
+                              width: 32,
+                              height: 2,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _onResetPassword,
-                      child: Text(localization.authForgotPassword),
+                    const SizedBox(height: 32),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF4A06FA), Color(0xFFCBAEFF)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.all(1.5),
+                      child: OutlinedButton.icon(
+                        onPressed: _onGoogleSignIn,
+                        icon: SvgPicture.asset(
+                          'assets/icon/ic_google_logo.svg',
+                          width: 24,
+                          height: 24,
+                        ),
+                        label: Text(localization.authContinueWithGoogle),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.5)),
+                          foregroundColor: Colors.black87,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(

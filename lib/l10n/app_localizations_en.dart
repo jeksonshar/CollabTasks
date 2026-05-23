@@ -341,4 +341,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authNameNotProvided => 'Not provided';
+
+  @override
+  String get orTitle => 'or';
 }

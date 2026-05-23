@@ -340,4 +340,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get authNameNotProvided => 'Не указано';
+
+  @override
+  String get orTitle => 'или';
 }
