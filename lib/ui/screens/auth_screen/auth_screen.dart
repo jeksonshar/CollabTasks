@@ -124,19 +124,26 @@ class _AuthScreenState extends State<AuthScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-                    Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
+                    Visibility(
+                      visible: _isLoginMode,
+                      // Сохраняет размеры виджета, когда он скрыт
+                      maintainSize: true,
+                      // Необходимо для работы maintainSize
+                      maintainAnimation: true,
+                      // Сохраняет стейт виджета
+                      maintainState: true,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
                             onPressed: _onResetPassword,
                             child: Text(
                               localization.authForgotPassword,
                               style: const TextStyle(color: Colors.indigo),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     BlocBuilder<AuthBloc, AuthState>(
