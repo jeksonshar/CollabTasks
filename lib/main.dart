@@ -50,6 +50,8 @@ Future<void> _configureSelectedAuthBackend() async {
   }
 }
 
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -62,37 +64,59 @@ class MyApp extends StatelessWidget {
           create: (_) => getIt<AuthBloc>()..add(const AuthSubscriptionStarted()),
         ),
       ],
+      // Слушаем локаль выше MaterialApp, чтобы менять конфигурацию приложения
       child: BlocBuilder<LocaleCubit, Locale?>(
         builder: (context, locale) {
-          return BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              return MaterialApp(
-                title: 'CollabTasks',
-                locale: locale,
-                localizationsDelegates: const [
-                  AppLocalizations.delegate,
-                  FlutterQuillLocalizations.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: AppLocalizations.supportedLocales,
-                theme: ThemeData(
-                  useMaterial3: true,
-                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-                ),
-                home: switch (authState.status) {
-                  AuthStatus.initial || AuthStatus.loadingBeforeStart => const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  ),
-                  AuthStatus.authenticated => const MainScreen(),
-                  AuthStatus.unauthenticated ||
-                  AuthStatus.loadingFormSubmit ||
-                  AuthStatus.failure => const AuthScreen(),
-                },
-              );
-            },
+          return MaterialApp(
+            navigatorKey: globalNavigatorKey,
+            title: 'CollabTasks',
+            locale: locale,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              FlutterQuillLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: ThemeData(
+              useMaterial3: true,
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            ),
+            home: const AppAuthGate(),
           );
+        },
+      ),
+    );
+  }
+}
+
+class AppAuthGate extends StatelessWidget {
+  const AppAuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthBloc, AuthState>(
+      // Слушаем только тот момент, когда статус меняется на неавторизованный из авторизованого
+      listenWhen: (previous, current) =>
+          current.status == AuthStatus.unauthenticated &&
+          previous.status == AuthStatus.authenticated,
+      listener: (context, state) {
+        debugPrint('AppAuthGate in main.dart popUntil((route) => false) called');
+        // ВОТ ЗДЕСЬ мы безопасно чистим стэк. Но не попадаем сюда ))
+        globalNavigatorKey.currentState?.popUntil((route) => false);
+      },
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          return switch (authState.status) {
+            AuthStatus.initial || AuthStatus.loadingBeforeStart => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+            AuthStatus.authenticated => const MainScreen(),
+            AuthStatus.unauthenticated ||
+            AuthStatus.loadingFormSubmit ||
+            AuthStatus.failure => const AuthScreen(),
+          };
         },
       ),
     );

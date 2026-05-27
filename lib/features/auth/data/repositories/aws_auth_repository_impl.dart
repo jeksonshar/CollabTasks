@@ -230,12 +230,22 @@ class AwsAuthRepositoryImpl implements AuthRepository {
       final emailVerifiedRaw = _attributeValue(attributes, AuthUserAttributeKey.emailVerified);
       final emailVerified = emailVerifiedRaw?.toLowerCase() == 'true';
 
+      // Динамически определяем провайдера на основе данных от AWS Cognito
+      final userIdLower = currentUser.userId.toLowerCase();
+      final usernameLower = currentUser.username.toLowerCase();
+
+      domain.AuthProviderType provider = domain.AuthProviderType.email;
+
+      if (userIdLower.contains('google') || usernameLower.contains('google')) {
+        provider = domain.AuthProviderType.google;
+      }
+
       return domain.AuthUser(
         id: currentUser.userId,
         email: email ?? currentUser.username,
         isEmailVerified: emailVerified,
         displayName: _attributeValue(attributes, AuthUserAttributeKey.name),
-        provider: domain.AuthProviderType.email,
+        provider: provider, // Передаем динамически определенный провайдер
       );
     } on AuthException {
       return null;

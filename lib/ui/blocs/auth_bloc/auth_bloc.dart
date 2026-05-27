@@ -307,23 +307,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) async {
+    // Переводим в лоадинг, чтобы показать вертушку на кнопке/экране
     emit(state.copyWith(status: AuthStatus.loadingFormSubmit, clearFailure: true));
+
     final result = await _logOutUseCase();
 
     switch (result) {
       case Success<void, Failure>():
-        emit(
-          state.copyWith(
-            status: AuthStatus.unauthenticated,
-            user: null,
-            clearFailure: true,
-            requiresSignUpConfirmation: false,
-            clearPendingConfirmationEmail: true,
-            requiresResetPasswordConfirmation: false,
-            clearPendingResetPasswordEmail: true,
-            passwordResetConfirmed: false,
-          ),
-        );
+        // ВАЖНО: Мы БОЛЬШЕ НЕ ЭМИТИМ AuthStatus.unauthenticated здесь вручную!
+        // Стрим _onSubscriptionStarted сам получит null из Amplify,
+        // очистит юзера и выдаст РОВНО ОДИН стейт unauthenticated на всё приложение.
+        break;
+
       case FailureResult<void, Failure>(:final failure):
         emit(state.copyWith(status: AuthStatus.failure, failure: failure));
     }
@@ -339,19 +334,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     String? attemptedEmail,
   }) {
     switch (result) {
-      case Success<AuthUser, Failure>(:final data):
-        emit(
-          state.copyWith(
-            status: AuthStatus.authenticated,
-            user: data,
-            clearFailure: true,
-            passwordResetEmailSent: false,
-            signUpCodeResent: false,
-            signUpConfirmed: false,
-            requiresSignUpConfirmation: false,
-            clearPendingConfirmationEmail: true,
-          ),
-        );
+      case Success<AuthUser, Failure>():
+        // ВАЖНО: Мы БОЛЬШЕ НЕ ЭМИТИМ AuthStatus.authenticated здесь!
+        // Мы просто переводим статус в unauthenticated (или оставляем как есть),
+        // потому что стрим _watchAuthStateUseCase() сам поймает юзера и чисто переведет статус в authenticated.
+        // Это убирает гонку состояний.
+        break;
+
       case FailureResult<AuthUser, Failure>(:final failure):
         if (failure is EmailNotVerifiedFailure) {
           if (authBackend == AuthBackend.firebase) {

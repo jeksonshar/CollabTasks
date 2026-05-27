@@ -1,6 +1,8 @@
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/ui/blocs/auth_bloc/auth_event.dart';
+import 'package:collab_tasks/ui/blocs/auth_bloc/auth_state.dart';
 import 'package:collab_tasks/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/ui/screens/profile_screen/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +16,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
+    final authState = context.watch<AuthBloc>().state;
     final selectedCode =
         context.watch<LocaleCubit>().state?.languageCode ??
         Localizations.localeOf(context).languageCode;
@@ -59,12 +62,24 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: () => context.read<AuthBloc>().add(const AuthLogOutRequested()),
+            onPressed: () => _onLogoutPressed(context, authState),
             icon: const Icon(Icons.logout),
             label: Text(localization.authLogOut),
           ),
         ],
       ),
     );
+  }
+
+  void _onLogoutPressed(BuildContext context, AuthState authState) {
+    context.read<AuthBloc>().add(const AuthLogOutRequested());
+    // костыль
+    final localization = AppLocalizations.of(context)!;
+    final user = authState.user;
+    final authProviderLabel = mapProviderLabel(localization, user);
+
+    if (authBackend == AuthBackend.aws && authProviderLabel == localization.authProviderGoogle) {
+      Navigator.of(context).popUntil((route) => false);
+    }
   }
 }

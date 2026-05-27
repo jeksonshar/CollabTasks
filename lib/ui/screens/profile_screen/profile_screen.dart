@@ -1,4 +1,4 @@
-import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +19,7 @@ class ProfileScreen extends StatelessWidget {
     final email = (user?.email.trim().isNotEmpty ?? false)
         ? user!.email.trim()
         : localization.authNameNotProvided;
-    final authProviderLabel = _mapProviderLabel(localization, user);
+    final authProviderLabel = mapProviderLabel(localization, user);
 
     return Scaffold(
       appBar: AppBar(title: Text(localization.profile), centerTitle: false),
@@ -87,17 +87,5 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _mapProviderLabel(AppLocalizations localization, AuthUser? user) {
-    switch (user?.provider) {
-      case AuthProviderType.google:
-        return localization.authProviderGoogle;
-      case AuthProviderType.email:
-        return localization.authProviderEmail;
-      case AuthProviderType.unknown:
-      case null:
-        return localization.authProviderUnknown;
-    }
   }
 }
