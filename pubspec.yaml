@@ -40,8 +40,8 @@ dependencies:
   flutter_quill: ^11.5.0
 
   # data persist
-  drift: ^2.32.1
-  drift_flutter: ^0.3.0
+  drift: ^2.31.0
+  drift_flutter: 0.2.4
   path_provider: ^2.1.5
   shared_preferences: ^2.5.3
 
@@ -74,15 +74,19 @@ dependencies:
   timezone: ^0.10.1
   flutter_timezone: ^4.1.1
 
-#  firebase
+  # firebase
   firebase_core: ^4.9.0
   firebase_auth: ^6.5.1
   google_sign_in: ^7.2.0
 
+  # aws
+  amplify_flutter: ^2.7.0
+  amplify_auth_cognito: ^2.7.0
+
   flutter_svg: ^2.3.0
 
 dev_dependencies:
-  drift_dev: ^2.32.1
+  drift_dev: ^2.31.0
   #  riverpod_generator: ^4.0.3
   #  build_runner: ^2.13.1
   #  custom_lint: ^0.8.1

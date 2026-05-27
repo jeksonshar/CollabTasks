@@ -1,4 +1,10 @@
+import 'dart:async';
+
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:collab_tasks/amplify_configuration.dart';
 import 'package:collab_tasks/core/notifications/notifications_manager.dart';
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
@@ -17,11 +23,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _configureSelectedAuthBackend();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final sharedPreferences = await SharedPreferences.getInstance();
   setupLocator(sharedPreferences);
   await getIt<NotificationsManager>().initialize();
   runApp(const MyApp());
+}
+
+Future<void> _configureSelectedAuthBackend() async {
+  if (authBackend != AuthBackend.aws) {
+    return;
+  }
+
+  try {
+    final authPlugin = AmplifyAuthCognito();
+    await Amplify.addPlugin(authPlugin);
+    await Amplify.configure(amplifyConfig).timeout(const Duration(seconds: 10));
+  } on AmplifyAlreadyConfiguredException {
+    safePrint('Amplify was already configured.');
+  } on TimeoutException {
+    safePrint('Amplify configure timed out. Continue app startup without blocking UI.');
+  } catch (error, stackTrace) {
+    safePrint('Amplify configure failed: $error');
+    safePrint('$stackTrace');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -55,9 +81,15 @@ class MyApp extends StatelessWidget {
                   useMaterial3: true,
                   colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
                 ),
-                home: authState.status == AuthStatus.authenticated
-                    ? const MainScreen()
-                    : const AuthScreen(),
+                home: switch (authState.status) {
+                  AuthStatus.initial || AuthStatus.loadingBeforeStart => const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  ),
+                  AuthStatus.authenticated => const MainScreen(),
+                  AuthStatus.unauthenticated ||
+                  AuthStatus.loadingFormSubmit ||
+                  AuthStatus.failure => const AuthScreen(),
+                },
               );
             },
           );

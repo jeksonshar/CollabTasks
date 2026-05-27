@@ -1,0 +1,304 @@
+import 'dart:async';
+
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart' as domain;
+import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/result/result.dart';
+
+class AwsAuthRepositoryImpl implements AuthRepository {
+  AwsAuthRepositoryImpl({this.requireEmailVerifiedForEmailLogin = false});
+
+  final bool requireEmailVerifiedForEmailLogin;
+
+  @override
+  Stream<domain.AuthUser?> watchAuthState() {
+    return Stream<domain.AuthUser?>.multi((multi) {
+      final subscription = Amplify.Hub.listen(HubChannel.Auth, (_) async {
+        multi.add(await _getCurrentUserOrNull());
+      });
+
+      multi
+        ..addStream(Stream.fromFuture(_getCurrentUserOrNull()))
+        ..onCancel = () async {
+          await subscription.cancel();
+        };
+    });
+  }
+
+  @override
+  Future<Result<domain.AuthUser, Failure>> registerWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final signUpResult = await Amplify.Auth.signUp(
+        username: email,
+        password: password,
+        options: SignUpOptions(userAttributes: {AuthUserAttributeKey.email: email}),
+      );
+
+      if (!signUpResult.isSignUpComplete) {
+        return const FailureResult(
+          EmailNotVerifiedFailure(
+            'Account is created. Confirm email with verification code before sign-in.',
+          ),
+        );
+      }
+
+      final signInResult = await Amplify.Auth.signIn(username: email, password: password);
+
+      if (!signInResult.isSignedIn) {
+        return FailureResult(_mapSignInNextStepToFailure(signInResult.nextStep));
+      }
+
+      final user = await _getCurrentUserOrNull();
+      if (user == null) {
+        return const FailureResult(UnknownAuthFailure());
+      }
+
+      return Success(user);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<domain.AuthUser, Failure>> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final result = await Amplify.Auth.signIn(username: email, password: password);
+
+      if (!result.isSignedIn) {
+        return FailureResult(_mapSignInNextStepToFailure(result.nextStep));
+      }
+
+      final user = await _getCurrentUserOrNull();
+      if (user == null) {
+        return const FailureResult(UnknownAuthFailure());
+      }
+
+      if (requireEmailVerifiedForEmailLogin && !user.isEmailVerified) {
+        await Amplify.Auth.signOut();
+        return const FailureResult(EmailNotVerifiedFailure());
+      }
+
+      return Success(user);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<domain.AuthUser, Failure>> signInWithGoogle() async {
+    try {
+      // Вызываем авторизацию через провайдер Google.
+      // Amplify сам откроет Hosted UI браузер.
+      final result = await Amplify.Auth.signInWithWebUI(provider: AuthProvider.google);
+
+      // Проверяем, завершился ли вход успехом
+      if (!result.isSignedIn) {
+        return FailureResult(
+          UnknownAuthFailure(
+            result.nextStep.additionalInfo['message'] ??
+                'Google Sign-In via AWS WebUI did not complete.',
+          ),
+        );
+      }
+
+      // Забираем данные текущего юзера (сессия уже активна)
+      final user = await _getCurrentUserOrNull();
+      if (user == null) {
+        return const FailureResult(UnknownAuthFailure());
+      }
+
+      return Success(user);
+    } on AuthException catch (exception) {
+      // Проверяем, если пользователь просто закрыл браузер (отменил вход)
+      final exceptionName = exception.runtimeType.toString();
+      if (exceptionName == 'UserCancelledException' ||
+          exception.message.contains('cancelled') ||
+          exception.message.contains('canceled')) {
+        return const FailureResult(CanceledByUserFailure());
+      }
+
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> resetPassword({required String email}) async {
+    try {
+      final result = await Amplify.Auth.resetPassword(username: email);
+      final step = result.nextStep.updateStep;
+
+      if (step == AuthResetPasswordStep.confirmResetPasswordWithCode) {
+        return const Success(null);
+      }
+
+      if (step == AuthResetPasswordStep.done) {
+        return const FailureResult(
+          OperationNotAllowedFailure('Reset password flow is not available for this account.'),
+        );
+      }
+
+      return const Success(null);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> confirmResetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await Amplify.Auth.confirmResetPassword(
+        username: email,
+        newPassword: newPassword,
+        confirmationCode: code,
+      );
+      return const Success(null);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> confirmSignUp({required String email, required String code}) async {
+    try {
+      final result = await Amplify.Auth.confirmSignUp(username: email, confirmationCode: code);
+      if (!result.isSignUpComplete) {
+        return const FailureResult(UnknownAuthFailure('Confirmation is not complete.'));
+      }
+      return const Success(null);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> resendSignUpCode({required String email}) async {
+    try {
+      await Amplify.Auth.resendSignUpCode(username: email);
+      return const Success(null);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> logOut() async {
+    try {
+      await Amplify.Auth.signOut();
+      return const Success(null);
+    } on AuthException catch (exception) {
+      return FailureResult(_mapAuthException(exception));
+    } catch (_) {
+      return const FailureResult(UnknownAuthFailure());
+    }
+  }
+
+  Future<domain.AuthUser?> _getCurrentUserOrNull() async {
+    try {
+      final session = await Amplify.Auth.fetchAuthSession();
+      if (!session.isSignedIn) {
+        return null;
+      }
+
+      final currentUser = await Amplify.Auth.getCurrentUser();
+      final attributes = await Amplify.Auth.fetchUserAttributes();
+      final email = _attributeValue(attributes, AuthUserAttributeKey.email);
+      final emailVerifiedRaw = _attributeValue(attributes, AuthUserAttributeKey.emailVerified);
+      final emailVerified = emailVerifiedRaw?.toLowerCase() == 'true';
+
+      return domain.AuthUser(
+        id: currentUser.userId,
+        email: email ?? currentUser.username,
+        isEmailVerified: emailVerified,
+        displayName: _attributeValue(attributes, AuthUserAttributeKey.name),
+        provider: domain.AuthProviderType.email,
+      );
+    } on AuthException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _attributeValue(List<AuthUserAttribute> attributes, AuthUserAttributeKey key) {
+    for (final attribute in attributes) {
+      if (attribute.userAttributeKey == key) {
+        return attribute.value;
+      }
+    }
+    return null;
+  }
+
+  Failure _mapAuthException(AuthException exception) {
+    switch (exception.runtimeType.toString()) {
+      case 'UsernameExistsException':
+        return const EmailAlreadyInUseFailure();
+      case 'InvalidPasswordException':
+        return const WeakPasswordFailure();
+      case 'UserNotFoundException':
+        return const UserNotFoundFailure();
+      case 'NotAuthorizedServiceException':
+      case 'NotAuthorizedException':
+        return const InvalidCredentialFailure();
+      case 'UserNotConfirmedException':
+        return const EmailNotVerifiedFailure(
+          'Email is not verified. Confirm sign-up first, then reset password.',
+        );
+      case 'InvalidParameterException':
+      case 'AliasExistsException':
+        return const InvalidEmailFailure();
+      case 'CodeExpiredException':
+      case 'ExpiredCodeException':
+        return const ActionCodeExpiredFailure();
+      case 'LimitExceededException':
+      case 'TooManyRequestsException':
+        return const TooManyRequestsFailure();
+      case 'NetworkException':
+        return const NetworkFailure();
+      case 'UserCancelledException':
+        return const CanceledByUserFailure();
+      default:
+        return UnknownAuthFailure(exception.message);
+    }
+  }
+
+  Failure _mapSignInNextStepToFailure(AuthNextSignInStep nextStep) {
+    final step = nextStep.signInStep;
+
+    if (step == AuthSignInStep.confirmSignUp) {
+      return const EmailNotVerifiedFailure('Confirm email with verification code before sign-in.');
+    }
+
+    if (step == AuthSignInStep.resetPassword) {
+      return const NoPasswordProviderFailure('Password reset is required before sign-in.');
+    }
+
+    return UnknownAuthFailure(
+      nextStep.additionalInfo['message'] ?? 'Sign-in requires additional steps.',
+    );
+  }
+}

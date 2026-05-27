@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/ui/blocs/auth_bloc/auth_bloc.dart';
@@ -17,6 +18,9 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmationCodeController = TextEditingController();
+  final _resetCodeController = TextEditingController();
+  final _newPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoginMode = true;
   bool _isPasswordObscured = true;
@@ -25,6 +29,9 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmationCodeController.dispose();
+    _resetCodeController.dispose();
+    _newPasswordController.dispose();
     super.dispose();
   }
 
@@ -35,8 +42,17 @@ class _AuthScreenState extends State<AuthScreen> {
     return BlocListener<AuthBloc, AuthState>(
       listenWhen: (previous, current) =>
           previous.failure != current.failure ||
-          previous.passwordResetEmailSent != current.passwordResetEmailSent,
+          previous.passwordResetEmailSent != current.passwordResetEmailSent ||
+          previous.passwordResetConfirmed != current.passwordResetConfirmed ||
+          previous.signUpCodeResent != current.signUpCodeResent ||
+          previous.signUpConfirmed != current.signUpConfirmed,
       listener: (context, state) {
+        if (state.requiresSignUpConfirmation && _isLoginMode) {
+          setState(() {
+            _isLoginMode = false;
+          });
+        }
+
         if (state.failure != null) {
           ScaffoldMessenger.of(
             context,
@@ -48,6 +64,27 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(localization.authResetPasswordSent)));
+        }
+
+        if (state.passwordResetConfirmed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password updated. Sign in with new password.')),
+          );
+        }
+
+        if (state.signUpCodeResent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Verification code sent again. Check your email.')),
+          );
+        }
+
+        if (state.signUpConfirmed) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Account confirmed. You can sign in now.')));
+          setState(() {
+            _isLoginMode = true;
+          });
         }
       },
       child: Scaffold(
@@ -146,116 +183,226 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    if (authBackend == AuthBackend.aws)
+                      BlocBuilder<AuthBloc, AuthState>(
+                        buildWhen: (previous, current) =>
+                            previous.requiresSignUpConfirmation !=
+                                current.requiresSignUpConfirmation ||
+                            previous.pendingConfirmationEmail != current.pendingConfirmationEmail,
+                        builder: (context, state) {
+                          return _buildSignUpConfirmationFields(state);
+                        },
+                      ),
+                    if (authBackend == AuthBackend.aws)
+                      BlocBuilder<AuthBloc, AuthState>(
+                        buildWhen: (previous, current) =>
+                            previous.requiresResetPasswordConfirmation !=
+                                current.requiresResetPasswordConfirmation ||
+                            previous.pendingResetPasswordEmail != current.pendingResetPasswordEmail,
+                        builder: (context, state) {
+                          return _buildResetPasswordConfirmationFields(state);
+                        },
+                      ),
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
-                        final loading = state.status == AuthStatus.loading;
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF4A06FA), Color(0xFFB794FF), Color(0xFF4A06FA)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: FilledButton.icon(
-                            onPressed: loading ? null : _onSubmit,
-                            style: FilledButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: Colors.transparent,
-                              disabledBackgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                            ),
-                            label: Text(
-                              _isLoginMode
-                                  ? localization.authSignIn
-                                  : localization.authCreateAccount,
-                            ),
-                          ),
-                        );
+                        final loading = state.status == AuthStatus.loadingFormSubmit;
+                        return _buildSubmitButton(loading, localization);
                       },
                     ),
                     const SizedBox(height: 32),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: SvgPicture.asset(
-                              'assets/icon/auth_divider.svg',
-                              width: 32,
-                              height: 2,
-                            ),
-                          ),
-                          Text(localization.orTitle),
-                          Expanded(
-                            child: SvgPicture.asset(
-                              'assets/icon/auth_divider.svg',
-                              width: 32,
-                              height: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildAuthDivider(context),
                     const SizedBox(height: 32),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF4A06FA), Color(0xFFCBAEFF)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      padding: const EdgeInsets.all(1.5),
-                      child: OutlinedButton.icon(
-                        onPressed: _onGoogleSignIn,
-                        icon: SvgPicture.asset(
-                          'assets/icon/ic_google_logo.svg',
-                          width: 24,
-                          height: 24,
-                        ),
-                        label: Text(localization.authContinueWithGoogle),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.5)),
-                          foregroundColor: Colors.black87,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ),
+                    _buildGoogleSignInButton(context),
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              localization.authResetHint,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildResetHint(context),
                   ],
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSignUpConfirmationFields(AuthState state) {
+    final visible = state.requiresSignUpConfirmation;
+    final pendingEmail = state.pendingConfirmationEmail ?? _emailController.text.trim();
+
+    return Visibility(
+      visible: visible,
+      maintainState: true,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _confirmationCodeController,
+            decoration: InputDecoration(
+              labelText: 'Verification code for $pendingEmail',
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _onConfirmSignUp,
+                  child: const Text('Confirm Sign Up'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _onResendSignUpCode,
+                  child: const Text('Resend Code'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResetPasswordConfirmationFields(AuthState state) {
+    final visible = state.requiresResetPasswordConfirmation;
+    final pendingEmail = state.pendingResetPasswordEmail ?? _emailController.text.trim();
+
+    return Visibility(
+      visible: visible,
+      maintainState: true,
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _resetCodeController,
+            decoration: InputDecoration(
+              labelText: 'Reset code for $pendingEmail',
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _newPasswordController,
+            decoration: const InputDecoration(
+              labelText: 'New password',
+              border: OutlineInputBorder(),
+            ),
+            obscureText: true,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _onConfirmResetPassword,
+              child: const Text('Confirm Reset Password'),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(bool isLoading, AppLocalizations localization) {
+    if (isLoading) {
+      return const Center(
+        child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A06FA), Color(0xFFB794FF), Color(0xFF4A06FA)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: FilledButton.icon(
+        onPressed: _onSubmit,
+        style: FilledButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        ),
+        label: Text(_isLoginMode ? localization.authSignIn : localization.authCreateAccount),
+      ),
+    );
+  }
+
+  Widget _buildAuthDivider(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          Expanded(child: SvgPicture.asset('assets/icon/auth_divider.svg', width: 32, height: 2)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            // Небольшой отступ вокруг текста "или", чтобы черточки не прилипали
+            child: Text(localization.orTitle),
+          ),
+          Expanded(child: SvgPicture.asset('assets/icon/auth_divider.svg', width: 32, height: 2)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleSignInButton(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A06FA), Color(0xFFCBAEFF)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.all(1.5),
+      child: OutlinedButton.icon(
+        onPressed: _onGoogleSignIn,
+        icon: SvgPicture.asset('assets/icon/ic_google_logo.svg', width: 24, height: 24),
+        label: Text(localization.authContinueWithGoogle),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              22.5,
+            ), // 24 - 1.5 толщины контейнера, все верно посчитано
+          ),
+          foregroundColor: Colors.black87,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResetHint(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(localization.authResetHint, style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
       ),
     );
   }
@@ -290,6 +437,71 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     context.read<AuthBloc>().add(AuthResetPasswordRequested(email));
+  }
+
+  void _onConfirmSignUp() {
+    final state = context.read<AuthBloc>().state;
+    final email = state.pendingConfirmationEmail ?? _emailController.text.trim();
+    final code = _confirmationCodeController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      return;
+    }
+
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter verification code.')));
+      return;
+    }
+
+    context.read<AuthBloc>().add(AuthConfirmSignUpRequested(email: email, code: code));
+  }
+
+  void _onResendSignUpCode() {
+    final state = context.read<AuthBloc>().state;
+    final email = state.pendingConfirmationEmail ?? _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      return;
+    }
+
+    context.read<AuthBloc>().add(AuthResendSignUpCodeRequested(email));
+  }
+
+  void _onConfirmResetPassword() {
+    final state = context.read<AuthBloc>().state;
+    final email = state.pendingResetPasswordEmail ?? _emailController.text.trim();
+    final code = _resetCodeController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      return;
+    }
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter reset code.')));
+      return;
+    }
+    if (newPassword.length < 6) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('New password is too short.')));
+      return;
+    }
+
+    context.read<AuthBloc>().add(
+      AuthConfirmResetPasswordRequested(email: email, code: code, newPassword: newPassword),
+    );
   }
 
   String _failureMessage(Failure failure) => failure.message;

@@ -1,4 +1,5 @@
 import 'package:collab_tasks/core/notifications/notifications_manager.dart';
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/data/datastore/app_settings_datastore.dart';
 import 'package:collab_tasks/data/local/db/app_database.dart';
 import 'package:collab_tasks/data/repositories/app_settings_repository_impl.dart';
@@ -13,11 +14,16 @@ import 'package:collab_tasks/domain/use_cases/set_saved_language_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/domain/use_cases/watch_tasks_use_case.dart';
+// use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in
+import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/resend_sign_up_code_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
@@ -34,6 +40,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 final getIt = GetIt.instance;
 
 void setupLocator(SharedPreferences sharedPreferences) {
+  // Hot restart can re-run setup with a stale container.
+  if (getIt.isRegistered<SharedPreferences>()) {
+    getIt.reset();
+  }
+
   getIt
     ..registerLazySingleton<SharedPreferences>(() => sharedPreferences)
     ..registerLazySingleton<NotificationsManager>(() => NotificationsManager())
@@ -49,15 +60,27 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => SetTaskViewPreferencesUseCase(getIt()))
+    ..registerLazySingleton<AuthRepository>(() {
+      switch (authBackend) {
+        case AuthBackend.firebase:
+          return FirebaseAuthRepositoryImpl(
+            firebaseAuth: getIt<FirebaseAuth>(),
+            googleSignIn: getIt<GoogleSignIn>(),
+            requireEmailVerifiedForEmailLogin: true,
+          );
+        case AuthBackend.aws:
+          return AwsAuthRepositoryImpl();
+      }
+    })
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance)
-    ..registerLazySingleton<AuthRepository>(
-      () => FirebaseAuthRepositoryImpl(firebaseAuth: getIt(), googleSignIn: getIt()),
-    )
     ..registerLazySingleton(() => RegisterWithEmailUseCase(getIt()))
     ..registerLazySingleton(() => LoginWithEmailUseCase(getIt()))
     ..registerLazySingleton(() => SignInWithGoogleUseCase(getIt()))
     ..registerLazySingleton(() => ResetPasswordUseCase(getIt()))
+    ..registerLazySingleton(() => ConfirmSignUpUseCase(getIt()))
+    ..registerLazySingleton(() => ConfirmResetPasswordUseCase(getIt()))
+    ..registerLazySingleton(() => ResendSignUpCodeUseCase(getIt()))
     ..registerLazySingleton(() => LogOutUseCase(getIt()))
     ..registerLazySingleton(() => WatchAuthStateUseCase(getIt()))
     ..registerFactory(
@@ -69,6 +92,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
         loginWithEmailUseCase: getIt(),
         signInWithGoogleUseCase: getIt(),
         resetPasswordUseCase: getIt(),
+        confirmSignUpUseCase: getIt(),
+        confirmResetPasswordUseCase: getIt(),
+        resendSignUpCodeUseCase: getIt(),
         logOutUseCase: getIt(),
         watchAuthStateUseCase: getIt(),
       ),

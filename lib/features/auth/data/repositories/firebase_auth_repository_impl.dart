@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:collab_tasks/features/auth/data/models/auth_user_model.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/result/result.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -23,7 +26,11 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
   @override
   Stream<AuthUser?> watchAuthState() {
     return _firebaseAuth.authStateChanges().map((user) {
-      if (user == null) {
+      if (user == null) return null;
+
+      // If strict validation is enabled and the email address isn't verified,
+      // we do NOT signOut() here, we simply hide the user from the UI.
+      if (requireEmailVerifiedForEmailLogin && !user.emailVerified) {
         return null;
       }
 
@@ -47,11 +54,22 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
         return const FailureResult(UnknownAuthFailure());
       }
 
+      // First, we send a letter while the session is still active.
       await user.sendEmailVerification();
-      return Success(AuthUserModel.fromFirebaseUser(user));
+
+      // Log out to reset Firebase automatic login
+      await _firebaseAuth.signOut();
+
+      // We return a controlled error, which BLoC will handle and display "Check your mail"
+      return const FailureResult(
+        EmailNotVerifiedFailure('Verification email sent. Confirm your email, then sign in.'),
+      );
     } on firebase_auth.FirebaseAuthException catch (exception) {
+      // Just in case, we clear the session whenever an error occurs.
+      await _firebaseAuth.signOut();
       return FailureResult(_mapFirebaseException(exception));
     } catch (_) {
+      await _firebaseAuth.signOut();
       return const FailureResult(UnknownAuthFailure());
     }
   }
@@ -66,29 +84,37 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-      var user = credential.user;
+      final user = credential.user;
 
       if (user == null) {
         return const FailureResult(UnknownAuthFailure());
       }
 
       if (requireEmailVerifiedForEmailLogin) {
+        // We update the user's status from the server to check emailVerified
         await user.reload();
-        user = _firebaseAuth.currentUser;
-        if (user == null) {
-          return const FailureResult(UnknownAuthFailure());
+
+        // We take a fresh instance after reloading
+        final freshUser = _firebaseAuth.currentUser;
+
+        if (freshUser == null || !freshUser.emailVerified) {
+          await _firebaseAuth.signOut();
+          return const FailureResult(
+            EmailNotVerifiedFailure(
+              'Email is not verified. Confirm the email from your inbox and sign in again.',
+            ),
+          );
         }
 
-        if (!user.emailVerified) {
-          await _firebaseAuth.signOut();
-          return const FailureResult(EmailNotVerifiedFailure());
-        }
+        return Success(AuthUserModel.fromFirebaseUser(freshUser));
       }
 
       return Success(AuthUserModel.fromFirebaseUser(user));
     } on firebase_auth.FirebaseAuthException catch (exception) {
+      await _firebaseAuth.signOut();
       return FailureResult(_mapFirebaseException(exception));
     } catch (_) {
+      await _firebaseAuth.signOut();
       return const FailureResult(UnknownAuthFailure());
     }
   }
@@ -106,14 +132,52 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
         return Success(AuthUserModel.fromFirebaseUser(user));
       }
 
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
+        final provider = firebase_auth.GoogleAuthProvider();
+        try {
+          final userCredential = await _firebaseAuth.signInWithProvider(provider);
+          final user = userCredential.user;
+          if (user == null) {
+            return const FailureResult(UnknownAuthFailure());
+          }
+          return Success(AuthUserModel.fromFirebaseUser(user));
+        } on firebase_auth.FirebaseAuthException {
+          // Fallback to google_sign_in below when native provider flow
+          // is unavailable in current environment.
+        }
+      }
+
       if (!_isGoogleSignInInitialized) {
-        await _googleSignIn.initialize();
+        final options = Firebase.app().options;
+        await _googleSignIn.initialize(
+          serverClientId: options.androidClientId ?? options.iosClientId,
+        );
         _isGoogleSignInInitialized = true;
+      }
+
+      if (!_googleSignIn.supportsAuthenticate()) {
+        final provider = firebase_auth.GoogleAuthProvider();
+        final userCredential = await _firebaseAuth.signInWithProvider(provider);
+        final user = userCredential.user;
+        if (user == null) {
+          return const FailureResult(UnknownAuthFailure());
+        }
+        return Success(AuthUserModel.fromFirebaseUser(user));
       }
 
       final googleUser = await _googleSignIn.authenticate();
 
       final googleAuth = googleUser.authentication;
+      if (googleAuth.idToken == null || googleAuth.idToken!.isEmpty) {
+        return const FailureResult(
+          OperationNotAllowedFailure(
+            'Google Sign-In ID token is missing. Check Firebase/Google client configuration.',
+          ),
+        );
+      }
+
       final credential = firebase_auth.GoogleAuthProvider.credential(idToken: googleAuth.idToken);
 
       final userCredential = await _firebaseAuth.signInWithCredential(credential);
@@ -149,6 +213,35 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
       debugPrint('Auth.resetPassword: unknown error');
       return const FailureResult(UnknownAuthFailure());
     }
+  }
+
+  @override
+  Future<Result<void, Failure>> confirmResetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    return const FailureResult(
+      OperationNotAllowedFailure(
+        'confirmResetPassword is not supported in FirebaseAuthRepositoryImpl.',
+      ),
+    );
+  }
+
+  @override
+  Future<Result<void, Failure>> confirmSignUp({required String email, required String code}) async {
+    return const FailureResult(
+      OperationNotAllowedFailure('confirmSignUp is not supported in FirebaseAuthRepositoryImpl.'),
+    );
+  }
+
+  @override
+  Future<Result<void, Failure>> resendSignUpCode({required String email}) async {
+    return const FailureResult(
+      OperationNotAllowedFailure(
+        'resendSignUpCode is not supported in FirebaseAuthRepositoryImpl.',
+      ),
+    );
   }
 
   @override
