@@ -119,15 +119,10 @@ class AwsAuthRepositoryImpl implements AuthRepository {
       }
 
       return Success(user);
+    } on UserCancelledException {
+      // Ловим конкретный эксепшен отмены напрямую!
+      return const FailureResult(CanceledByUserFailure());
     } on AuthException catch (exception) {
-      // Проверяем, если пользователь просто закрыл браузер (отменил вход)
-      final exceptionName = exception.runtimeType.toString();
-      if (exceptionName == 'UserCancelledException' ||
-          exception.message.contains('cancelled') ||
-          exception.message.contains('canceled')) {
-        return const FailureResult(CanceledByUserFailure());
-      }
-
       return FailureResult(_mapAuthException(exception));
     } catch (_) {
       return const FailureResult(UnknownAuthFailure());

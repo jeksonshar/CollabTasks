@@ -47,8 +47,8 @@ const String amplifyConfig = '''
             "OAuth": {
               "WebDomain": "eu-north-1gg4rpjcta.auth.eu-north-1.amazoncognito.com",
               "AppClientId": "67n1ier0tol0fmsfbmg2bur2c0",
-              "SignInRedirectURI": "collabtasks://callback/",
-              "SignOutRedirectURI": "collabtasks://callback/",
+              "SignInRedirectURI": "http://localhost:3000/,collabtasks://callback/",
+              "SignOutRedirectURI": "http://localhost:3000/,collabtasks://callback/",
               "Scopes": [
                 "phone",
                 "email",
