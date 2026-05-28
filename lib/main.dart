@@ -64,7 +64,7 @@ class MyApp extends StatelessWidget {
           create: (_) => getIt<AuthBloc>()..add(const AuthSubscriptionStarted()),
         ),
       ],
-      // Слушаем локаль выше MaterialApp, чтобы менять конфигурацию приложения
+      // Listen to the locale above MaterialApp to change the application configuration
       child: BlocBuilder<LocaleCubit, Locale?>(
         builder: (context, locale) {
           return MaterialApp(
@@ -103,7 +103,7 @@ class AppAuthGate extends StatelessWidget {
           previous.status == AuthStatus.authenticated,
       listener: (context, state) {
         debugPrint('AppAuthGate in main.dart popUntil((route) => false) called');
-        // ВОТ ЗДЕСЬ мы безопасно чистим стэк. Но не попадаем сюда ))
+        // HERE we safely clean the stack.
         globalNavigatorKey.currentState?.popUntil((route) => false);
       },
       child: BlocBuilder<AuthBloc, AuthState>(

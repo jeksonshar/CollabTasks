@@ -65,7 +65,7 @@ class TaskRepositoryImpl implements TaskRepository {
     try {
       await _db.transaction(() async {
         final query = _db.select(_db.taskEntity)..where((t) => t.taskId.equals(id));
-        final task = await query.getSingleOrNull(); // Безопасный метод вместо getSingle
+        final task = await query.getSingleOrNull(); // Safe method instead of getSingle
 
         if (task == null) {
           throw DataException("Task with id $id not found");

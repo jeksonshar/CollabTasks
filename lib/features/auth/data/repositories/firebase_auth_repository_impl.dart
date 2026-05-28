@@ -247,21 +247,21 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<void, Failure>> logOut() async {
     try {
-      // 1. Очищаем нативную сессию Google ТОЛЬКО на мобилках.
-      // На Web это вызовет ошибку, если вход был через Firebase Popup.
+      // 1. We clear the native Google session ONLY on mobile devices.
+      // On the web, this will throw an error if the login was via a Firebase Popup.
       if (!kIsWeb) {
         await _googleSignIn.signOut().timeout(
           const Duration(seconds: 3),
-          onTimeout: () => null, // Если нативный SDK завис, просто идем дальше
+          onTimeout: () => null, // If the native SDK freezes, just move on.
         );
       }
     } catch (e) {
-      // Игнорируем ошибки google_sign_in, так как главная задача — сбросить Firebase
+      // Ignore google_sign_in errors, as the main goal is to reset Firebase.
       debugPrint('Google SignOut ignored error: $e');
     }
 
     try {
-      // 2. Сбрасываем основную сессию Firebase
+      // 2. Resetting the main Firebase session
       await _firebaseAuth.signOut();
       return const Success(null);
     } on firebase_auth.FirebaseAuthException catch (exception) {

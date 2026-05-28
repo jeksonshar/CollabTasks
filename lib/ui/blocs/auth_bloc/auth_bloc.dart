@@ -307,16 +307,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) async {
-    // Переводим в лоадинг, чтобы показать вертушку на кнопке/экране
+    // Show loading
     emit(state.copyWith(status: AuthStatus.loadingFormSubmit, clearFailure: true));
 
     final result = await _logOutUseCase();
 
     switch (result) {
       case Success<void, Failure>():
-        // ВАЖНО: Мы БОЛЬШЕ НЕ ЭМИТИМ AuthStatus.unauthenticated здесь вручную!
-        // Стрим _onSubscriptionStarted сам получит null из Amplify,
-        // очистит юзера и выдаст РОВНО ОДИН стейт unauthenticated на всё приложение.
+        // IMPORTANT: We NO LONGER issue AuthStatus.unauthenticated here manually!
+        // The _onSubscriptionStarted stream itself will receive null from Amplify,
+        // will clear the user and return EXACTLY ONE unauthenticated state for the entire application.
         break;
 
       case FailureResult<void, Failure>(:final failure):
@@ -335,10 +335,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }) {
     switch (result) {
       case Success<AuthUser, Failure>():
-        // ВАЖНО: Мы БОЛЬШЕ НЕ ЭМИТИМ AuthStatus.authenticated здесь!
-        // Мы просто переводим статус в unauthenticated (или оставляем как есть),
-        // потому что стрим _watchAuthStateUseCase() сам поймает юзера и чисто переведет статус в authenticated.
-        // Это убирает гонку состояний.
+        // IMPORTANT: We NO LONGER ISSUE AuthStatus.authenticated here!
+        // We simply change the status to unauthenticated (or leave it as is),
+        // because the _watchAuthStateUseCase() stream will catch the user itself and cleanly change the status to authenticated.
+        // This removes race conditions.
         break;
 
       case FailureResult<AuthUser, Failure>(:final failure):

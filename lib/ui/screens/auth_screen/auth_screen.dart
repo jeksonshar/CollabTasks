@@ -163,11 +163,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 8),
                     Visibility(
                       visible: _isLoginMode,
-                      // Сохраняет размеры виджета, когда он скрыт
+                      // Maintains the widget's dimensions when it is hidden.
                       maintainSize: true,
-                      // Необходимо для работы maintainSize
+                      // Required for maintainSize to work
                       maintainAnimation: true,
-                      // Сохраняет стейт виджета
+                      // Saves the widget's state
                       maintainState: true,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -346,7 +346,7 @@ class _AuthScreenState extends State<AuthScreen> {
           Expanded(child: SvgPicture.asset('assets/icon/auth_divider.svg', width: 32, height: 2)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            // Небольшой отступ вокруг текста "или", чтобы черточки не прилипали
+            // A small indent around the "or" text to prevent the dashes from sticking together
             child: Text(localization.orTitle),
           ),
           Expanded(child: SvgPicture.asset('assets/icon/auth_divider.svg', width: 32, height: 2)),
@@ -377,7 +377,7 @@ class _AuthScreenState extends State<AuthScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(
               22.5,
-            ), // 24 - 1.5 толщины контейнера, все верно посчитано
+            ), // 22.5 = 24 - 1.5 container thicknesses, everything is calculated correctly
           ),
           foregroundColor: Colors.black87,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -29,14 +29,14 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // ЛИСТЕНЕР ОШИБОК
+        // BUG LISTENER
         BlocListener<TaskBloc, TaskState>(
           listenWhen: (prev, curr) => prev.errorType != curr.errorType && curr.errorType != null,
           listener: (context, state) {
             final errorType = state.errorType;
 
             if (errorType == null) return;
-            // Показываем SnackBar на ошибку
+            // Showing SnackBar an error
             final localization = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -47,7 +47,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
             context.read<TaskBloc>().add(ErrorCleared());
           },
         ),
-        // ЛИСТЕНЕР УСПЕХА
+        // SUCCESS LISTENER
         BlocListener<TaskBloc, TaskState>(
           listenWhen: (prev, curr) =>
               curr.lastAction != TaskAction.none && curr.lastActionTaskTitle != null,

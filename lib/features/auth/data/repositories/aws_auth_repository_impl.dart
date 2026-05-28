@@ -98,11 +98,11 @@ class AwsAuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<domain.AuthUser, Failure>> signInWithGoogle() async {
     try {
-      // Вызываем авторизацию через провайдер Google.
-      // Amplify сам откроет Hosted UI браузер.
+      // We invoke authorization through the Google provider.
+      // Amplify will automatically open the Hosted UI browser.
       final result = await Amplify.Auth.signInWithWebUI(provider: AuthProvider.google);
 
-      // Проверяем, завершился ли вход успехом
+      // Checking if the login was successful
       if (!result.isSignedIn) {
         return FailureResult(
           UnknownAuthFailure(
@@ -112,7 +112,7 @@ class AwsAuthRepositoryImpl implements AuthRepository {
         );
       }
 
-      // Забираем данные текущего юзера (сессия уже активна)
+      // We retrieve the current user's data (the session is already active)
       final user = await _getCurrentUserOrNull();
       if (user == null) {
         return const FailureResult(UnknownAuthFailure());
@@ -120,7 +120,7 @@ class AwsAuthRepositoryImpl implements AuthRepository {
 
       return Success(user);
     } on UserCancelledException {
-      // Ловим конкретный эксепшен отмены напрямую!
+      // We catch a specific cancellation exception directly!
       return const FailureResult(CanceledByUserFailure());
     } on AuthException catch (exception) {
       return FailureResult(_mapAuthException(exception));
@@ -225,7 +225,7 @@ class AwsAuthRepositoryImpl implements AuthRepository {
       final emailVerifiedRaw = _attributeValue(attributes, AuthUserAttributeKey.emailVerified);
       final emailVerified = emailVerifiedRaw?.toLowerCase() == 'true';
 
-      // Динамически определяем провайдера на основе данных от AWS Cognito
+      // Dynamically determine the provider based on data from AWS Cognito
       final userIdLower = currentUser.userId.toLowerCase();
       final usernameLower = currentUser.username.toLowerCase();
 
@@ -240,7 +240,7 @@ class AwsAuthRepositoryImpl implements AuthRepository {
         email: email ?? currentUser.username,
         isEmailVerified: emailVerified,
         displayName: _attributeValue(attributes, AuthUserAttributeKey.name),
-        provider: provider, // Передаем динамически определенный провайдер
+        provider: provider, // We pass a dynamically defined provider
       );
     } on AuthException {
       return null;
