@@ -247,12 +247,27 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<void, Failure>> logOut() async {
     try {
-      await _googleSignIn.signOut();
+      // 1. Очищаем нативную сессию Google ТОЛЬКО на мобилках.
+      // На Web это вызовет ошибку, если вход был через Firebase Popup.
+      if (!kIsWeb) {
+        await _googleSignIn.signOut().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null, // Если нативный SDK завис, просто идем дальше
+        );
+      }
+    } catch (e) {
+      // Игнорируем ошибки google_sign_in, так как главная задача — сбросить Firebase
+      debugPrint('Google SignOut ignored error: $e');
+    }
+
+    try {
+      // 2. Сбрасываем основную сессию Firebase
       await _firebaseAuth.signOut();
       return const Success(null);
     } on firebase_auth.FirebaseAuthException catch (exception) {
       return FailureResult(_mapFirebaseException(exception));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Firebase SignOut critical error: $error\n$stackTrace');
       return const FailureResult(UnknownAuthFailure());
     }
   }
