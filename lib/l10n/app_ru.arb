@@ -150,5 +150,57 @@
   "authProviderGoogle": "Google",
   "authProviderUnknown": "Неизвестно",
   "authNameNotProvided": "Не указано",
-  "orTitle": "или"
+  "orTitle": "или",
+  "authPasswordUpdated": "Пароль обновлен. Войдите с новым паролем.",
+  "authVerificationCodeResent": "Код подтверждения отправлен повторно. Проверьте почту.",
+  "authAccountConfirmed": "Аккаунт подтвержден. Теперь вы можете войти.",
+  "authVerificationCodeLabel": "Код подтверждения для {email}",
+  "@authVerificationCodeLabel": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "authConfirmSignUp": "Подтвердить регистрацию",
+  "authResendCode": "Отправить код повторно",
+  "authResetCodeLabel": "Код сброса для {email}",
+  "@authResetCodeLabel": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "authNewPasswordLabel": "Новый пароль",
+  "authConfirmResetPassword": "Подтвердить сброс пароля",
+  "authErrorEnterValidEmail": "Сначала введите корректный email.",
+  "authErrorEnterVerificationCode": "Введите код подтверждения.",
+  "authErrorEnterResetCode": "Введите код сброса.",
+  "authErrorNewPasswordTooShort": "Новый пароль слишком короткий.",
+  "groupScreenAddGroupFunctionality": "Функционал добавления проектов",
+  "profileScreenEditProfileFunctionality": "Функционал редактирования профиля",
+  "settingsLanguageEnglish": "English",
+  "settingsLanguageRussian": "Русский",
+  "settingsLanguageUkrainian": "Українська",
+  "bytesSuffixB": "Б",
+  "bytesSuffixKB": "КБ",
+  "bytesSuffixMB": "МБ",
+  "authErrorWrongPassword": "Неверный пароль.",
+  "authErrorUserNotFound": "Пользователь не найден.",
+  "authErrorNetwork": "Ошибка сети.",
+  "authErrorActionCodeExpired": "Код подтверждения истек.",
+  "authErrorEmailAlreadyInUse": "Этот email уже используется.",
+  "authErrorInvalidEmail": "Некорректный адрес электронной почты.",
+  "authErrorWeakPassword": "Пароль слишком слабый.",
+  "authErrorTooManyRequests": "Слишком много запросов.",
+  "authErrorUserDisabled": "Учетная запись пользователя отключена.",
+  "authErrorEmailNotVerified": "Email не подтвержден.",
+  "authErrorEmailNotVerifiedConfirmEmail": "Подтвердите email с помощью кода верификации перед входом.",
+  "authErrorEmailNotVerifiedSent": "Письмо с подтверждением отправлено. Подтвердите email, затем войдите.",
+  "authErrorInvalidCredential": "Неверные учетные данные.",
+  "authErrorOperationNotAllowed": "Операция не разрешена.",
+  "authErrorResetNotAvailable": "Сброс пароля недоступен для этого аккаунта.",
+  "authErrorGoogleSignInNotSupported": "Вход через Google не поддерживается на этой платформе.",
+  "authErrorNoPasswordProvider": "Этот аккаунт не поддерживает сброс пароля.",
+  "authErrorPasswordResetRequired": "Перед входом требуется сбросить пароль.",
+  "authErrorCanceledByUser": "Операция отменена пользователем.",
+  "authErrorConfirmationNotComplete": "Подтверждение не завершено.",
+  "authErrorUnknown": "Неизвестная ошибка авторизации."
 }

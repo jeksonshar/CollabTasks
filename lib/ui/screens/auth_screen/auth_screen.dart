@@ -56,7 +56,7 @@ class _AuthScreenState extends State<AuthScreen> {
         if (state.failure != null) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(_failureMessage(state.failure!))));
+          ).showSnackBar(SnackBar(content: Text(_failureMessage(state.failure!, localization))));
           context.read<AuthBloc>().add(const AuthErrorCleared());
         }
 
@@ -68,20 +68,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
         if (state.passwordResetConfirmed) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Password updated. Sign in with new password.')),
+            SnackBar(content: Text(localization.authPasswordUpdated)),
           );
         }
 
         if (state.signUpCodeResent) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Verification code sent again. Check your email.')),
+            SnackBar(content: Text(localization.authVerificationCodeResent)),
           );
         }
 
         if (state.signUpConfirmed) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Account confirmed. You can sign in now.')));
+          ).showSnackBar(SnackBar(content: Text(localization.authAccountConfirmed)));
           setState(() {
             _isLoginMode = true;
           });
@@ -190,7 +190,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 current.requiresSignUpConfirmation ||
                             previous.pendingConfirmationEmail != current.pendingConfirmationEmail,
                         builder: (context, state) {
-                          return _buildSignUpConfirmationFields(state);
+                          return _buildSignUpConfirmationFields(state, localization);
                         },
                       ),
                     if (authBackend == AuthBackend.aws)
@@ -200,7 +200,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 current.requiresResetPasswordConfirmation ||
                             previous.pendingResetPasswordEmail != current.pendingResetPasswordEmail,
                         builder: (context, state) {
-                          return _buildResetPasswordConfirmationFields(state);
+                          return _buildResetPasswordConfirmationFields(state, localization);
                         },
                       ),
                     BlocBuilder<AuthBloc, AuthState>(
@@ -225,7 +225,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildSignUpConfirmationFields(AuthState state) {
+  Widget _buildSignUpConfirmationFields(AuthState state, AppLocalizations localization) {
     final visible = state.requiresSignUpConfirmation;
     final pendingEmail = state.pendingConfirmationEmail ?? _emailController.text.trim();
 
@@ -237,7 +237,7 @@ class _AuthScreenState extends State<AuthScreen> {
           TextFormField(
             controller: _confirmationCodeController,
             decoration: InputDecoration(
-              labelText: 'Verification code for $pendingEmail',
+              labelText: localization.authVerificationCodeLabel(pendingEmail),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
@@ -248,14 +248,14 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _onConfirmSignUp,
-                  child: const Text('Confirm Sign Up'),
+                  child: Text(localization.authConfirmSignUp),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                   onPressed: _onResendSignUpCode,
-                  child: const Text('Resend Code'),
+                  child: Text(localization.authResendCode),
                 ),
               ),
             ],
@@ -266,7 +266,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildResetPasswordConfirmationFields(AuthState state) {
+  Widget _buildResetPasswordConfirmationFields(AuthState state, AppLocalizations localization) {
     final visible = state.requiresResetPasswordConfirmation;
     final pendingEmail = state.pendingResetPasswordEmail ?? _emailController.text.trim();
 
@@ -279,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
           TextFormField(
             controller: _resetCodeController,
             decoration: InputDecoration(
-              labelText: 'Reset code for $pendingEmail',
+              labelText: localization.authResetCodeLabel(pendingEmail),
               border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
@@ -287,9 +287,9 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 8),
           TextFormField(
             controller: _newPasswordController,
-            decoration: const InputDecoration(
-              labelText: 'New password',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: localization.authNewPasswordLabel,
+              border: const OutlineInputBorder(),
             ),
             obscureText: true,
           ),
@@ -298,7 +298,7 @@ class _AuthScreenState extends State<AuthScreen> {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: _onConfirmResetPassword,
-              child: const Text('Confirm Reset Password'),
+              child: Text(localization.authConfirmResetPassword),
             ),
           ),
           const SizedBox(height: 16),
@@ -443,18 +443,19 @@ class _AuthScreenState extends State<AuthScreen> {
     final state = context.read<AuthBloc>().state;
     final email = state.pendingConfirmationEmail ?? _emailController.text.trim();
     final code = _confirmationCodeController.text.trim();
+    final localization = AppLocalizations.of(context)!;
 
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorEnterValidEmail)));
       return;
     }
 
     if (code.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter verification code.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorEnterVerificationCode)));
       return;
     }
 
@@ -464,10 +465,11 @@ class _AuthScreenState extends State<AuthScreen> {
   void _onResendSignUpCode() {
     final state = context.read<AuthBloc>().state;
     final email = state.pendingConfirmationEmail ?? _emailController.text.trim();
+    final localization = AppLocalizations.of(context)!;
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorEnterValidEmail)));
       return;
     }
 
@@ -479,23 +481,24 @@ class _AuthScreenState extends State<AuthScreen> {
     final email = state.pendingResetPasswordEmail ?? _emailController.text.trim();
     final code = _resetCodeController.text.trim();
     final newPassword = _newPasswordController.text.trim();
+    final localization = AppLocalizations.of(context)!;
 
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a valid email first.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorEnterValidEmail)));
       return;
     }
     if (code.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter reset code.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorEnterResetCode)));
       return;
     }
     if (newPassword.length < 6) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('New password is too short.')));
+      ).showSnackBar(SnackBar(content: Text(localization.authErrorNewPasswordTooShort)));
       return;
     }
 
@@ -504,5 +507,70 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  String _failureMessage(Failure failure) => failure.message;
+  String _failureMessage(Failure failure, AppLocalizations localization) {
+    if (failure is WrongPasswordFailure) {
+      return localization.authErrorWrongPassword;
+    }
+    if (failure is UserNotFoundFailure) {
+      return localization.authErrorUserNotFound;
+    }
+    if (failure is NetworkFailure) {
+      return localization.authErrorNetwork;
+    }
+    if (failure is ActionCodeExpiredFailure) {
+      return localization.authErrorActionCodeExpired;
+    }
+    if (failure is EmailAlreadyInUseFailure) {
+      return localization.authErrorEmailAlreadyInUse;
+    }
+    if (failure is InvalidEmailFailure) {
+      return localization.authErrorInvalidEmail;
+    }
+    if (failure is WeakPasswordFailure) {
+      return localization.authErrorWeakPassword;
+    }
+    if (failure is TooManyRequestsFailure) {
+      return localization.authErrorTooManyRequests;
+    }
+    if (failure is UserDisabledFailure) {
+      return localization.authErrorUserDisabled;
+    }
+    if (failure is EmailNotVerifiedFailure) {
+      if (failure.message.contains('Confirm email')) {
+        return localization.authErrorEmailNotVerifiedConfirmEmail;
+      }
+      if (failure.message.contains('Verification email sent')) {
+        return localization.authErrorEmailNotVerifiedSent;
+      }
+      return localization.authErrorEmailNotVerified;
+    }
+    if (failure is InvalidCredentialFailure) {
+      return localization.authErrorInvalidCredential;
+    }
+    if (failure is OperationNotAllowedFailure) {
+      if (failure.message.contains('Reset password')) {
+        return localization.authErrorResetNotAvailable;
+      }
+      if (failure.message.contains('Google Sign-in')) {
+        return localization.authErrorGoogleSignInNotSupported;
+      }
+      return localization.authErrorOperationNotAllowed;
+    }
+    if (failure is NoPasswordProviderFailure) {
+      if (failure.message.contains('reset is required')) {
+        return localization.authErrorPasswordResetRequired;
+      }
+      return localization.authErrorNoPasswordProvider;
+    }
+    if (failure is CanceledByUserFailure) {
+      return localization.authErrorCanceledByUser;
+    }
+    if (failure is UnknownAuthFailure) {
+      if (failure.message.contains('Confirmation is not complete')) {
+        return localization.authErrorConfirmationNotComplete;
+      }
+      return localization.authErrorUnknown;
+    }
+    return failure.message;
+  }
 }

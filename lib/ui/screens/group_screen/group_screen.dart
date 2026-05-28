@@ -28,7 +28,7 @@ class GroupScreen extends StatelessWidget {
         onPressed: () {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Add group functionality')));
+          ).showSnackBar(SnackBar(content: Text(localization.groupScreenAddGroupFunctionality)));
         },
         child: const Icon(Icons.add),
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../l10n/app_localizations.dart';
+
 import '../blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import '../blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
 import '../blocs/confirmation_dialog_bloc/confirmation_dialog_state.dart';
@@ -41,6 +43,7 @@ class ConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return BlocListener<ConfirmationDialogBloc, ConfirmationDialogState>(
       listener: (context, state) {
         if (state.status == ConfirmationDialogStatus.confirmed) {
@@ -55,8 +58,8 @@ class ConfirmationDialog extends StatelessWidget {
         builder: (context, state) {
           final title = customTitle ?? state.title;
           final message = customMessage ?? state.message;
-          final confirmLabel = customConfirmLabel ?? state.confirmButtonLabel ?? 'Delete';
-          final cancelLabel = customCancelLabel ?? state.cancelButtonLabel ?? 'Cancel';
+          final confirmLabel = customConfirmLabel ?? state.confirmButtonLabel ?? localization.delete;
+          final cancelLabel = customCancelLabel ?? state.cancelButtonLabel ?? localization.cancel;
 
           return AlertDialog(
             title: title != null && title.isNotEmpty ? Text(title) : null,

@@ -48,10 +48,10 @@ class SettingsScreen extends StatelessWidget {
                   border: const OutlineInputBorder(),
                   labelText: localization.language,
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'en', child: Text('English')),
-                  DropdownMenuItem(value: 'ru', child: Text('Russian')),
-                  DropdownMenuItem(value: 'uk', child: Text('Ukrainian')),
+                items: [
+                  DropdownMenuItem(value: 'en', child: Text(localization.settingsLanguageEnglish)),
+                  DropdownMenuItem(value: 'ru', child: Text(localization.settingsLanguageRussian)),
+                  DropdownMenuItem(value: 'uk', child: Text(localization.settingsLanguageUkrainian)),
                 ],
                 onChanged: (value) {
                   if (value == null) return;

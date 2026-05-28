@@ -150,5 +150,57 @@
   "authProviderGoogle": "Google",
   "authProviderUnknown": "Невідомо",
   "authNameNotProvided": "Не вказано",
-  "orTitle": "або"
+  "orTitle": "або",
+  "authPasswordUpdated": "Пароль оновлено. Увійдіть з новим паролем.",
+  "authVerificationCodeResent": "Код підтвердження надіслано знову. Перевірте пошту.",
+  "authAccountConfirmed": "Акаунт підтверджено. Тепер ви можете увійти.",
+  "authVerificationCodeLabel": "Код підтвердження для {email}",
+  "@authVerificationCodeLabel": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "authConfirmSignUp": "Підтвердити реєстрацію",
+  "authResendCode": "Надіслати код знову",
+  "authResetCodeLabel": "Код скидання для {email}",
+  "@authResetCodeLabel": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "authNewPasswordLabel": "Новий пароль",
+  "authConfirmResetPassword": "Підтвердити скидання пароля",
+  "authErrorEnterValidEmail": "Спочатку введіть коректний email.",
+  "authErrorEnterVerificationCode": "Введіть код підтвердження.",
+  "authErrorEnterResetCode": "Введіть код скидання.",
+  "authErrorNewPasswordTooShort": "Новий пароль занадто короткий.",
+  "groupScreenAddGroupFunctionality": "Функціонал додавання груп",
+  "profileScreenEditProfileFunctionality": "Функціонал редагування профілю",
+  "settingsLanguageEnglish": "English",
+  "settingsLanguageRussian": "Російська",
+  "settingsLanguageUkrainian": "Українська",
+  "bytesSuffixB": "Б",
+  "bytesSuffixKB": "КБ",
+  "bytesSuffixMB": "МБ",
+  "authErrorWrongPassword": "Невірний пароль.",
+  "authErrorUserNotFound": "Користувача не знайдено.",
+  "authErrorNetwork": "Помилка мережі.",
+  "authErrorActionCodeExpired": "Код підтвердження закінчився.",
+  "authErrorEmailAlreadyInUse": "Цей email вже використовується.",
+  "authErrorInvalidEmail": "Некоректна адреса електронної пошти.",
+  "authErrorWeakPassword": "Пароль занадто слабкий.",
+  "authErrorTooManyRequests": "Занадто багато запитів.",
+  "authErrorUserDisabled": "Обліковий запис користувача вимкнено.",
+  "authErrorEmailNotVerified": "Email не підтверджено.",
+  "authErrorEmailNotVerifiedConfirmEmail": "Підтвердьте email за допомогою коду верифікації перед входом.",
+  "authErrorEmailNotVerifiedSent": "Лист із підтвердженням надіслано. Підтвердьте email, потім увійдіть.",
+  "authErrorInvalidCredential": "Невірні облікові дані.",
+  "authErrorOperationNotAllowed": "Операція не дозволена.",
+  "authErrorResetNotAvailable": "Скидання пароля недоступне для цього акаунту.",
+  "authErrorGoogleSignInNotSupported": "Вхід через Google не підтримується на цій платформі.",
+  "authErrorNoPasswordProvider": "Цей акаунт не підтримує скидання пароля.",
+  "authErrorPasswordResetRequired": "Перед входом необхідно скинути пароль.",
+  "authErrorCanceledByUser": "Операція скасована користувачем.",
+  "authErrorConfirmationNotComplete": "Підтвердження не завершено.",
+  "authErrorUnknown": "Невідома помилка авторизації."
 }

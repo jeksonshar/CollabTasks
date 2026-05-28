@@ -32,7 +32,7 @@ class TaskAttachmentTile extends StatelessWidget {
         leading: Icon(icon),
         title: Text(attachment.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          '${attachment.extension.toUpperCase()} • ${_formatBytes(attachment.sizeBytes)}',
+          '${attachment.extension.toUpperCase()} • ${_formatBytes(attachment.sizeBytes, localization)}',
         ),
         onTap: onView,
         trailing: PopupMenuButton<String>(
@@ -59,11 +59,11 @@ class TaskAttachmentTile extends StatelessWidget {
     );
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
+  String _formatBytes(int bytes, AppLocalizations localization) {
+    if (bytes < 1024) return '$bytes ${localization.bytesSuffixB}';
     final kb = bytes / 1024;
-    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} ${localization.bytesSuffixKB}';
     final mb = kb / 1024;
-    return '${mb.toStringAsFixed(1)} MB';
+    return '${mb.toStringAsFixed(1)} ${localization.bytesSuffixMB}';
   }
 }

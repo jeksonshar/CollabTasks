@@ -343,4 +343,144 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get orTitle => 'или';
+
+  @override
+  String get authPasswordUpdated => 'Пароль обновлен. Войдите с новым паролем.';
+
+  @override
+  String get authVerificationCodeResent =>
+      'Код подтверждения отправлен повторно. Проверьте почту.';
+
+  @override
+  String get authAccountConfirmed =>
+      'Аккаунт подтвержден. Теперь вы можете войти.';
+
+  @override
+  String authVerificationCodeLabel(Object email) {
+    return 'Код подтверждения для $email';
+  }
+
+  @override
+  String get authConfirmSignUp => 'Подтвердить регистрацию';
+
+  @override
+  String get authResendCode => 'Отправить код повторно';
+
+  @override
+  String authResetCodeLabel(Object email) {
+    return 'Код сброса для $email';
+  }
+
+  @override
+  String get authNewPasswordLabel => 'Новый пароль';
+
+  @override
+  String get authConfirmResetPassword => 'Подтвердить сброс пароля';
+
+  @override
+  String get authErrorEnterValidEmail => 'Сначала введите корректный email.';
+
+  @override
+  String get authErrorEnterVerificationCode => 'Введите код подтверждения.';
+
+  @override
+  String get authErrorEnterResetCode => 'Введите код сброса.';
+
+  @override
+  String get authErrorNewPasswordTooShort => 'Новый пароль слишком короткий.';
+
+  @override
+  String get groupScreenAddGroupFunctionality =>
+      'Функционал добавления проектов';
+
+  @override
+  String get profileScreenEditProfileFunctionality =>
+      'Функционал редактирования профиля';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageRussian => 'Русский';
+
+  @override
+  String get settingsLanguageUkrainian => 'Українська';
+
+  @override
+  String get bytesSuffixB => 'Б';
+
+  @override
+  String get bytesSuffixKB => 'КБ';
+
+  @override
+  String get bytesSuffixMB => 'МБ';
+
+  @override
+  String get authErrorWrongPassword => 'Неверный пароль.';
+
+  @override
+  String get authErrorUserNotFound => 'Пользователь не найден.';
+
+  @override
+  String get authErrorNetwork => 'Ошибка сети.';
+
+  @override
+  String get authErrorActionCodeExpired => 'Код подтверждения истек.';
+
+  @override
+  String get authErrorEmailAlreadyInUse => 'Этот email уже используется.';
+
+  @override
+  String get authErrorInvalidEmail => 'Некорректный адрес электронной почты.';
+
+  @override
+  String get authErrorWeakPassword => 'Пароль слишком слабый.';
+
+  @override
+  String get authErrorTooManyRequests => 'Слишком много запросов.';
+
+  @override
+  String get authErrorUserDisabled => 'Учетная запись пользователя отключена.';
+
+  @override
+  String get authErrorEmailNotVerified => 'Email не подтвержден.';
+
+  @override
+  String get authErrorEmailNotVerifiedConfirmEmail =>
+      'Подтвердите email с помощью кода верификации перед входом.';
+
+  @override
+  String get authErrorEmailNotVerifiedSent =>
+      'Письмо с подтверждением отправлено. Подтвердите email, затем войдите.';
+
+  @override
+  String get authErrorInvalidCredential => 'Неверные учетные данные.';
+
+  @override
+  String get authErrorOperationNotAllowed => 'Операция не разрешена.';
+
+  @override
+  String get authErrorResetNotAvailable =>
+      'Сброс пароля недоступен для этого аккаунта.';
+
+  @override
+  String get authErrorGoogleSignInNotSupported =>
+      'Вход через Google не поддерживается на этой платформе.';
+
+  @override
+  String get authErrorNoPasswordProvider =>
+      'Этот аккаунт не поддерживает сброс пароля.';
+
+  @override
+  String get authErrorPasswordResetRequired =>
+      'Перед входом требуется сбросить пароль.';
+
+  @override
+  String get authErrorCanceledByUser => 'Операция отменена пользователем.';
+
+  @override
+  String get authErrorConfirmationNotComplete => 'Подтверждение не завершено.';
+
+  @override
+  String get authErrorUnknown => 'Неизвестная ошибка авторизации.';
 }

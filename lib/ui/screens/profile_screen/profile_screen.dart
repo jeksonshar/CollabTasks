@@ -60,7 +60,7 @@ class ProfileScreen extends StatelessWidget {
                 onPressed: () {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Edit profile functionality')));
+                  ).showSnackBar(SnackBar(content: Text(localization.profileScreenEditProfileFunctionality)));
                 },
                 icon: const Icon(Icons.edit),
                 label: Text(localization.editProfile),
