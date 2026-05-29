@@ -61,7 +61,12 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openConnection() {
     return driftDatabase(
       name: 'task_manager_db',
-      native: const DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
+      native: const DriftNativeOptions(
+        // drift_flutter backs this with a DriftIsolate, keeping sqlite work
+        // off the UI isolate and sharing one database server across isolates.
+        shareAcrossIsolates: true,
+        databaseDirectory: getApplicationSupportDirectory,
+      ),
       web: DriftWebOptions(
         sqlite3Wasm: Uri.parse('sqlite3.wasm'),
         driftWorker: Uri.parse('drift_worker.dart.js'),
