@@ -40,11 +40,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
       );
 
       if (!signUpResult.isSignUpComplete) {
-        return const FailureResult(
-          EmailNotVerifiedFailure(
-            'Account is created. Confirm email with verification code before sign-in.',
-          ),
-        );
+        return const FailureResult(EmailNotVerifiedConfirmEmailFailure());
       }
 
       final signInResult = await Amplify.Auth.signIn(username: email, password: password);
@@ -141,9 +137,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
       }
 
       if (step == AuthResetPasswordStep.done) {
-        return const FailureResult(
-          OperationNotAllowedFailure('Reset password flow is not available for this account.'),
-        );
+        return const FailureResult(ResetPasswordUnavailableFailure());
       }
 
       return const Success(null);
@@ -179,7 +173,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
     try {
       final result = await Amplify.Auth.confirmSignUp(username: email, confirmationCode: code);
       if (!result.isSignUpComplete) {
-        return const FailureResult(UnknownAuthFailure('Confirmation is not complete.'));
+        return const FailureResult(ConfirmationNotCompleteFailure());
       }
       return const Success(null);
     } on AuthException catch (exception) {
@@ -271,9 +265,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
       case 'NotAuthorizedException':
         return const InvalidCredentialFailure();
       case 'UserNotConfirmedException':
-        return const EmailNotVerifiedFailure(
-          'Email is not verified. Confirm sign-up first, then reset password.',
-        );
+        return const EmailNotVerifiedConfirmEmailFailure();
       case 'InvalidParameterException':
       case 'AliasExistsException':
         return const InvalidEmailFailure();
@@ -296,11 +288,11 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
     final step = nextStep.signInStep;
 
     if (step == AuthSignInStep.confirmSignUp) {
-      return const EmailNotVerifiedFailure('Confirm email with verification code before sign-in.');
+      return const EmailNotVerifiedConfirmEmailFailure();
     }
 
     if (step == AuthSignInStep.resetPassword) {
-      return const NoPasswordProviderFailure('Password reset is required before sign-in.');
+      return const PasswordResetRequiredFailure();
     }
 
     return UnknownAuthFailure(

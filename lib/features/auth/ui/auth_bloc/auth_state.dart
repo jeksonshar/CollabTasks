@@ -1,5 +1,6 @@
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
+import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:equatable/equatable.dart';
 
 enum AuthStatus {
@@ -16,6 +17,7 @@ class AuthState extends Equatable {
     this.status = AuthStatus.initial,
     this.user,
     this.failure,
+    this.errorType,
     this.passwordResetEmailSent = false,
     this.signUpCodeResent = false,
     this.signUpConfirmed = false,
@@ -29,6 +31,7 @@ class AuthState extends Equatable {
   final AuthStatus status;
   final AuthUser? user;
   final Failure? failure;
+  final AuthErrorType? errorType;
   final bool passwordResetEmailSent;
   final bool signUpCodeResent;
   final bool signUpConfirmed;
@@ -42,6 +45,7 @@ class AuthState extends Equatable {
     AuthStatus? status,
     AuthUser? user,
     Failure? failure,
+    AuthErrorType? errorType,
     bool clearFailure = false,
     bool? passwordResetEmailSent,
     bool? signUpCodeResent,
@@ -58,6 +62,7 @@ class AuthState extends Equatable {
       status: status ?? this.status,
       user: user ?? this.user,
       failure: clearFailure ? null : failure ?? this.failure,
+      errorType: clearFailure ? null : errorType ?? this.errorType,
       passwordResetEmailSent: passwordResetEmailSent ?? this.passwordResetEmailSent,
       signUpCodeResent: signUpCodeResent ?? this.signUpCodeResent,
       signUpConfirmed: signUpConfirmed ?? this.signUpConfirmed,
@@ -79,6 +84,7 @@ class AuthState extends Equatable {
     status,
     user,
     failure,
+    errorType,
     passwordResetEmailSent,
     signUpCodeResent,
     signUpConfirmed,

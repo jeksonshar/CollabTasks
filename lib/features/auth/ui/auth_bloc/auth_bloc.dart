@@ -11,6 +11,7 @@ import 'package:collab_tasks/features/auth/domain/usecases/resend_sign_up_code_u
 import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
 import 'package:flutter/foundation.dart';
@@ -164,6 +165,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           state.copyWith(
             status: AuthStatus.failure,
             failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
             passwordResetEmailSent: false,
             signUpCodeResent: false,
             signUpConfirmed: false,
@@ -212,6 +214,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           state.copyWith(
             status: AuthStatus.failure,
             failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
             passwordResetConfirmed: false,
           ),
         );
@@ -254,6 +257,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           state.copyWith(
             status: AuthStatus.failure,
             failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
             signUpConfirmed: false,
             signUpCodeResent: false,
             requiresSignUpConfirmation: true,
@@ -296,6 +300,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           state.copyWith(
             status: AuthStatus.failure,
             failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
             signUpCodeResent: false,
             signUpConfirmed: false,
             requiresSignUpConfirmation: true,
@@ -319,7 +324,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         break;
 
       case FailureResult<void, Failure>(:final failure):
-        emit(state.copyWith(status: AuthStatus.failure, failure: failure));
+        emit(
+          state.copyWith(
+            status: AuthStatus.failure,
+            failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
+          ),
+        );
     }
   }
 
@@ -347,6 +358,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               state.copyWith(
                 status: AuthStatus.unauthenticated,
                 failure: failure,
+                errorType: AuthErrorMapper.fromFailure(failure),
                 passwordResetEmailSent: false,
                 signUpCodeResent: false,
                 signUpConfirmed: false,
@@ -363,6 +375,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             state.copyWith(
               status: AuthStatus.unauthenticated,
               failure: failure,
+              errorType: AuthErrorMapper.fromFailure(failure),
               passwordResetEmailSent: false,
               signUpCodeResent: false,
               signUpConfirmed: false,
@@ -379,6 +392,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           state.copyWith(
             status: AuthStatus.failure,
             failure: failure,
+            errorType: AuthErrorMapper.fromFailure(failure),
             passwordResetEmailSent: false,
             signUpCodeResent: false,
             signUpConfirmed: false,

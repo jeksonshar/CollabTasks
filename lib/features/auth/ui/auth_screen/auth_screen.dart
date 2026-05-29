@@ -1,6 +1,6 @@
 import 'package:collab_tasks/core/utils/auth_utils.dart';
-import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
+import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
@@ -54,9 +54,15 @@ class _AuthScreenState extends State<AuthScreen> {
         }
 
         if (state.failure != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(_failureMessage(state.failure!, localization))));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.errorType?.label(localization) ??
+                    state.failure?.message ??
+                    localization.authErrorUnknown,
+              ),
+            ),
+          );
           context.read<AuthBloc>().add(const AuthErrorCleared());
         }
 
@@ -505,72 +511,5 @@ class _AuthScreenState extends State<AuthScreen> {
     context.read<AuthBloc>().add(
       AuthConfirmResetPasswordRequested(email: email, code: code, newPassword: newPassword),
     );
-  }
-
-  String _failureMessage(Failure failure, AppLocalizations localization) {
-    if (failure is WrongPasswordFailure) {
-      return localization.authErrorWrongPassword;
-    }
-    if (failure is UserNotFoundFailure) {
-      return localization.authErrorUserNotFound;
-    }
-    if (failure is NetworkFailure) {
-      return localization.authErrorNetwork;
-    }
-    if (failure is ActionCodeExpiredFailure) {
-      return localization.authErrorActionCodeExpired;
-    }
-    if (failure is EmailAlreadyInUseFailure) {
-      return localization.authErrorEmailAlreadyInUse;
-    }
-    if (failure is InvalidEmailFailure) {
-      return localization.authErrorInvalidEmail;
-    }
-    if (failure is WeakPasswordFailure) {
-      return localization.authErrorWeakPassword;
-    }
-    if (failure is TooManyRequestsFailure) {
-      return localization.authErrorTooManyRequests;
-    }
-    if (failure is UserDisabledFailure) {
-      return localization.authErrorUserDisabled;
-    }
-    if (failure is EmailNotVerifiedFailure) {
-      if (failure.message.contains('Confirm email')) {
-        return localization.authErrorEmailNotVerifiedConfirmEmail;
-      }
-      if (failure.message.contains('Verification email sent')) {
-        return localization.authErrorEmailNotVerifiedSent;
-      }
-      return localization.authErrorEmailNotVerified;
-    }
-    if (failure is InvalidCredentialFailure) {
-      return localization.authErrorInvalidCredential;
-    }
-    if (failure is OperationNotAllowedFailure) {
-      if (failure.message.contains('Reset password')) {
-        return localization.authErrorResetNotAvailable;
-      }
-      if (failure.message.contains('Google Sign-in')) {
-        return localization.authErrorGoogleSignInNotSupported;
-      }
-      return localization.authErrorOperationNotAllowed;
-    }
-    if (failure is NoPasswordProviderFailure) {
-      if (failure.message.contains('reset is required')) {
-        return localization.authErrorPasswordResetRequired;
-      }
-      return localization.authErrorNoPasswordProvider;
-    }
-    if (failure is CanceledByUserFailure) {
-      return localization.authErrorCanceledByUser;
-    }
-    if (failure is UnknownAuthFailure) {
-      if (failure.message.contains('Confirmation is not complete')) {
-        return localization.authErrorConfirmationNotComplete;
-      }
-      return localization.authErrorUnknown;
-    }
-    return failure.message;
   }
 }

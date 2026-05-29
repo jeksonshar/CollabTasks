@@ -44,6 +44,16 @@ class EmailNotVerifiedFailure extends Failure {
   const EmailNotVerifiedFailure([super.message = 'Email is not verified.']);
 }
 
+class EmailNotVerifiedConfirmEmailFailure extends EmailNotVerifiedFailure {
+  const EmailNotVerifiedConfirmEmailFailure([super.message = 'Confirm email before continuing.']);
+}
+
+class EmailNotVerifiedSentFailure extends EmailNotVerifiedFailure {
+  const EmailNotVerifiedSentFailure([
+    super.message = 'Verification email sent. Confirm your email, then sign in.',
+  ]);
+}
+
 class InvalidCredentialFailure extends Failure {
   const InvalidCredentialFailure([super.message = 'Invalid credential.']);
 }
@@ -52,9 +62,27 @@ class OperationNotAllowedFailure extends Failure {
   const OperationNotAllowedFailure([super.message = 'Operation is not allowed.']);
 }
 
+class ResetPasswordUnavailableFailure extends OperationNotAllowedFailure {
+  const ResetPasswordUnavailableFailure([
+    super.message = 'Reset password flow is not available for this account.',
+  ]);
+}
+
+class GoogleSignInNotSupportedFailure extends OperationNotAllowedFailure {
+  const GoogleSignInNotSupportedFailure([
+    super.message = 'Google Sign-In is not supported by the current configuration.',
+  ]);
+}
+
 class NoPasswordProviderFailure extends Failure {
   const NoPasswordProviderFailure([
     super.message = 'This account does not support password reset.',
+  ]);
+}
+
+class PasswordResetRequiredFailure extends NoPasswordProviderFailure {
+  const PasswordResetRequiredFailure([
+    super.message = 'Password reset is required before sign-in.',
   ]);
 }
 
@@ -64,4 +92,8 @@ class CanceledByUserFailure extends Failure {
 
 class UnknownAuthFailure extends Failure {
   const UnknownAuthFailure([super.message = 'Unknown authentication error.']);
+}
+
+class ConfirmationNotCompleteFailure extends UnknownAuthFailure {
+  const ConfirmationNotCompleteFailure([super.message = 'Confirmation is not complete.']);
 }

@@ -61,9 +61,7 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
       await _firebaseAuth.signOut();
 
       // We return a controlled error, which BLoC will handle and display "Check your mail"
-      return const FailureResult(
-        EmailNotVerifiedFailure('Verification email sent. Confirm your email, then sign in.'),
-      );
+      return const FailureResult(EmailNotVerifiedSentFailure());
     } on firebase_auth.FirebaseAuthException catch (exception) {
       // Just in case, we clear the session whenever an error occurs.
       await _firebaseAuth.signOut();
@@ -99,11 +97,7 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
 
         if (freshUser == null || !freshUser.emailVerified) {
           await _firebaseAuth.signOut();
-          return const FailureResult(
-            EmailNotVerifiedFailure(
-              'Email is not verified. Confirm the email from your inbox and sign in again.',
-            ),
-          );
+          return const FailureResult(EmailNotVerifiedConfirmEmailFailure());
         }
 
         return Success(AuthUserModel.fromFirebaseUser(freshUser));
@@ -171,11 +165,7 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
 
       final googleAuth = googleUser.authentication;
       if (googleAuth.idToken == null || googleAuth.idToken!.isEmpty) {
-        return const FailureResult(
-          OperationNotAllowedFailure(
-            'Google Sign-In ID token is missing. Check Firebase/Google client configuration.',
-          ),
-        );
+        return const FailureResult(GoogleSignInNotSupportedFailure());
       }
 
       final credential = firebase_auth.GoogleAuthProvider.credential(idToken: googleAuth.idToken);
