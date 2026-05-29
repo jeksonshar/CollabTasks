@@ -14,7 +14,6 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_not
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
-import 'package:collab_tasks/features/tasks/domain/use_cases/sync_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
@@ -32,7 +31,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final SetTaskViewPreferencesUseCase setTaskViewPreferencesUseCase;
   final ScheduleTaskNotificationsUseCase scheduleTaskNotificationsUseCase;
   final CancelTaskNotificationsUseCase cancelTaskNotificationsUseCase;
-  final SyncTaskNotificationsUseCase syncTaskNotificationsUseCase;
   final GetNotificationTapStreamUseCase getNotificationTapStreamUseCase;
   final ConsumeInitialNotificationPayloadUseCase consumeInitialNotificationPayloadUseCase;
 
@@ -47,7 +45,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.setTaskViewPreferencesUseCase,
     required this.scheduleTaskNotificationsUseCase,
     required this.cancelTaskNotificationsUseCase,
-    required this.syncTaskNotificationsUseCase,
     required this.getNotificationTapStreamUseCase,
     required this.consumeInitialNotificationPayloadUseCase,
   }) : super(const TaskState()) {
@@ -105,9 +102,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       await emit.forEach<List<Task>>(
         watchTasksUseCase(),
         onData: (tasks) {
-          // With each database update, we synchronize notifications and update the state
-          _syncNotifications(tasks);
-
           debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
 
           return state.copyWith(
@@ -144,7 +138,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       try {
         await scheduleTaskNotificationsUseCase(task);
       } catch (e, s) {
-        _logError('syncNotifications', e, s);
+        _logError('scheduleNotifications', e, s);
       }
 
       // With the watcher we only notify about the fact of the action
@@ -181,7 +175,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
       // 3. Sending to the database via UseCase
       await updateTaskUseCase(updatedTask);
-      // 4. Synchronizing notifications
+      // 4. Rescheduling notifications only for the changed task.
       await scheduleTaskNotificationsUseCase(updatedTask);
 
       // 5. We only notify about the fact of the action for the UI (for example, to show the Snack bar)
@@ -317,14 +311,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     sortList(others);
 
     return [...pinned, ...others];
-  }
-
-  Future<void> _syncNotifications(List<Task> tasks) async {
-    try {
-      await syncTaskNotificationsUseCase(tasks);
-    } catch (e, s) {
-      _logError('syncNotifications', e, s);
-    }
   }
 
   void _logError(String context, Object error, [StackTrace? stackTrace]) {

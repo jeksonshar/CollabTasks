@@ -87,20 +87,6 @@ class TaskNotificationsManager implements TaskNotificationService {
   }
 
   @override
-  Future<void> syncTaskNotifications(List<Task> tasks) async {
-    if (!_isNotificationsSupported) {
-      return;
-    }
-
-    for (final task in tasks) {
-      await cancelTaskNotifications(task.id);
-    }
-    for (final task in tasks) {
-      await scheduleTaskNotifications(task);
-    }
-  }
-
-  @override
   Future<void> scheduleTaskNotifications(Task task) async {
     if (!_isNotificationsSupported) {
       return;
