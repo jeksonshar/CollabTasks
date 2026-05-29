@@ -4,9 +4,10 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart' as domain;
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/result/result.dart';
 
-class AwsAuthRepositoryImpl implements AuthRepository {
+class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
   AwsAuthRepositoryImpl({this.requireEmailVerifiedForEmailLogin = false});
 
   final bool requireEmailVerifiedForEmailLogin;

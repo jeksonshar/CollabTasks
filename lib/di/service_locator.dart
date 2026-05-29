@@ -4,6 +4,7 @@ import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
@@ -72,27 +73,46 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SyncTaskNotificationsUseCase(getIt()))
     ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
     ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
-    ..registerLazySingleton<AuthRepository>(() {
-      switch (authBackend) {
-        case AuthBackend.firebase:
-          return FirebaseAuthRepositoryImpl(
-            firebaseAuth: getIt<FirebaseAuth>(),
-            googleSignIn: getIt<GoogleSignIn>(),
-            requireEmailVerifiedForEmailLogin: true,
-          );
-        case AuthBackend.aws:
-          return AwsAuthRepositoryImpl();
-      }
-    })
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
-    ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance)
+    ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance);
+
+  if (authBackend == AuthBackend.aws) {
+    getIt
+      ..registerLazySingleton<AwsAuthRepositoryImpl>(
+        () => AwsAuthRepositoryImpl(requireEmailVerifiedForEmailLogin: true),
+      )
+      ..registerLazySingleton<AuthRepository>(() => getIt<AwsAuthRepositoryImpl>())
+      ..registerLazySingleton<CognitoAuthRepository>(() => getIt<AwsAuthRepositoryImpl>());
+  } else {
+    getIt.registerLazySingleton<AuthRepository>(
+      () => FirebaseAuthRepositoryImpl(
+        firebaseAuth: getIt<FirebaseAuth>(),
+        googleSignIn: getIt<GoogleSignIn>(),
+        requireEmailVerifiedForEmailLogin: true,
+      ),
+    );
+  }
+
+  getIt
     ..registerLazySingleton(() => RegisterWithEmailUseCase(getIt()))
     ..registerLazySingleton(() => LoginWithEmailUseCase(getIt()))
     ..registerLazySingleton(() => SignInWithGoogleUseCase(getIt()))
     ..registerLazySingleton(() => ResetPasswordUseCase(getIt()))
-    ..registerLazySingleton(() => ConfirmSignUpUseCase(getIt()))
-    ..registerLazySingleton(() => ConfirmResetPasswordUseCase(getIt()))
-    ..registerLazySingleton(() => ResendSignUpCodeUseCase(getIt()))
+    ..registerLazySingleton(
+      () => ConfirmSignUpUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
+    ..registerLazySingleton(
+      () => ConfirmResetPasswordUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
+    ..registerLazySingleton(
+      () => ResendSignUpCodeUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
     ..registerLazySingleton(() => LogOutUseCase(getIt()))
     ..registerLazySingleton(() => WatchAuthStateUseCase(getIt()))
     ..registerFactory(

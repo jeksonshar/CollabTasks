@@ -216,35 +216,6 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<void, Failure>> confirmResetPassword({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    return const FailureResult(
-      OperationNotAllowedFailure(
-        'confirmResetPassword is not supported in FirebaseAuthRepositoryImpl.',
-      ),
-    );
-  }
-
-  @override
-  Future<Result<void, Failure>> confirmSignUp({required String email, required String code}) async {
-    return const FailureResult(
-      OperationNotAllowedFailure('confirmSignUp is not supported in FirebaseAuthRepositoryImpl.'),
-    );
-  }
-
-  @override
-  Future<Result<void, Failure>> resendSignUpCode({required String email}) async {
-    return const FailureResult(
-      OperationNotAllowedFailure(
-        'resendSignUpCode is not supported in FirebaseAuthRepositoryImpl.',
-      ),
-    );
-  }
-
-  @override
   Future<Result<void, Failure>> logOut() async {
     try {
       // 1. We clear the native Google session ONLY on mobile devices.
