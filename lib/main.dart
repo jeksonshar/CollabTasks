@@ -24,7 +24,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureSelectedAuthBackend();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final sharedPreferences = await SharedPreferences.getInstance();
   setupLocator(sharedPreferences);
   await getIt<TaskNotificationsManager>().initialize();
@@ -32,7 +31,8 @@ Future<void> main() async {
 }
 
 Future<void> _configureSelectedAuthBackend() async {
-  if (authBackend != AuthBackend.aws) {
+  if (authBackend == AuthBackend.firebase) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     return;
   }
 
