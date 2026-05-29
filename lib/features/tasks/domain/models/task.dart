@@ -57,7 +57,7 @@ class Task extends Equatable {
 
   Map<String, dynamic> toMap() => {
     'id': id,
-    'createdAt': createdAt,
+    'createdAt': createdAt.toIso8601String(),
     'title': title,
     'description': description,
     'priority': priority,
@@ -74,7 +74,7 @@ class Task extends Equatable {
 
     return Task(
       id: map['id'] as String,
-      createdAt: map['createdAt'] as DateTime,
+      createdAt: _parseRequiredDateTime(map['createdAt'], 'createdAt'),
       title: map['title'] as String,
       description: map['description'] as String,
       priority: map['priority'] as int,
@@ -85,7 +85,7 @@ class Task extends Equatable {
           ? rawSubtasks.whereType<Map<String, dynamic>>().map(TaskSubtask.fromMap).toList()
           : const [],
       isCompleted: map['isCompleted'] as bool? ?? false,
-      deadline: map['deadline'] != null ? DateTime.parse(map['deadline'] as String) : null,
+      deadline: _parseOptionalDateTime(map['deadline']),
       isPinned: map['isPinned'] as bool? ?? false,
     );
   }
@@ -93,6 +93,27 @@ class Task extends Equatable {
   String toJson() => json.encode(toMap());
 
   factory Task.fromJson(String source) => Task.fromMap(json.decode(source) as Map<String, dynamic>);
+
+  static DateTime _parseRequiredDateTime(Object? value, String fieldName) {
+    final parsed = _parseOptionalDateTime(value);
+    if (parsed == null) {
+      throw FormatException('Task.$fieldName is required and must be a DateTime value.');
+    }
+    return parsed;
+  }
+
+  static DateTime? _parseOptionalDateTime(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.parse(value);
+    }
+    throw FormatException('Unsupported DateTime value: $value');
+  }
 
   @override
   List<Object?> get props => [
