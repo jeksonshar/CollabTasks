@@ -5,9 +5,9 @@ import 'package:collab_tasks/core/enums/task_error_type.dart';
 import 'package:collab_tasks/core/enums/task_filter_type.dart';
 import 'package:collab_tasks/core/enums/task_sort_direction.dart';
 import 'package:collab_tasks/core/enums/task_sort_type.dart';
-import 'package:collab_tasks/core/notifications/notification_tap_payload.dart';
-import 'package:collab_tasks/core/notifications/task_notification_event_type.dart';
 import 'package:collab_tasks/features/settings/domain/models/task_view_preferences.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/notification_tap_payload.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notification_event_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/errors/data_exception.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
@@ -73,20 +73,8 @@ void main() {
       () => mockConsumePayloadUseCase(),
     ).thenReturn(null); // Emulating the absence of a cold start from a notification
     // 2. Futures for synchronization and planning
-    when(
-      () => mockSyncNotificationsUseCase(
-        any(),
-        reminderTitle: any(named: 'reminderTitle'),
-        deadlineTitle: any(named: 'deadlineTitle'),
-      ),
-    ).thenAnswer((_) async => {});
-    when(
-      () => mockScheduleNotificationsUseCase(
-        any(),
-        reminderTitle: any(named: 'reminderTitle'),
-        deadlineTitle: any(named: 'deadlineTitle'),
-      ),
-    ).thenAnswer((_) async => {});
+    when(() => mockSyncNotificationsUseCase(any())).thenAnswer((_) async => {});
+    when(() => mockScheduleNotificationsUseCase(any())).thenAnswer((_) async => {});
     // 3. Rest
     when(() => mockCancelNotificationsUseCase(any())).thenAnswer((_) async => {});
     // Overriding behavior for notification tests
@@ -109,8 +97,6 @@ void main() {
       syncTaskNotificationsUseCase: mockSyncNotificationsUseCase,
       getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
-      notificationReminderTitle: '',
-      notificationDeadlineTitle: '',
     );
   });
 
@@ -335,11 +321,7 @@ void main() {
 
         // 2. Setting: Notification scheduling crashes with an error
         when(
-          () => mockScheduleNotificationsUseCase(
-            any(),
-            reminderTitle: any(named: 'reminderTitle'),
-            deadlineTitle: any(named: 'deadlineTitle'),
-          ),
+          () => mockScheduleNotificationsUseCase(any()),
         ).thenThrow(Exception('Notification Service Unavailable'));
 
         return taskBloc;
@@ -364,13 +346,7 @@ void main() {
       ],
       verify: (_) {
         // We check that the method was actually called and crashed.
-        verify(
-          () => mockScheduleNotificationsUseCase(
-            any(),
-            reminderTitle: any(named: 'reminderTitle'),
-            deadlineTitle: any(named: 'deadlineTitle'),
-          ),
-        ).called(1);
+        verify(() => mockScheduleNotificationsUseCase(any())).called(1);
       },
     );
     blocTest<TaskBloc, TaskState>(
@@ -511,13 +487,7 @@ void main() {
         when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
         when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
         // Simulating an error in the notification manager
-        when(
-          () => mockSyncNotificationsUseCase(
-            any(),
-            reminderTitle: any(named: 'reminderTitle'),
-            deadlineTitle: any(named: 'deadlineTitle'),
-          ),
-        ).thenThrow(Exception('Notification Fail'));
+        when(() => mockSyncNotificationsUseCase(any())).thenThrow(Exception('Notification Fail'));
         return taskBloc;
       },
       act: (bloc) => bloc.add(
@@ -569,11 +539,7 @@ void main() {
 
         // 2. We are dropping the SYNC method
         when(
-          () => mockSyncNotificationsUseCase(
-            any(),
-            reminderTitle: any(named: 'reminderTitle'),
-            deadlineTitle: any(named: 'deadlineTitle'),
-          ),
+          () => mockSyncNotificationsUseCase(any()),
         ).thenAnswer((_) async => throw Exception('Sync Global Failed'));
 
         return taskBloc;
@@ -584,13 +550,7 @@ void main() {
         isA<TaskState>().having((s) => s.status, 'status', TaskStatus.success),
       ],
       verify: (_) {
-        verify(
-          () => mockSyncNotificationsUseCase(
-            any(),
-            reminderTitle: any(named: 'reminderTitle'),
-            deadlineTitle: any(named: 'deadlineTitle'),
-          ),
-        ).called(1);
+        verify(() => mockSyncNotificationsUseCase(any())).called(1);
       },
     );
   });
@@ -654,8 +614,6 @@ void main() {
           syncTaskNotificationsUseCase: mockSyncNotificationsUseCase,
           getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
           consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
-          notificationReminderTitle: '',
-          notificationDeadlineTitle: '',
           addTaskUseCase: mockAddTaskUseCase,
           updateTaskUseCase: mockUpdateTasksUseCase,
           deleteTaskUseCase: mockDeleteTasksUseCase,

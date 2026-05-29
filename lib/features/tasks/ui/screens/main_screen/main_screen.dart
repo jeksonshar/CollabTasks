@@ -35,10 +35,7 @@ class _MainScreenState extends State<MainScreen> with L10nMixin {
   Widget build(BuildContext context) {
     return BlocProvider<TaskBloc>(
       create: (context) {
-        return getIt<TaskBloc>(
-          param1: localization.deadlineIn30MinutesTitle,
-          param2: localization.deadlineReachedTitle,
-        )..add(LoadTasksStarted());
+        return getIt<TaskBloc>()..add(LoadTasksStarted());
       },
       child: BlocListener<TaskBloc, TaskState>(
         listenWhen: (previous, current) =>

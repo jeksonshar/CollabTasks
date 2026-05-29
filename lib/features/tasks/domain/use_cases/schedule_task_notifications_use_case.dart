@@ -6,11 +6,7 @@ class ScheduleTaskNotificationsUseCase {
 
   ScheduleTaskNotificationsUseCase(this._service);
 
-  Future<void> call(Task task, {required String reminderTitle, required String deadlineTitle}) {
-    return _service.scheduleTaskNotifications(
-      task,
-      reminderTitle: reminderTitle,
-      deadlineTitle: deadlineTitle,
-    );
+  Future<void> call(Task task) {
+    return _service.scheduleTaskNotifications(task);
   }
 }

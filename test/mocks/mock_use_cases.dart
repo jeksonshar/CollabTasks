@@ -1,6 +1,6 @@
-import 'package:collab_tasks/core/notifications/notifications_manager.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/get_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
@@ -24,7 +24,7 @@ class MockGetTaskViewPreferencesUseCase extends Mock implements GetTaskViewPrefe
 
 class MockSetTaskViewPreferencesUseCase extends Mock implements SetTaskViewPreferencesUseCase {}
 
-class MockNotificationsManager extends Mock implements NotificationsManager {}
+class MockNotificationsManager extends Mock implements TaskNotificationsManager {}
 
 class MockScheduleTaskNotificationsUseCase extends Mock
     implements ScheduleTaskNotificationsUseCase {}

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:collab_tasks/amplify_configuration.dart';
-import 'package:collab_tasks/core/notifications/notifications_manager.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
@@ -11,6 +10,7 @@ import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
 import 'package:collab_tasks/features/auth/ui/auth_screen/auth_screen.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/main_screen/main_screen.dart';
 import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
@@ -27,7 +27,7 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final sharedPreferences = await SharedPreferences.getInstance();
   setupLocator(sharedPreferences);
-  await getIt<NotificationsManager>().initialize();
+  await getIt<TaskNotificationsManager>().initialize();
   runApp(const MyApp());
 }
 

@@ -35,8 +35,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final SyncTaskNotificationsUseCase syncTaskNotificationsUseCase;
   final GetNotificationTapStreamUseCase getNotificationTapStreamUseCase;
   final ConsumeInitialNotificationPayloadUseCase consumeInitialNotificationPayloadUseCase;
-  final String notificationReminderTitle;
-  final String notificationDeadlineTitle;
 
   StreamSubscription? _notificationTapSubscription;
 
@@ -52,8 +50,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.syncTaskNotificationsUseCase,
     required this.getNotificationTapStreamUseCase,
     required this.consumeInitialNotificationPayloadUseCase,
-    required this.notificationReminderTitle,
-    required this.notificationDeadlineTitle,
   }) : super(const TaskState()) {
     // 1. Main Event: Base Surveillance Launch
     on<LoadTasksStarted>(_onLoadTasks);
@@ -146,11 +142,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     try {
       await addTaskUseCase(task);
       try {
-        await scheduleTaskNotificationsUseCase(
-          task,
-          reminderTitle: notificationReminderTitle,
-          deadlineTitle: notificationDeadlineTitle,
-        );
+        await scheduleTaskNotificationsUseCase(task);
       } catch (e, s) {
         _logError('syncNotifications', e, s);
       }
@@ -190,11 +182,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       // 3. Sending to the database via UseCase
       await updateTaskUseCase(updatedTask);
       // 4. Synchronizing notifications
-      await scheduleTaskNotificationsUseCase(
-        updatedTask,
-        reminderTitle: notificationReminderTitle,
-        deadlineTitle: notificationDeadlineTitle,
-      );
+      await scheduleTaskNotificationsUseCase(updatedTask);
 
       // 5. We only notify about the fact of the action for the UI (for example, to show the Snack bar)
       // The tasks list will be updated automatically via WatchTasksUseCase
@@ -333,11 +321,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _syncNotifications(List<Task> tasks) async {
     try {
-      await syncTaskNotificationsUseCase(
-        tasks,
-        reminderTitle: notificationReminderTitle,
-        deadlineTitle: notificationDeadlineTitle,
-      );
+      await syncTaskNotificationsUseCase(tasks);
     } catch (e, s) {
       _logError('syncNotifications', e, s);
     }

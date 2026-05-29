@@ -1,4 +1,3 @@
-import 'package:collab_tasks/core/notifications/notifications_manager.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
 import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
@@ -24,9 +23,12 @@ import 'package:collab_tasks/features/settings/domain/use_cases/set_saved_langua
 import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
 import 'package:collab_tasks/features/tasks/data/repositories/task_repository_impl.dart';
+import 'package:collab_tasks/features/tasks/data/services/localized_task_notification_titles_provider.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_titles_provider.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
@@ -54,10 +56,15 @@ void setupLocator(SharedPreferences sharedPreferences) {
 
   getIt
     ..registerLazySingleton<SharedPreferences>(() => sharedPreferences)
-    ..registerLazySingleton<NotificationsManager>(() => NotificationsManager())
-    ..registerLazySingleton<TaskNotificationService>(() => getIt<NotificationsManager>())
     ..registerLazySingleton<AppSettingsDatastore>(() => AppSettingsDatastore(getIt()))
     ..registerLazySingleton<AppSettingsRepository>(() => AppSettingsRepositoryImpl(getIt()))
+    ..registerLazySingleton<TaskNotificationTitlesProvider>(
+      () => LocalizedTaskNotificationTitlesProvider(getIt()),
+    )
+    ..registerLazySingleton<TaskNotificationsManager>(
+      () => TaskNotificationsManager(titleProvider: getIt()),
+    )
+    ..registerLazySingleton<TaskNotificationService>(() => getIt<TaskNotificationsManager>())
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
     ..registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(getIt<AppDatabase>()))
     ..registerLazySingleton(() => WatchTasksUseCase(getIt()))
@@ -132,8 +139,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())
-    ..registerFactoryParam<TaskBloc, String, String>(
-      (notificationReminderTitle, notificationDeadlineTitle) => TaskBloc(
+    ..registerFactory(
+      () => TaskBloc(
         watchTasksUseCase: getIt(),
         addTaskUseCase: getIt(),
         updateTaskUseCase: getIt(),
@@ -145,8 +152,6 @@ void setupLocator(SharedPreferences sharedPreferences) {
         syncTaskNotificationsUseCase: getIt(),
         getNotificationTapStreamUseCase: getIt(),
         consumeInitialNotificationPayloadUseCase: getIt(),
-        notificationReminderTitle: notificationReminderTitle,
-        notificationDeadlineTitle: notificationDeadlineTitle,
       ),
     );
 }

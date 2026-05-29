@@ -6,15 +6,7 @@ class SyncTaskNotificationsUseCase {
 
   SyncTaskNotificationsUseCase(this._service);
 
-  Future<void> call(
-    List<Task> tasks, {
-    required String reminderTitle,
-    required String deadlineTitle,
-  }) {
-    return _service.syncTaskNotifications(
-      tasks,
-      reminderTitle: reminderTitle,
-      deadlineTitle: deadlineTitle,
-    );
+  Future<void> call(List<Task> tasks) {
+    return _service.syncTaskNotifications(tasks);
   }
 }

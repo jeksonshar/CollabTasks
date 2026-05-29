@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:collab_tasks/core/notifications/notification_tap_payload.dart';
-import 'package:collab_tasks/core/notifications/task_notification_event_type.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/notification_tap_payload.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notification_event_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_titles_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -13,7 +14,7 @@ import 'package:timezone/timezone.dart' as tz;
 @pragma('vm:entry-point')
 void onDidReceiveBackgroundNotificationResponse(NotificationResponse response) {}
 
-class NotificationsManager implements TaskNotificationService {
+class TaskNotificationsManager implements TaskNotificationService {
   static const _androidChannelId = 'task_deadline_reminders';
   static const _androidChannelName = 'Task deadline reminders';
   static const _androidChannelDescription = 'Deadline reminders for tasks';
@@ -21,18 +22,21 @@ class NotificationsManager implements TaskNotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   final StreamController<NotificationTapPayload> _notificationTapController;
+  final TaskNotificationTitlesProvider _titleProvider;
 
   bool _isInitialized = false;
   bool _isNotificationsSupported = false;
   bool _canScheduleExactAlarms = false;
   NotificationTapPayload? _initialTapPayload;
 
-  NotificationsManager({
+  TaskNotificationsManager({
+    required TaskNotificationTitlesProvider titleProvider,
     FlutterLocalNotificationsPlugin? notificationsPlugin,
     StreamController<NotificationTapPayload>? notificationTapController,
   }) : _notificationsPlugin = notificationsPlugin ?? FlutterLocalNotificationsPlugin(),
        _notificationTapController =
-           notificationTapController ?? StreamController<NotificationTapPayload>.broadcast();
+           notificationTapController ?? StreamController<NotificationTapPayload>.broadcast(),
+       _titleProvider = titleProvider;
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -83,11 +87,7 @@ class NotificationsManager implements TaskNotificationService {
   }
 
   @override
-  Future<void> syncTaskNotifications(
-    List<Task> tasks, {
-    required String reminderTitle,
-    required String deadlineTitle,
-  }) async {
+  Future<void> syncTaskNotifications(List<Task> tasks) async {
     if (!_isNotificationsSupported) {
       return;
     }
@@ -96,20 +96,12 @@ class NotificationsManager implements TaskNotificationService {
       await cancelTaskNotifications(task.id);
     }
     for (final task in tasks) {
-      await scheduleTaskNotifications(
-        task,
-        reminderTitle: reminderTitle,
-        deadlineTitle: deadlineTitle,
-      );
+      await scheduleTaskNotifications(task);
     }
   }
 
   @override
-  Future<void> scheduleTaskNotifications(
-    Task task, {
-    required String reminderTitle,
-    required String deadlineTitle,
-  }) async {
+  Future<void> scheduleTaskNotifications(Task task) async {
     if (!_isNotificationsSupported) {
       return;
     }
@@ -123,12 +115,13 @@ class NotificationsManager implements TaskNotificationService {
     }
 
     final now = DateTime.now();
+    final titles = await _titleProvider.getTitles();
 
     final reminderAt = deadline.subtract(_reminderLeadTime);
     if (reminderAt.isAfter(now)) {
       await _schedule(
         id: _buildNotificationId(task.id, TaskNotificationEventType.beforeDeadline),
-        title: reminderTitle,
+        title: titles.reminderTitle,
         body: task.title,
         at: reminderAt,
         payload: NotificationTapPayload(
@@ -141,7 +134,7 @@ class NotificationsManager implements TaskNotificationService {
     if (deadline.isAfter(now)) {
       await _schedule(
         id: _buildNotificationId(task.id, TaskNotificationEventType.deadlineReached),
-        title: deadlineTitle,
+        title: titles.deadlineTitle,
         body: task.title,
         at: deadline,
         payload: NotificationTapPayload(

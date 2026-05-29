@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:collab_tasks/core/notifications/task_notification_event_type.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notification_event_type.dart';
 
 class NotificationTapPayload {
   final String taskId;
