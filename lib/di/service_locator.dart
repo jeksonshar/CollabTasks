@@ -25,8 +25,14 @@ import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubi
 import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
 import 'package:collab_tasks/features/tasks/data/repositories/task_repository_impl.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/sync_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
@@ -48,6 +54,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
   getIt
     ..registerLazySingleton<SharedPreferences>(() => sharedPreferences)
     ..registerLazySingleton<NotificationsManager>(() => NotificationsManager())
+    ..registerLazySingleton<TaskNotificationService>(() => getIt<NotificationsManager>())
     ..registerLazySingleton<AppSettingsDatastore>(() => AppSettingsDatastore(getIt()))
     ..registerLazySingleton<AppSettingsRepository>(() => AppSettingsRepositoryImpl(getIt()))
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
@@ -60,6 +67,11 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => SetTaskViewPreferencesUseCase(getIt()))
+    ..registerLazySingleton(() => ScheduleTaskNotificationsUseCase(getIt()))
+    ..registerLazySingleton(() => CancelTaskNotificationsUseCase(getIt()))
+    ..registerLazySingleton(() => SyncTaskNotificationsUseCase(getIt()))
+    ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
+    ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
     ..registerLazySingleton<AuthRepository>(() {
       switch (authBackend) {
         case AuthBackend.firebase:
@@ -108,7 +120,11 @@ void setupLocator(SharedPreferences sharedPreferences) {
         deleteTaskUseCase: getIt(),
         getTaskViewPreferencesUseCase: getIt(),
         setTaskViewPreferencesUseCase: getIt(),
-        notificationsManager: getIt(),
+        scheduleTaskNotificationsUseCase: getIt(),
+        cancelTaskNotificationsUseCase: getIt(),
+        syncTaskNotificationsUseCase: getIt(),
+        getNotificationTapStreamUseCase: getIt(),
+        consumeInitialNotificationPayloadUseCase: getIt(),
         notificationReminderTitle: notificationReminderTitle,
         notificationDeadlineTitle: notificationDeadlineTitle,
       ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collab_tasks/core/notifications/notification_tap_payload.dart';
 import 'package:collab_tasks/core/notifications/task_notification_event_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -12,7 +13,7 @@ import 'package:timezone/timezone.dart' as tz;
 @pragma('vm:entry-point')
 void onDidReceiveBackgroundNotificationResponse(NotificationResponse response) {}
 
-class NotificationsManager {
+class NotificationsManager implements TaskNotificationService {
   static const _androidChannelId = 'task_deadline_reminders';
   static const _androidChannelName = 'Task deadline reminders';
   static const _androidChannelDescription = 'Deadline reminders for tasks';
@@ -32,14 +33,6 @@ class NotificationsManager {
   }) : _notificationsPlugin = notificationsPlugin ?? FlutterLocalNotificationsPlugin(),
        _notificationTapController =
            notificationTapController ?? StreamController<NotificationTapPayload>.broadcast();
-
-  Stream<NotificationTapPayload> get notificationTapStream => _notificationTapController.stream;
-
-  NotificationTapPayload? consumeInitialTapPayload() {
-    final payload = _initialTapPayload;
-    _initialTapPayload = null;
-    return payload;
-  }
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -79,7 +72,18 @@ class NotificationsManager {
     // _isInitialized = true; // when app is open notifications doesn't arrive
   }
 
-  Future<void> syncTaskDeadlineNotifications(
+  @override
+  Stream<NotificationTapPayload> get notificationTapStream => _notificationTapController.stream;
+
+  @override
+  NotificationTapPayload? consumeInitialTapPayload() {
+    final payload = _initialTapPayload;
+    _initialTapPayload = null;
+    return payload;
+  }
+
+  @override
+  Future<void> syncTaskNotifications(
     List<Task> tasks, {
     required String reminderTitle,
     required String deadlineTitle,
@@ -89,10 +93,10 @@ class NotificationsManager {
     }
 
     for (final task in tasks) {
-      await cancelTaskDeadlineNotifications(task.id);
+      await cancelTaskNotifications(task.id);
     }
     for (final task in tasks) {
-      await scheduleTaskDeadlineNotifications(
+      await scheduleTaskNotifications(
         task,
         reminderTitle: reminderTitle,
         deadlineTitle: deadlineTitle,
@@ -100,7 +104,8 @@ class NotificationsManager {
     }
   }
 
-  Future<void> scheduleTaskDeadlineNotifications(
+  @override
+  Future<void> scheduleTaskNotifications(
     Task task, {
     required String reminderTitle,
     required String deadlineTitle,
@@ -110,7 +115,7 @@ class NotificationsManager {
     }
 
     await _resolveExactAlarmCapability();
-    await cancelTaskDeadlineNotifications(task.id);
+    await cancelTaskNotifications(task.id);
 
     final deadline = task.deadline;
     if (deadline == null || task.isCompleted) {
@@ -152,7 +157,8 @@ class NotificationsManager {
     );
   }
 
-  Future<void> cancelTaskDeadlineNotifications(String taskId) async {
+  @override
+  Future<void> cancelTaskNotifications(String taskId) async {
     if (!_isNotificationsSupported) {
       return;
     }

@@ -4,13 +4,17 @@ import 'package:collab_tasks/core/enums/task_error_type.dart';
 import 'package:collab_tasks/core/enums/task_filter_type.dart';
 import 'package:collab_tasks/core/enums/task_sort_direction.dart';
 import 'package:collab_tasks/core/enums/task_sort_type.dart';
-import 'package:collab_tasks/core/notifications/notifications_manager.dart';
 import 'package:collab_tasks/features/settings/domain/models/task_view_preferences.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/get_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/sync_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
@@ -26,7 +30,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final DeleteTaskUseCase deleteTaskUseCase;
   final GetTaskViewPreferencesUseCase getTaskViewPreferencesUseCase;
   final SetTaskViewPreferencesUseCase setTaskViewPreferencesUseCase;
-  final NotificationsManager notificationsManager;
+  final ScheduleTaskNotificationsUseCase scheduleTaskNotificationsUseCase;
+  final CancelTaskNotificationsUseCase cancelTaskNotificationsUseCase;
+  final SyncTaskNotificationsUseCase syncTaskNotificationsUseCase;
+  final GetNotificationTapStreamUseCase getNotificationTapStreamUseCase;
+  final ConsumeInitialNotificationPayloadUseCase consumeInitialNotificationPayloadUseCase;
   final String notificationReminderTitle;
   final String notificationDeadlineTitle;
 
@@ -39,7 +47,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.deleteTaskUseCase,
     required this.getTaskViewPreferencesUseCase,
     required this.setTaskViewPreferencesUseCase,
-    required this.notificationsManager,
+    required this.scheduleTaskNotificationsUseCase,
+    required this.cancelTaskNotificationsUseCase,
+    required this.syncTaskNotificationsUseCase,
+    required this.getNotificationTapStreamUseCase,
+    required this.consumeInitialNotificationPayloadUseCase,
     required this.notificationReminderTitle,
     required this.notificationDeadlineTitle,
   }) : super(const TaskState()) {
@@ -66,13 +78,13 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   void _initNotificationListeners() {
     if (isClosed) return;
 
-    _notificationTapSubscription = notificationsManager.notificationTapStream.listen((payload) {
+    _notificationTapSubscription = getNotificationTapStreamUseCase().listen((payload) {
       if (!isClosed) {
         add(NotificationTaskOpened(payload.taskId));
       }
     });
 
-    final initialPayload = notificationsManager.consumeInitialTapPayload();
+    final initialPayload = consumeInitialNotificationPayloadUseCase();
     if (!isClosed && initialPayload != null) {
       add(NotificationTaskOpened(initialPayload.taskId));
     }
@@ -134,7 +146,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     try {
       await addTaskUseCase(task);
       try {
-        await notificationsManager.scheduleTaskDeadlineNotifications(
+        await scheduleTaskNotificationsUseCase(
           task,
           reminderTitle: notificationReminderTitle,
           deadlineTitle: notificationDeadlineTitle,
@@ -178,7 +190,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       // 3. Sending to the database via UseCase
       await updateTaskUseCase(updatedTask);
       // 4. Synchronizing notifications
-      await notificationsManager.scheduleTaskDeadlineNotifications(
+      await scheduleTaskNotificationsUseCase(
         updatedTask,
         reminderTitle: notificationReminderTitle,
         deadlineTitle: notificationDeadlineTitle,
@@ -204,7 +216,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       final taskTitle = taskToDelete.title;
 
       await deleteTaskUseCase(event.id);
-      await notificationsManager.cancelTaskDeadlineNotifications(event.id);
+      await cancelTaskNotificationsUseCase(event.id);
 
       emit(state.copyWith(lastAction: TaskAction.delete, lastActionTaskTitle: taskTitle));
     } catch (e, s) {
@@ -321,7 +333,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _syncNotifications(List<Task> tasks) async {
     try {
-      await notificationsManager.syncTaskDeadlineNotifications(
+      await syncTaskNotificationsUseCase(
         tasks,
         reminderTitle: notificationReminderTitle,
         deadlineTitle: notificationDeadlineTitle,
