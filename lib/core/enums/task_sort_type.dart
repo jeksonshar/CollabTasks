@@ -1,4 +1,4 @@
-import '../../l10n/app_localizations.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 
 enum TaskSortType { byDateCreated, byPriority, byTitle }
 

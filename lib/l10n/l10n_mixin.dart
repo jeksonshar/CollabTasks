@@ -1,6 +1,5 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
-
-import 'app_localizations.dart';
 
 mixin L10nMixin<T extends StatefulWidget> on State<T> {
   AppLocalizations get localization {

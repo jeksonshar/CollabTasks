@@ -1,8 +1,7 @@
-import 'package:collab_tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/core/attachment_files/attachment_file_service.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-
-import 'attachment_file_service.dart';
 
 const List<String> documentAttachmentExtensions = ['pdf', 'doc', 'docx', 'xml', 'txt'];
 

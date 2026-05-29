@@ -1,10 +1,10 @@
 import 'package:collab_tasks/core/notifications/notifications_manager.dart';
-import 'package:collab_tasks/domain/use_cases/add_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/delete_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/get_task_view_preferences_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/watch_tasks_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/get_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockWatchTasksUseCase extends Mock implements WatchTasksUseCase {}
