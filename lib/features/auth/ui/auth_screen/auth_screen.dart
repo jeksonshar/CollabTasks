@@ -254,14 +254,14 @@ class _AuthScreenState extends State<AuthScreen> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: _onConfirmSignUp,
-                  child: Text(localization.authConfirmSignUp),
+                  child: Text(localization.authConfirmSignUp, textAlign: TextAlign.center),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                   onPressed: _onResendSignUpCode,
-                  child: Text(localization.authResendCode),
+                  child: Text(localization.authResendCode, textAlign: TextAlign.center),
                 ),
               ),
             ],
