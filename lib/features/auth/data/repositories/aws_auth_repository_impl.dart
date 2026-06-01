@@ -234,7 +234,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
         id: currentUser.userId,
         email: email ?? currentUser.username,
         isEmailVerified: emailVerified,
-        displayName: _attributeValue(attributes, AuthUserAttributeKey.name),
+        displayName: _displayNameFromAttributes(attributes),
         provider: provider, // We pass a dynamically defined provider
       );
     } on AuthException {
@@ -247,10 +247,27 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
   String? _attributeValue(List<AuthUserAttribute> attributes, AuthUserAttributeKey key) {
     for (final attribute in attributes) {
       if (attribute.userAttributeKey == key) {
-        return attribute.value;
+        final value = attribute.value.trim();
+        return value.isEmpty ? null : value;
       }
     }
     return null;
+  }
+
+  String? _displayNameFromAttributes(List<AuthUserAttribute> attributes) {
+    final name = _attributeValue(attributes, AuthUserAttributeKey.name);
+    if (name != null) {
+      return name;
+    }
+
+    final givenName = _attributeValue(attributes, AuthUserAttributeKey.givenName);
+    final familyName = _attributeValue(attributes, AuthUserAttributeKey.familyName);
+    final fullName = [givenName, familyName].whereType<String>().join(' ').trim();
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+
+    return _attributeValue(attributes, AuthUserAttributeKey.preferredUsername);
   }
 
   Failure _mapAuthException(AuthException exception) {
