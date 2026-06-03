@@ -585,6 +585,390 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Attention!'**
   String get attentionTitle;
+
+  /// No description provided for @authTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication'**
+  String get authTitle;
+
+  /// No description provided for @authLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get authLogin;
+
+  /// No description provided for @authRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get authRegister;
+
+  /// No description provided for @authPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPassword;
+
+  /// No description provided for @authEnterEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter email'**
+  String get authEnterEmail;
+
+  /// No description provided for @authInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email'**
+  String get authInvalidEmail;
+
+  /// No description provided for @authEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get authEnterPassword;
+
+  /// No description provided for @authPasswordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum 6 characters'**
+  String get authPasswordMinLength;
+
+  /// No description provided for @authSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignIn;
+
+  /// No description provided for @authCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authCreateAccount;
+
+  /// No description provided for @authContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get authContinueWithGoogle;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get authForgotPassword;
+
+  /// No description provided for @authResetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset works only for accounts with Email/Password sign-in. Google accounts should use Google sign-in.'**
+  String get authResetHint;
+
+  /// No description provided for @authResetPasswordSent.
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for this email, a reset link has been sent.'**
+  String get authResetPasswordSent;
+
+  /// No description provided for @authEnterValidEmailToReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email to reset password.'**
+  String get authEnterValidEmailToReset;
+
+  /// No description provided for @authLogOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get authLogOut;
+
+  /// No description provided for @authProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auth method'**
+  String get authProviderTitle;
+
+  /// No description provided for @authProviderEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email/Password'**
+  String get authProviderEmail;
+
+  /// No description provided for @authProviderGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google'**
+  String get authProviderGoogle;
+
+  /// No description provided for @authProviderUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get authProviderUnknown;
+
+  /// No description provided for @authNameNotProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'Not provided'**
+  String get authNameNotProvided;
+
+  /// No description provided for @orTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get orTitle;
+
+  /// No description provided for @authPasswordUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Password updated. Sign in with new password.'**
+  String get authPasswordUpdated;
+
+  /// No description provided for @authVerificationCodeResent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code sent again. Check your email.'**
+  String get authVerificationCodeResent;
+
+  /// No description provided for @authAccountConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Account confirmed. You can sign in now.'**
+  String get authAccountConfirmed;
+
+  /// No description provided for @authVerificationCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code for {email}'**
+  String authVerificationCodeLabel(Object email);
+
+  /// No description provided for @authConfirmSignUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Sign Up'**
+  String get authConfirmSignUp;
+
+  /// No description provided for @authResendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend Code'**
+  String get authResendCode;
+
+  /// No description provided for @authResetCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset code for {email}'**
+  String authResetCodeLabel(Object email);
+
+  /// No description provided for @authNewPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get authNewPasswordLabel;
+
+  /// No description provided for @authConfirmResetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Reset Password'**
+  String get authConfirmResetPassword;
+
+  /// No description provided for @authErrorEnterValidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email first.'**
+  String get authErrorEnterValidEmail;
+
+  /// No description provided for @authErrorEnterVerificationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter verification code.'**
+  String get authErrorEnterVerificationCode;
+
+  /// No description provided for @authErrorEnterResetCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter reset code.'**
+  String get authErrorEnterResetCode;
+
+  /// No description provided for @authErrorNewPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'New password is too short.'**
+  String get authErrorNewPasswordTooShort;
+
+  /// No description provided for @groupScreenAddGroupFunctionality.
+  ///
+  /// In en, this message translates to:
+  /// **'Add group functionality'**
+  String get groupScreenAddGroupFunctionality;
+
+  /// No description provided for @profileScreenEditProfileFunctionality.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile functionality'**
+  String get profileScreenEditProfileFunctionality;
+
+  /// No description provided for @settingsLanguageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// No description provided for @settingsLanguageRussian.
+  ///
+  /// In en, this message translates to:
+  /// **'Russian'**
+  String get settingsLanguageRussian;
+
+  /// No description provided for @settingsLanguageUkrainian.
+  ///
+  /// In en, this message translates to:
+  /// **'Ukrainian'**
+  String get settingsLanguageUkrainian;
+
+  /// No description provided for @bytesSuffixB.
+  ///
+  /// In en, this message translates to:
+  /// **'B'**
+  String get bytesSuffixB;
+
+  /// No description provided for @bytesSuffixKB.
+  ///
+  /// In en, this message translates to:
+  /// **'KB'**
+  String get bytesSuffixKB;
+
+  /// No description provided for @bytesSuffixMB.
+  ///
+  /// In en, this message translates to:
+  /// **'MB'**
+  String get bytesSuffixMB;
+
+  /// No description provided for @authErrorWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password.'**
+  String get authErrorWrongPassword;
+
+  /// No description provided for @authErrorUserNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'User not found.'**
+  String get authErrorUserNotFound;
+
+  /// No description provided for @authErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error.'**
+  String get authErrorNetwork;
+
+  /// No description provided for @authErrorActionCodeExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Action code expired.'**
+  String get authErrorActionCodeExpired;
+
+  /// No description provided for @authErrorEmailAlreadyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is already in use.'**
+  String get authErrorEmailAlreadyInUse;
+
+  /// No description provided for @authErrorInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email address.'**
+  String get authErrorInvalidEmail;
+
+  /// No description provided for @authErrorWeakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is too weak.'**
+  String get authErrorWeakPassword;
+
+  /// No description provided for @authErrorTooManyRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests.'**
+  String get authErrorTooManyRequests;
+
+  /// No description provided for @authErrorUserDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'User account is disabled.'**
+  String get authErrorUserDisabled;
+
+  /// No description provided for @authErrorEmailNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Email is not verified.'**
+  String get authErrorEmailNotVerified;
+
+  /// No description provided for @authErrorEmailNotVerifiedConfirmEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm email with verification code before sign-in.'**
+  String get authErrorEmailNotVerifiedConfirmEmail;
+
+  /// No description provided for @authErrorEmailNotVerifiedSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification email sent. Confirm your email, then sign in.'**
+  String get authErrorEmailNotVerifiedSent;
+
+  /// No description provided for @authErrorInvalidCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid credential.'**
+  String get authErrorInvalidCredential;
+
+  /// No description provided for @authErrorOperationNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation is not allowed.'**
+  String get authErrorOperationNotAllowed;
+
+  /// No description provided for @authErrorResetNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password flow is not available for this account.'**
+  String get authErrorResetNotAvailable;
+
+  /// No description provided for @authErrorGoogleSignInNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Sign-in is not supported on this platform.'**
+  String get authErrorGoogleSignInNotSupported;
+
+  /// No description provided for @authErrorNoPasswordProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'This account does not support password reset.'**
+  String get authErrorNoPasswordProvider;
+
+  /// No description provided for @authErrorPasswordResetRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset is required before sign-in.'**
+  String get authErrorPasswordResetRequired;
+
+  /// No description provided for @authErrorCanceledByUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation was canceled by user.'**
+  String get authErrorCanceledByUser;
+
+  /// No description provided for @authErrorConfirmationNotComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation is not complete.'**
+  String get authErrorConfirmationNotComplete;
+
+  /// No description provided for @authErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown authentication error.'**
+  String get authErrorUnknown;
 }
 
 class _AppLocalizationsDelegate

@@ -1,12 +1,11 @@
 import 'dart:js_interop';
 import 'dart:typed_data';
 
-import 'package:collab_tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:web/web.dart' as web;
-
-import 'attachment_utils.dart';
 
 Future<String?> attachmentsDirectory() async {
   return null;

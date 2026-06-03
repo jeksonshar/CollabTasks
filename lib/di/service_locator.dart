@@ -1,33 +1,69 @@
-import 'package:collab_tasks/core/notifications/notifications_manager.dart';
-import 'package:collab_tasks/data/datastore/app_settings_datastore.dart';
-import 'package:collab_tasks/data/local/db/app_database.dart';
-import 'package:collab_tasks/data/repositories/app_settings_repository_impl.dart';
-import 'package:collab_tasks/data/repositories/task_repository_impl.dart';
-import 'package:collab_tasks/domain/repositories/app_settings_repository.dart';
-import 'package:collab_tasks/domain/repositories/task_repository.dart';
-import 'package:collab_tasks/domain/use_cases/add_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/delete_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/get_saved_language_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/get_task_view_preferences_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/set_saved_language_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/set_task_view_preferences_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/update_task_use_case.dart';
-import 'package:collab_tasks/domain/use_cases/watch_tasks_use_case.dart';
-import 'package:collab_tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
-import 'package:collab_tasks/ui/blocs/locale_cubit/locale_cubit.dart';
-import 'package:collab_tasks/ui/blocs/task_bloc/task_bloc.dart';
+import 'package:collab_tasks/core/utils/auth_utils.dart';
+// will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
+import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
+import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/resend_sign_up_code_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
+import 'package:collab_tasks/features/settings/data/datastore/app_settings_datastore.dart';
+import 'package:collab_tasks/features/settings/data/repositories/app_settings_repository_impl.dart';
+import 'package:collab_tasks/features/settings/domain/repositories/app_settings_repository.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/get_saved_language_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/get_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/set_saved_language_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
+import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
+import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
+import 'package:collab_tasks/features/tasks/data/repositories/task_repository_impl.dart';
+import 'package:collab_tasks/features/tasks/data/services/localized_task_notification_titles_provider.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_titles_provider.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
+import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
+import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
 import 'package:get_it/get_it.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final getIt = GetIt.instance;
 
 void setupLocator(SharedPreferences sharedPreferences) {
+  // Hot restart can re-run setup with a stale container.
+  if (getIt.isRegistered<SharedPreferences>()) {
+    getIt.reset();
+  }
+
   getIt
     ..registerLazySingleton<SharedPreferences>(() => sharedPreferences)
-    ..registerLazySingleton<NotificationsManager>(() => NotificationsManager())
     ..registerLazySingleton<AppSettingsDatastore>(() => AppSettingsDatastore(getIt()))
     ..registerLazySingleton<AppSettingsRepository>(() => AppSettingsRepositoryImpl(getIt()))
+    ..registerLazySingleton<TaskNotificationTitlesProvider>(
+      () => LocalizedTaskNotificationTitlesProvider(getIt()),
+    )
+    ..registerLazySingleton<TaskNotificationsManager>(
+      () => TaskNotificationsManager(titleProvider: getIt()),
+    )
+    ..registerLazySingleton<TaskNotificationService>(() => getIt<TaskNotificationsManager>())
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
     ..registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(getIt<AppDatabase>()))
     ..registerLazySingleton(() => WatchTasksUseCase(getIt()))
@@ -38,21 +74,81 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => SetTaskViewPreferencesUseCase(getIt()))
+    ..registerLazySingleton(() => ScheduleTaskNotificationsUseCase(getIt()))
+    ..registerLazySingleton(() => CancelTaskNotificationsUseCase(getIt()))
+    ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
+    ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
+    ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
+    ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance);
+
+  if (authBackend == AuthBackend.aws) {
+    getIt
+      ..registerLazySingleton<AwsAuthRepositoryImpl>(
+        () => AwsAuthRepositoryImpl(requireEmailVerifiedForEmailLogin: true),
+      )
+      ..registerLazySingleton<AuthRepository>(() => getIt<AwsAuthRepositoryImpl>())
+      ..registerLazySingleton<CognitoAuthRepository>(() => getIt<AwsAuthRepositoryImpl>());
+  } else {
+    getIt.registerLazySingleton<AuthRepository>(
+      () => FirebaseAuthRepositoryImpl(
+        firebaseAuth: getIt<FirebaseAuth>(),
+        googleSignIn: getIt<GoogleSignIn>(),
+        requireEmailVerifiedForEmailLogin: true,
+      ),
+    );
+  }
+
+  getIt
+    ..registerLazySingleton(() => RegisterWithEmailUseCase(getIt()))
+    ..registerLazySingleton(() => LoginWithEmailUseCase(getIt()))
+    ..registerLazySingleton(() => SignInWithGoogleUseCase(getIt()))
+    ..registerLazySingleton(() => ResetPasswordUseCase(getIt()))
+    ..registerLazySingleton(
+      () => ConfirmSignUpUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
+    ..registerLazySingleton(
+      () => ConfirmResetPasswordUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
+    ..registerLazySingleton(
+      () => ResendSignUpCodeUseCase(
+        getIt.isRegistered<CognitoAuthRepository>() ? getIt<CognitoAuthRepository>() : null,
+      ),
+    )
+    ..registerLazySingleton(() => LogOutUseCase(getIt()))
+    ..registerLazySingleton(() => WatchAuthStateUseCase(getIt()))
     ..registerFactory(
       () => LocaleCubit(getSavedLanguageUseCase: getIt(), setSavedLanguageUseCase: getIt()),
     )
+    ..registerFactory(
+      () => AuthBloc(
+        registerWithEmailUseCase: getIt(),
+        loginWithEmailUseCase: getIt(),
+        signInWithGoogleUseCase: getIt(),
+        resetPasswordUseCase: getIt(),
+        confirmSignUpUseCase: getIt(),
+        confirmResetPasswordUseCase: getIt(),
+        resendSignUpCodeUseCase: getIt(),
+        logOutUseCase: getIt(),
+        watchAuthStateUseCase: getIt(),
+      ),
+    )
     ..registerFactory(() => ConfirmationDialogBloc())
-    ..registerFactoryParam<TaskBloc, String, String>(
-      (notificationReminderTitle, notificationDeadlineTitle) => TaskBloc(
+    ..registerFactory(
+      () => TaskBloc(
         watchTasksUseCase: getIt(),
         addTaskUseCase: getIt(),
         updateTaskUseCase: getIt(),
         deleteTaskUseCase: getIt(),
         getTaskViewPreferencesUseCase: getIt(),
         setTaskViewPreferencesUseCase: getIt(),
-        notificationsManager: getIt(),
-        notificationReminderTitle: notificationReminderTitle,
-        notificationDeadlineTitle: notificationDeadlineTitle,
+        scheduleTaskNotificationsUseCase: getIt(),
+        cancelTaskNotificationsUseCase: getIt(),
+        getNotificationTapStreamUseCase: getIt(),
+        consumeInitialNotificationPayloadUseCase: getIt(),
       ),
     );
 }

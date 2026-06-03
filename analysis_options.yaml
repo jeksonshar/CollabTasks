@@ -10,17 +10,17 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
-  # делаем важные ошибки фатальными, чтобы проект не собрался с мусором
+  # We make important mistakes fatal so that the project doesn't end up as garbage.
   errors:
     todo: ignore
     unused_local_variable: error
     unused_import: error
     invalid_annotation_target: ignore
-    use_build_context_synchronously: error # Это база для Flutter
+    use_build_context_synchronously: error # This is the base for Flutter.
   exclude:
     - "bin/cache/**"
     - "**/*.g.dart"
-    - "**/*.freezed.dart" # Исключаем кодогенерацию
+    - "**/*.freezed.dart" # We exclude code generation
 
 linter:
   # The lint rules applied to this project can be customized in the

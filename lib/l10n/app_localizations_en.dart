@@ -275,4 +275,213 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get attentionTitle => 'Attention!';
+
+  @override
+  String get authTitle => 'Authentication';
+
+  @override
+  String get authLogin => 'Login';
+
+  @override
+  String get authRegister => 'Register';
+
+  @override
+  String get authPassword => 'Password';
+
+  @override
+  String get authEnterEmail => 'Enter email';
+
+  @override
+  String get authInvalidEmail => 'Invalid email';
+
+  @override
+  String get authEnterPassword => 'Enter password';
+
+  @override
+  String get authPasswordMinLength => 'Minimum 6 characters';
+
+  @override
+  String get authSignIn => 'Sign in';
+
+  @override
+  String get authCreateAccount => 'Create account';
+
+  @override
+  String get authContinueWithGoogle => 'Continue with Google';
+
+  @override
+  String get authForgotPassword => 'Forgot password?';
+
+  @override
+  String get authResetHint =>
+      'Password reset works only for accounts with Email/Password sign-in. Google accounts should use Google sign-in.';
+
+  @override
+  String get authResetPasswordSent =>
+      'If an account exists for this email, a reset link has been sent.';
+
+  @override
+  String get authEnterValidEmailToReset =>
+      'Enter a valid email to reset password.';
+
+  @override
+  String get authLogOut => 'Log out';
+
+  @override
+  String get authProviderTitle => 'Auth method';
+
+  @override
+  String get authProviderEmail => 'Email/Password';
+
+  @override
+  String get authProviderGoogle => 'Google';
+
+  @override
+  String get authProviderUnknown => 'Unknown';
+
+  @override
+  String get authNameNotProvided => 'Not provided';
+
+  @override
+  String get orTitle => 'or';
+
+  @override
+  String get authPasswordUpdated =>
+      'Password updated. Sign in with new password.';
+
+  @override
+  String get authVerificationCodeResent =>
+      'Verification code sent again. Check your email.';
+
+  @override
+  String get authAccountConfirmed => 'Account confirmed. You can sign in now.';
+
+  @override
+  String authVerificationCodeLabel(Object email) {
+    return 'Verification code for $email';
+  }
+
+  @override
+  String get authConfirmSignUp => 'Confirm Sign Up';
+
+  @override
+  String get authResendCode => 'Resend Code';
+
+  @override
+  String authResetCodeLabel(Object email) {
+    return 'Reset code for $email';
+  }
+
+  @override
+  String get authNewPasswordLabel => 'New password';
+
+  @override
+  String get authConfirmResetPassword => 'Confirm Reset Password';
+
+  @override
+  String get authErrorEnterValidEmail => 'Enter a valid email first.';
+
+  @override
+  String get authErrorEnterVerificationCode => 'Enter verification code.';
+
+  @override
+  String get authErrorEnterResetCode => 'Enter reset code.';
+
+  @override
+  String get authErrorNewPasswordTooShort => 'New password is too short.';
+
+  @override
+  String get groupScreenAddGroupFunctionality => 'Add group functionality';
+
+  @override
+  String get profileScreenEditProfileFunctionality =>
+      'Edit profile functionality';
+
+  @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageRussian => 'Russian';
+
+  @override
+  String get settingsLanguageUkrainian => 'Ukrainian';
+
+  @override
+  String get bytesSuffixB => 'B';
+
+  @override
+  String get bytesSuffixKB => 'KB';
+
+  @override
+  String get bytesSuffixMB => 'MB';
+
+  @override
+  String get authErrorWrongPassword => 'Wrong password.';
+
+  @override
+  String get authErrorUserNotFound => 'User not found.';
+
+  @override
+  String get authErrorNetwork => 'Network error.';
+
+  @override
+  String get authErrorActionCodeExpired => 'Action code expired.';
+
+  @override
+  String get authErrorEmailAlreadyInUse => 'Email is already in use.';
+
+  @override
+  String get authErrorInvalidEmail => 'Invalid email address.';
+
+  @override
+  String get authErrorWeakPassword => 'Password is too weak.';
+
+  @override
+  String get authErrorTooManyRequests => 'Too many requests.';
+
+  @override
+  String get authErrorUserDisabled => 'User account is disabled.';
+
+  @override
+  String get authErrorEmailNotVerified => 'Email is not verified.';
+
+  @override
+  String get authErrorEmailNotVerifiedConfirmEmail =>
+      'Confirm email with verification code before sign-in.';
+
+  @override
+  String get authErrorEmailNotVerifiedSent =>
+      'Verification email sent. Confirm your email, then sign in.';
+
+  @override
+  String get authErrorInvalidCredential => 'Invalid credential.';
+
+  @override
+  String get authErrorOperationNotAllowed => 'Operation is not allowed.';
+
+  @override
+  String get authErrorResetNotAvailable =>
+      'Reset password flow is not available for this account.';
+
+  @override
+  String get authErrorGoogleSignInNotSupported =>
+      'Google Sign-in is not supported on this platform.';
+
+  @override
+  String get authErrorNoPasswordProvider =>
+      'This account does not support password reset.';
+
+  @override
+  String get authErrorPasswordResetRequired =>
+      'Password reset is required before sign-in.';
+
+  @override
+  String get authErrorCanceledByUser => 'Operation was canceled by user.';
+
+  @override
+  String get authErrorConfirmationNotComplete =>
+      'Confirmation is not complete.';
+
+  @override
+  String get authErrorUnknown => 'Unknown authentication error.';
 }

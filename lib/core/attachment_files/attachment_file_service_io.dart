@@ -1,13 +1,12 @@
 import 'dart:io';
 
-import 'package:collab_tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import 'attachment_utils.dart';
 
 Future<String?> attachmentsDirectory() async {
   final docs = await getApplicationDocumentsDirectory();
