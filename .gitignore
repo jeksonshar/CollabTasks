@@ -47,3 +47,11 @@ app.*.map.json
 /out.js.deps
 /android/build/reports/problems/problems-report.html
 /out.js.map
+
+# AWS Amplify Gen 2
+node_modules/
+.amplify/
+amplify_outputs*
+amplifyconfiguration*
+amplify/artifacts/
+amplify/tsconfig.json

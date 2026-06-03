@@ -1,0 +1,38 @@
+{
+  "name": "collab_tasks",
+  "version": "1.0.0",
+  "description": "**Streamline your projects, synchronize your team.**",
+  "main": "out.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ITC-Mobile-Team/CollabTasks.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ITC-Mobile-Team/CollabTasks/issues"
+  },
+  "homepage": "https://github.com/ITC-Mobile-Team/CollabTasks#readme",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.23.0",
+    "@aws-amplify/backend-cli": "^1.8.3",
+    "aws-cdk-lib": "^2.244.0",
+    "constructs": "^10.6.0",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "aws-amplify": "^6.17.0"
+  }
+}
