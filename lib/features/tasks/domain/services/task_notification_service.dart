@@ -9,4 +9,6 @@ abstract class TaskNotificationService {
   Future<void> scheduleTaskNotifications(Task task);
 
   Future<void> cancelTaskNotifications(String taskId);
+
+  Future<void> cancelAllNotifications();
 }

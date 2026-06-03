@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
 import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
@@ -23,7 +24,11 @@ import 'package:collab_tasks/features/settings/domain/use_cases/set_saved_langua
 import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
+import 'package:collab_tasks/features/tasks/data/local/tasks_local_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
+import 'package:collab_tasks/features/tasks/data/remote/aws_remote_data_source.dart';
+import 'package:collab_tasks/features/tasks/data/remote/firebase_remote_data_source.dart';
+import 'package:collab_tasks/features/tasks/data/remote/tasks_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/repositories/task_repository_impl.dart';
 import 'package:collab_tasks/features/tasks/data/services/localized_task_notification_titles_provider.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
@@ -40,6 +45,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_cas
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -65,7 +71,24 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton<TaskNotificationService>(() => getIt<TaskNotificationsManager>())
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
-    ..registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(getIt<AppDatabase>()))
+    ..registerLazySingleton<TasksLocalDataSource>(() => DriftTasksLocalDataSource(getIt()))
+    ..registerLazySingleton<TasksRemoteDataSource>(
+      () => switch (storageBackend) {
+        StorageBackend.aws => const AWSRemoteDataSource(),
+        StorageBackend.firebase => FirebaseRemoteDataSource(
+          firestore: getIt<FirebaseFirestore>(),
+          storage: getIt<FirebaseStorage>(),
+        ),
+      },
+    )
+    ..registerLazySingleton<TaskRepository>(
+      () => TaskRepositoryImpl(
+        localDataSource: getIt(),
+        remoteDataSource: getIt(),
+        authRepository: getIt(),
+        notificationService: getIt(),
+      ),
+    )
     ..registerLazySingleton(() => WatchTasksUseCase(getIt()))
     ..registerLazySingleton(() => AddTaskUseCase(getIt()))
     ..registerLazySingleton(() => UpdateTaskUseCase(getIt()))
@@ -79,6 +102,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
     ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
+    ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
+    ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
     ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance);
 
   if (authBackend == AuthBackend.aws) {
@@ -134,6 +159,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         resendSignUpCodeUseCase: getIt(),
         logOutUseCase: getIt(),
         watchAuthStateUseCase: getIt(),
+        notificationService: getIt(),
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())

@@ -150,6 +150,14 @@ class TaskNotificationsManager implements TaskNotificationService {
     );
   }
 
+  @override
+  Future<void> cancelAllNotifications() async {
+    if (!_isNotificationsSupported) {
+      return;
+    }
+    await _notificationsPlugin.cancelAll();
+  }
+
   void dispose() {
     _notificationTapController.close();
   }

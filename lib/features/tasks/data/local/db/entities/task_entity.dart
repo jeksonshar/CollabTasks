@@ -37,6 +37,8 @@ class TaskSubtaskListConverter extends TypeConverter<List<TaskSubtask>, String> 
 class TaskEntity extends Table {
   TextColumn get taskId => text()();
 
+  TextColumn get taskOwnerId => text().withDefault(const Constant(''))();
+
   TextColumn get taskTitle => text().withDefault(const Constant(''))();
 
   TextColumn get taskText => text()();
@@ -56,6 +58,8 @@ class TaskEntity extends Table {
 
   BoolColumn get taskIsPinned => boolean().withDefault(const Constant(false))();
 
+  IntColumn get taskUpdatedAt => integer().withDefault(const Constant(0))();
+
   @override
-  Set<Column<Object>> get primaryKey => {taskId};
+  Set<Column<Object>> get primaryKey => {taskOwnerId, taskId};
 }

@@ -10,4 +10,6 @@ abstract class TaskRepository {
   Future<void> deleteTask(String id);
 
   Future<void> toggleTask(String id);
+
+  Future<void> syncTasks();
 }

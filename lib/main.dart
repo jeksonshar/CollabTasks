@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:collab_tasks/amplify_configuration.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
@@ -38,7 +40,11 @@ Future<void> _configureSelectedAuthBackend() async {
 
   try {
     final authPlugin = AmplifyAuthCognito();
+    final apiPlugin = AmplifyAPI();
+    final storagePlugin = AmplifyStorageS3();
     await Amplify.addPlugin(authPlugin);
+    await Amplify.addPlugin(apiPlugin);
+    await Amplify.addPlugin(storagePlugin);
     await Amplify.configure(amplifyConfig).timeout(const Duration(seconds: 10));
   } on AmplifyAlreadyConfiguredException {
     safePrint('Amplify was already configured.');

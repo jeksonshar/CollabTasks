@@ -19,6 +19,16 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _taskOwnerIdMeta = const VerificationMeta('taskOwnerId');
+  @override
+  late final GeneratedColumn<String> taskOwnerId = GeneratedColumn<String>(
+    'task_owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _taskTitleMeta = const VerificationMeta('taskTitle');
   @override
   late final GeneratedColumn<String> taskTitle = GeneratedColumn<String>(
@@ -107,10 +117,21 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("task_is_pinned" IN (0, 1))'),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _taskUpdatedAtMeta = const VerificationMeta('taskUpdatedAt');
+  @override
+  late final GeneratedColumn<int> taskUpdatedAt = GeneratedColumn<int>(
+    'task_updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
 
   @override
   List<GeneratedColumn> get $columns => [
     taskId,
+    taskOwnerId,
     taskTitle,
     taskText,
     taskPriority,
@@ -120,6 +141,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     taskIsCompleted,
     taskDeadline,
     taskIsPinned,
+    taskUpdatedAt,
   ];
 
   @override
@@ -140,6 +162,12 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
       context.handle(_taskIdMeta, taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta));
     } else if (isInserting) {
       context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('task_owner_id')) {
+      context.handle(
+        _taskOwnerIdMeta,
+        taskOwnerId.isAcceptableOrUnknown(data['task_owner_id']!, _taskOwnerIdMeta),
+      );
     }
     if (data.containsKey('task_title')) {
       context.handle(
@@ -187,11 +215,17 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         taskIsPinned.isAcceptableOrUnknown(data['task_is_pinned']!, _taskIsPinnedMeta),
       );
     }
+    if (data.containsKey('task_updated_at')) {
+      context.handle(
+        _taskUpdatedAtMeta,
+        taskUpdatedAt.isAcceptableOrUnknown(data['task_updated_at']!, _taskUpdatedAtMeta),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {taskId};
+  Set<GeneratedColumn> get $primaryKey => {taskOwnerId, taskId};
 
   @override
   TaskEntityData map(Map<String, dynamic> data, {String? tablePrefix}) {
@@ -200,6 +234,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
       taskId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}task_id'],
+      )!,
+      taskOwnerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_owner_id'],
       )!,
       taskTitle: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -241,6 +279,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         DriftSqlType.bool,
         data['${effectivePrefix}task_is_pinned'],
       )!,
+      taskUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_updated_at'],
+      )!,
     );
   }
 
@@ -257,6 +299,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
 
 class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final String taskId;
+  final String taskOwnerId;
   final String taskTitle;
   final String taskText;
   final int taskPriority;
@@ -266,9 +309,11 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final bool taskIsCompleted;
   final DateTime? taskDeadline;
   final bool taskIsPinned;
+  final int taskUpdatedAt;
 
   const TaskEntityData({
     required this.taskId,
+    required this.taskOwnerId,
     required this.taskTitle,
     required this.taskText,
     required this.taskPriority,
@@ -278,12 +323,14 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     required this.taskIsCompleted,
     this.taskDeadline,
     required this.taskIsPinned,
+    required this.taskUpdatedAt,
   });
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['task_id'] = Variable<String>(taskId);
+    map['task_owner_id'] = Variable<String>(taskOwnerId);
     map['task_title'] = Variable<String>(taskTitle);
     map['task_text'] = Variable<String>(taskText);
     map['task_priority'] = Variable<int>(taskPriority);
@@ -303,12 +350,14 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       map['task_deadline'] = Variable<DateTime>(taskDeadline);
     }
     map['task_is_pinned'] = Variable<bool>(taskIsPinned);
+    map['task_updated_at'] = Variable<int>(taskUpdatedAt);
     return map;
   }
 
   TaskEntityCompanion toCompanion(bool nullToAbsent) {
     return TaskEntityCompanion(
       taskId: Value(taskId),
+      taskOwnerId: Value(taskOwnerId),
       taskTitle: Value(taskTitle),
       taskText: Value(taskText),
       taskPriority: Value(taskPriority),
@@ -320,6 +369,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ? const Value.absent()
           : Value(taskDeadline),
       taskIsPinned: Value(taskIsPinned),
+      taskUpdatedAt: Value(taskUpdatedAt),
     );
   }
 
@@ -327,6 +377,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return TaskEntityData(
       taskId: serializer.fromJson<String>(json['taskId']),
+      taskOwnerId: serializer.fromJson<String>(json['taskOwnerId']),
       taskTitle: serializer.fromJson<String>(json['taskTitle']),
       taskText: serializer.fromJson<String>(json['taskText']),
       taskPriority: serializer.fromJson<int>(json['taskPriority']),
@@ -336,6 +387,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskIsCompleted: serializer.fromJson<bool>(json['taskIsCompleted']),
       taskDeadline: serializer.fromJson<DateTime?>(json['taskDeadline']),
       taskIsPinned: serializer.fromJson<bool>(json['taskIsPinned']),
+      taskUpdatedAt: serializer.fromJson<int>(json['taskUpdatedAt']),
     );
   }
 
@@ -344,6 +396,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'taskId': serializer.toJson<String>(taskId),
+      'taskOwnerId': serializer.toJson<String>(taskOwnerId),
       'taskTitle': serializer.toJson<String>(taskTitle),
       'taskText': serializer.toJson<String>(taskText),
       'taskPriority': serializer.toJson<int>(taskPriority),
@@ -353,11 +406,13 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       'taskIsCompleted': serializer.toJson<bool>(taskIsCompleted),
       'taskDeadline': serializer.toJson<DateTime?>(taskDeadline),
       'taskIsPinned': serializer.toJson<bool>(taskIsPinned),
+      'taskUpdatedAt': serializer.toJson<int>(taskUpdatedAt),
     };
   }
 
   TaskEntityData copyWith({
     String? taskId,
+    String? taskOwnerId,
     String? taskTitle,
     String? taskText,
     int? taskPriority,
@@ -367,8 +422,10 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     bool? taskIsCompleted,
     Value<DateTime?> taskDeadline = const Value.absent(),
     bool? taskIsPinned,
+    int? taskUpdatedAt,
   }) => TaskEntityData(
     taskId: taskId ?? this.taskId,
+    taskOwnerId: taskOwnerId ?? this.taskOwnerId,
     taskTitle: taskTitle ?? this.taskTitle,
     taskText: taskText ?? this.taskText,
     taskPriority: taskPriority ?? this.taskPriority,
@@ -378,11 +435,13 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
     taskDeadline: taskDeadline.present ? taskDeadline.value : this.taskDeadline,
     taskIsPinned: taskIsPinned ?? this.taskIsPinned,
+    taskUpdatedAt: taskUpdatedAt ?? this.taskUpdatedAt,
   );
 
   TaskEntityData copyWithCompanion(TaskEntityCompanion data) {
     return TaskEntityData(
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      taskOwnerId: data.taskOwnerId.present ? data.taskOwnerId.value : this.taskOwnerId,
       taskTitle: data.taskTitle.present ? data.taskTitle.value : this.taskTitle,
       taskText: data.taskText.present ? data.taskText.value : this.taskText,
       taskPriority: data.taskPriority.present ? data.taskPriority.value : this.taskPriority,
@@ -396,6 +455,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           : this.taskIsCompleted,
       taskDeadline: data.taskDeadline.present ? data.taskDeadline.value : this.taskDeadline,
       taskIsPinned: data.taskIsPinned.present ? data.taskIsPinned.value : this.taskIsPinned,
+      taskUpdatedAt: data.taskUpdatedAt.present ? data.taskUpdatedAt.value : this.taskUpdatedAt,
     );
   }
 
@@ -403,6 +463,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   String toString() {
     return (StringBuffer('TaskEntityData(')
           ..write('taskId: $taskId, ')
+          ..write('taskOwnerId: $taskOwnerId, ')
           ..write('taskTitle: $taskTitle, ')
           ..write('taskText: $taskText, ')
           ..write('taskPriority: $taskPriority, ')
@@ -411,7 +472,8 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ..write('taskSubtasks: $taskSubtasks, ')
           ..write('taskIsCompleted: $taskIsCompleted, ')
           ..write('taskDeadline: $taskDeadline, ')
-          ..write('taskIsPinned: $taskIsPinned')
+          ..write('taskIsPinned: $taskIsPinned, ')
+          ..write('taskUpdatedAt: $taskUpdatedAt')
           ..write(')'))
         .toString();
   }
@@ -419,6 +481,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   @override
   int get hashCode => Object.hash(
     taskId,
+    taskOwnerId,
     taskTitle,
     taskText,
     taskPriority,
@@ -428,6 +491,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskIsCompleted,
     taskDeadline,
     taskIsPinned,
+    taskUpdatedAt,
   );
 
   @override
@@ -435,6 +499,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       identical(this, other) ||
       (other is TaskEntityData &&
           other.taskId == this.taskId &&
+          other.taskOwnerId == this.taskOwnerId &&
           other.taskTitle == this.taskTitle &&
           other.taskText == this.taskText &&
           other.taskPriority == this.taskPriority &&
@@ -443,11 +508,13 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           other.taskSubtasks == this.taskSubtasks &&
           other.taskIsCompleted == this.taskIsCompleted &&
           other.taskDeadline == this.taskDeadline &&
-          other.taskIsPinned == this.taskIsPinned);
+          other.taskIsPinned == this.taskIsPinned &&
+          other.taskUpdatedAt == this.taskUpdatedAt);
 }
 
 class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<String> taskId;
+  final Value<String> taskOwnerId;
   final Value<String> taskTitle;
   final Value<String> taskText;
   final Value<int> taskPriority;
@@ -457,10 +524,12 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<bool> taskIsCompleted;
   final Value<DateTime?> taskDeadline;
   final Value<bool> taskIsPinned;
+  final Value<int> taskUpdatedAt;
   final Value<int> rowid;
 
   const TaskEntityCompanion({
     this.taskId = const Value.absent(),
+    this.taskOwnerId = const Value.absent(),
     this.taskTitle = const Value.absent(),
     this.taskText = const Value.absent(),
     this.taskPriority = const Value.absent(),
@@ -470,11 +539,13 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskIsCompleted = const Value.absent(),
     this.taskDeadline = const Value.absent(),
     this.taskIsPinned = const Value.absent(),
+    this.taskUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
 
   TaskEntityCompanion.insert({
     required String taskId,
+    this.taskOwnerId = const Value.absent(),
     this.taskTitle = const Value.absent(),
     required String taskText,
     this.taskPriority = const Value.absent(),
@@ -484,6 +555,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskIsCompleted = const Value.absent(),
     this.taskDeadline = const Value.absent(),
     this.taskIsPinned = const Value.absent(),
+    this.taskUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
        taskText = Value(taskText),
@@ -492,6 +564,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
 
   static Insertable<TaskEntityData> custom({
     Expression<String>? taskId,
+    Expression<String>? taskOwnerId,
     Expression<String>? taskTitle,
     Expression<String>? taskText,
     Expression<int>? taskPriority,
@@ -501,10 +574,12 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Expression<bool>? taskIsCompleted,
     Expression<DateTime>? taskDeadline,
     Expression<bool>? taskIsPinned,
+    Expression<int>? taskUpdatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (taskId != null) 'task_id': taskId,
+      if (taskOwnerId != null) 'task_owner_id': taskOwnerId,
       if (taskTitle != null) 'task_title': taskTitle,
       if (taskText != null) 'task_text': taskText,
       if (taskPriority != null) 'task_priority': taskPriority,
@@ -514,12 +589,14 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       if (taskIsCompleted != null) 'task_is_completed': taskIsCompleted,
       if (taskDeadline != null) 'task_deadline': taskDeadline,
       if (taskIsPinned != null) 'task_is_pinned': taskIsPinned,
+      if (taskUpdatedAt != null) 'task_updated_at': taskUpdatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   TaskEntityCompanion copyWith({
     Value<String>? taskId,
+    Value<String>? taskOwnerId,
     Value<String>? taskTitle,
     Value<String>? taskText,
     Value<int>? taskPriority,
@@ -529,10 +606,12 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Value<bool>? taskIsCompleted,
     Value<DateTime?>? taskDeadline,
     Value<bool>? taskIsPinned,
+    Value<int>? taskUpdatedAt,
     Value<int>? rowid,
   }) {
     return TaskEntityCompanion(
       taskId: taskId ?? this.taskId,
+      taskOwnerId: taskOwnerId ?? this.taskOwnerId,
       taskTitle: taskTitle ?? this.taskTitle,
       taskText: taskText ?? this.taskText,
       taskPriority: taskPriority ?? this.taskPriority,
@@ -542,6 +621,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
       taskDeadline: taskDeadline ?? this.taskDeadline,
       taskIsPinned: taskIsPinned ?? this.taskIsPinned,
+      taskUpdatedAt: taskUpdatedAt ?? this.taskUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -551,6 +631,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     final map = <String, Expression>{};
     if (taskId.present) {
       map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (taskOwnerId.present) {
+      map['task_owner_id'] = Variable<String>(taskOwnerId.value);
     }
     if (taskTitle.present) {
       map['task_title'] = Variable<String>(taskTitle.value);
@@ -583,6 +666,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     if (taskIsPinned.present) {
       map['task_is_pinned'] = Variable<bool>(taskIsPinned.value);
     }
+    if (taskUpdatedAt.present) {
+      map['task_updated_at'] = Variable<int>(taskUpdatedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -593,6 +679,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   String toString() {
     return (StringBuffer('TaskEntityCompanion(')
           ..write('taskId: $taskId, ')
+          ..write('taskOwnerId: $taskOwnerId, ')
           ..write('taskTitle: $taskTitle, ')
           ..write('taskText: $taskText, ')
           ..write('taskPriority: $taskPriority, ')
@@ -602,6 +689,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
           ..write('taskIsCompleted: $taskIsCompleted, ')
           ..write('taskDeadline: $taskDeadline, ')
           ..write('taskIsPinned: $taskIsPinned, ')
+          ..write('taskUpdatedAt: $taskUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -625,6 +713,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$TaskEntityTableCreateCompanionBuilder =
     TaskEntityCompanion Function({
       required String taskId,
+      Value<String> taskOwnerId,
       Value<String> taskTitle,
       required String taskText,
       Value<int> taskPriority,
@@ -634,11 +723,13 @@ typedef $$TaskEntityTableCreateCompanionBuilder =
       Value<bool> taskIsCompleted,
       Value<DateTime?> taskDeadline,
       Value<bool> taskIsPinned,
+      Value<int> taskUpdatedAt,
       Value<int> rowid,
     });
 typedef $$TaskEntityTableUpdateCompanionBuilder =
     TaskEntityCompanion Function({
       Value<String> taskId,
+      Value<String> taskOwnerId,
       Value<String> taskTitle,
       Value<String> taskText,
       Value<int> taskPriority,
@@ -648,6 +739,7 @@ typedef $$TaskEntityTableUpdateCompanionBuilder =
       Value<bool> taskIsCompleted,
       Value<DateTime?> taskDeadline,
       Value<bool> taskIsPinned,
+      Value<int> taskUpdatedAt,
       Value<int> rowid,
     });
 
@@ -662,6 +754,9 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
 
   ColumnFilters<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taskOwnerId =>
+      $composableBuilder(column: $table.taskOwnerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get taskTitle =>
       $composableBuilder(column: $table.taskTitle, builder: (column) => ColumnFilters(column));
@@ -697,6 +792,9 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
 
   ColumnFilters<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get taskUpdatedAt =>
+      $composableBuilder(column: $table.taskUpdatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEntityTable> {
@@ -710,6 +808,9 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
 
   ColumnOrderings<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taskOwnerId =>
+      $composableBuilder(column: $table.taskOwnerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get taskTitle =>
       $composableBuilder(column: $table.taskTitle, builder: (column) => ColumnOrderings(column));
@@ -743,6 +844,11 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
 
   ColumnOrderings<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get taskUpdatedAt => $composableBuilder(
+    column: $table.taskUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskEntityTable> {
@@ -756,6 +862,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
 
   GeneratedColumn<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get taskOwnerId =>
+      $composableBuilder(column: $table.taskOwnerId, builder: (column) => column);
 
   GeneratedColumn<String> get taskTitle =>
       $composableBuilder(column: $table.taskTitle, builder: (column) => column);
@@ -783,6 +892,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
 
   GeneratedColumn<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => column);
+
+  GeneratedColumn<int> get taskUpdatedAt =>
+      $composableBuilder(column: $table.taskUpdatedAt, builder: (column) => column);
 }
 
 class $$TaskEntityTableTableManager
@@ -812,6 +924,7 @@ class $$TaskEntityTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> taskId = const Value.absent(),
+                Value<String> taskOwnerId = const Value.absent(),
                 Value<String> taskTitle = const Value.absent(),
                 Value<String> taskText = const Value.absent(),
                 Value<int> taskPriority = const Value.absent(),
@@ -821,9 +934,11 @@ class $$TaskEntityTableTableManager
                 Value<bool> taskIsCompleted = const Value.absent(),
                 Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<bool> taskIsPinned = const Value.absent(),
+                Value<int> taskUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion(
                 taskId: taskId,
+                taskOwnerId: taskOwnerId,
                 taskTitle: taskTitle,
                 taskText: taskText,
                 taskPriority: taskPriority,
@@ -833,11 +948,13 @@ class $$TaskEntityTableTableManager
                 taskIsCompleted: taskIsCompleted,
                 taskDeadline: taskDeadline,
                 taskIsPinned: taskIsPinned,
+                taskUpdatedAt: taskUpdatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String taskId,
+                Value<String> taskOwnerId = const Value.absent(),
                 Value<String> taskTitle = const Value.absent(),
                 required String taskText,
                 Value<int> taskPriority = const Value.absent(),
@@ -847,9 +964,11 @@ class $$TaskEntityTableTableManager
                 Value<bool> taskIsCompleted = const Value.absent(),
                 Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<bool> taskIsPinned = const Value.absent(),
+                Value<int> taskUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion.insert(
                 taskId: taskId,
+                taskOwnerId: taskOwnerId,
                 taskTitle: taskTitle,
                 taskText: taskText,
                 taskPriority: taskPriority,
@@ -859,6 +978,7 @@ class $$TaskEntityTableTableManager
                 taskIsCompleted: taskIsCompleted,
                 taskDeadline: taskDeadline,
                 taskIsPinned: taskIsPinned,
+                taskUpdatedAt: taskUpdatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) =>

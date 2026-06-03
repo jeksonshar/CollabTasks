@@ -15,6 +15,7 @@ class Task extends Equatable {
   final bool isCompleted;
   final DateTime? deadline;
   final bool isPinned;
+  final int updatedAt;
 
   const Task({
     required this.id,
@@ -27,7 +28,8 @@ class Task extends Equatable {
     this.isCompleted = false,
     this.deadline,
     this.isPinned = false,
-  });
+    int? updatedAt,
+  }) : updatedAt = updatedAt ?? 0;
 
   Task copyWith({
     String? id,
@@ -40,6 +42,7 @@ class Task extends Equatable {
     bool? isCompleted,
     DateTime? deadline,
     bool? isPinned,
+    int? updatedAt,
   }) {
     return Task(
       id: id ?? this.id,
@@ -52,6 +55,7 @@ class Task extends Equatable {
       isCompleted: isCompleted ?? this.isCompleted,
       deadline: deadline ?? this.deadline,
       isPinned: isPinned ?? this.isPinned,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -66,6 +70,7 @@ class Task extends Equatable {
     'isCompleted': isCompleted,
     'deadline': deadline?.toIso8601String(),
     'isPinned': isPinned,
+    'updatedAt': updatedAt,
   };
 
   factory Task.fromMap(Map<String, dynamic> map) {
@@ -87,6 +92,7 @@ class Task extends Equatable {
       isCompleted: map['isCompleted'] as bool? ?? false,
       deadline: _parseOptionalDateTime(map['deadline']),
       isPinned: map['isPinned'] as bool? ?? false,
+      updatedAt: (map['updatedAt'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -127,5 +133,6 @@ class Task extends Equatable {
     isCompleted,
     deadline,
     isPinned,
+    updatedAt,
   ];
 }

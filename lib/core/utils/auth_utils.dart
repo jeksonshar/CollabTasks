@@ -5,6 +5,13 @@ enum AuthBackend { aws, firebase }
 
 const AuthBackend authBackend = AuthBackend.aws;
 
+enum StorageBackend { aws, firebase }
+
+StorageBackend get storageBackend => switch (authBackend) {
+  AuthBackend.aws => StorageBackend.aws,
+  AuthBackend.firebase => StorageBackend.firebase,
+};
+
 String mapProviderLabel(AppLocalizations localization, AuthUser? user) {
   switch (user?.provider) {
     case AuthProviderType.google:

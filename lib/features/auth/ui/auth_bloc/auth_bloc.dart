@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
@@ -14,6 +16,7 @@ import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
+import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -28,6 +31,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required ResendSignUpCodeUseCase resendSignUpCodeUseCase,
     required LogOutUseCase logOutUseCase,
     required WatchAuthStateUseCase watchAuthStateUseCase,
+    required TaskNotificationService notificationService,
   }) : _registerWithEmailUseCase = registerWithEmailUseCase,
        _loginWithEmailUseCase = loginWithEmailUseCase,
        _signInWithGoogleUseCase = signInWithGoogleUseCase,
@@ -37,6 +41,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _resendSignUpCodeUseCase = resendSignUpCodeUseCase,
        _logOutUseCase = logOutUseCase,
        _watchAuthStateUseCase = watchAuthStateUseCase,
+       _notificationService = notificationService,
        super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
     on<AuthRegisterRequested>(_onRegisterRequested);
@@ -59,6 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ResendSignUpCodeUseCase _resendSignUpCodeUseCase;
   final LogOutUseCase _logOutUseCase;
   final WatchAuthStateUseCase _watchAuthStateUseCase;
+  final TaskNotificationService _notificationService;
 
   Future<void> _onSubscriptionStarted(
     AuthSubscriptionStarted event,
@@ -68,6 +74,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _watchAuthStateUseCase(),
       onData: (user) {
         if (user == null) {
+          unawaited(
+            _notificationService.cancelAllNotifications().catchError((error, stackTrace) {
+              debugPrint(
+                'Failed to cancel all notifications on unauthenticated state: $error\n$stackTrace',
+              );
+            }),
+          );
           return state.copyWith(
             status: AuthStatus.unauthenticated,
             user: null,
@@ -318,9 +331,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     switch (result) {
       case Success<void, Failure>():
-        // IMPORTANT: We NO LONGER issue AuthStatus.unauthenticated here manually!
-        // The _onSubscriptionStarted stream itself will receive null from Amplify,
-        // will clear the user and return EXACTLY ONE unauthenticated state for the entire application.
+        try {
+          await _notificationService.cancelAllNotifications();
+        } catch (e) {
+          debugPrint('Failed to cancel all notifications on logout: $e');
+        }
         break;
 
       case FailureResult<void, Failure>(:final failure):

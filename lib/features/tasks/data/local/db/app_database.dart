@@ -12,7 +12,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +54,61 @@ class AppDatabase extends _$AppDatabase {
 
       if (from < 8) {
         await m.addColumn(taskEntity, taskEntity.taskSubtasks);
+      }
+
+      if (from < 9) {
+        await m.addColumn(taskEntity, taskEntity.taskUpdatedAt);
+      }
+
+      if (from < 10) {
+        await m.addColumn(taskEntity, taskEntity.taskOwnerId);
+      }
+
+      if (from < 11) {
+        await transaction(() async {
+          await customStatement('PRAGMA foreign_keys=OFF;');
+          await customStatement('''
+            CREATE TABLE IF NOT EXISTS task_entity_temp (
+              task_id TEXT NOT NULL,
+              task_owner_id TEXT NOT NULL DEFAULT '',
+              task_title TEXT NOT NULL DEFAULT '',
+              task_text TEXT NOT NULL,
+              task_priority INTEGER NOT NULL DEFAULT 0,
+              task_created_at INTEGER NOT NULL,
+              task_attachments TEXT NOT NULL,
+              task_subtasks TEXT NOT NULL DEFAULT '[]',
+              task_is_completed INTEGER NOT NULL DEFAULT 0,
+              task_deadline INTEGER,
+              task_is_pinned INTEGER NOT NULL DEFAULT 0,
+              task_updated_at INTEGER NOT NULL DEFAULT 0,
+              PRIMARY KEY (task_owner_id, task_id)
+            );
+          ''');
+          await customStatement('''
+            INSERT INTO task_entity_temp (
+              task_id, task_owner_id, task_title, task_text, task_priority,
+              task_created_at, task_attachments, task_subtasks,
+              task_is_completed, task_deadline, task_is_pinned, task_updated_at
+            )
+            SELECT 
+              task_id, 
+              COALESCE(task_owner_id, ''), 
+              COALESCE(task_title, ''), 
+              task_text, 
+              task_priority,
+              task_created_at, 
+              task_attachments, 
+              COALESCE(task_subtasks, '[]'),
+              task_is_completed, 
+              task_deadline, 
+              task_is_pinned, 
+              COALESCE(task_updated_at, 0)
+            FROM task_entity;
+          ''');
+          await customStatement('DROP TABLE task_entity;');
+          await customStatement('ALTER TABLE task_entity_temp RENAME TO task_entity;');
+          await customStatement('PRAGMA foreign_keys=ON;');
+        });
       }
     },
   );

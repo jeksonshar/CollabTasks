@@ -77,18 +77,22 @@ dependencies:
   # firebase
   firebase_core: ^4.9.0
   firebase_auth: ^6.5.1
+  cloud_firestore: ^6.1.0
+  firebase_storage: ^13.0.4
   google_sign_in: ^7.2.0
 
   # aws
   amplify_flutter: ^2.7.0
   amplify_auth_cognito: ^2.7.0
+  amplify_api: ^2.7.0
+  amplify_storage_s3: ^2.7.0
 
   flutter_svg: ^2.3.0
 
 dev_dependencies:
   drift_dev: ^2.31.0
+  build_runner: ^2.13.1
   #  riverpod_generator: ^4.0.3
-  #  build_runner: ^2.13.1
   #  custom_lint: ^0.8.1
   #  riverpod_lint: ^3.1.3
 

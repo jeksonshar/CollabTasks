@@ -6,6 +6,7 @@ class TaskAttachment {
   final String name;
   final String extension;
   final String? localPath; // path to file (mobile/desktop)
+  final String? storageKey; // remote Cloud Storage / S3 object key
   final int sizeBytes;
   final Uint8List? bytes; // binary data (web)
 
@@ -15,16 +16,38 @@ class TaskAttachment {
     required this.extension,
     required this.sizeBytes,
     this.localPath,
+    this.storageKey,
     this.bytes,
   });
 
   bool get isWeb => bytes != null;
+
+  TaskAttachment copyWith({
+    String? id,
+    String? name,
+    String? extension,
+    String? localPath,
+    String? storageKey,
+    int? sizeBytes,
+    Uint8List? bytes,
+  }) {
+    return TaskAttachment(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      extension: extension ?? this.extension,
+      localPath: localPath ?? this.localPath,
+      storageKey: storageKey ?? this.storageKey,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      bytes: bytes ?? this.bytes,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'extension': extension,
     'localPath': localPath,
+    'storageKey': storageKey,
     'sizeBytes': sizeBytes,
     if (isWeb) 'bytesBase64': base64Encode(bytes!),
   };
@@ -39,6 +62,7 @@ class TaskAttachment {
 
       // old data will continue to work
       localPath: json['localPath'] as String?,
+      storageKey: json['storageKey'] as String?,
 
       sizeBytes: (json['sizeBytes'] as num).toInt(),
       // web data (if available)
