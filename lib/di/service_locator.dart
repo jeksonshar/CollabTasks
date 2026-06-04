@@ -79,6 +79,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         StorageBackend.firebase => FirebaseRemoteDataSource(
           firestore: getIt<FirebaseFirestore>(),
           storage: getIt<FirebaseStorage>(),
+          auth: getIt<FirebaseAuth>(),
         ),
       },
     )

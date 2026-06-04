@@ -58,6 +58,8 @@ class TaskEntity extends Table {
 
   BoolColumn get taskIsPinned => boolean().withDefault(const Constant(false))();
 
+  BoolColumn get taskIsSynced => boolean().withDefault(const Constant(false))();
+
   IntColumn get taskUpdatedAt => integer().withDefault(const Constant(0))();
 
   @override

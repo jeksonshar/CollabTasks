@@ -4,6 +4,7 @@ import 'package:collab_tasks/features/tasks/data/remote/task_attachment_binary_r
 import 'package:collab_tasks/features/tasks/data/remote/tasks_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' hide Task;
 
 class FirebaseRemoteDataSource implements TasksRemoteDataSource {
@@ -12,12 +13,15 @@ class FirebaseRemoteDataSource implements TasksRemoteDataSource {
 
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
+  final FirebaseAuth _auth;
 
   const FirebaseRemoteDataSource({
     required FirebaseFirestore firestore,
     required FirebaseStorage storage,
+    required FirebaseAuth auth,
   }) : _firestore = firestore,
-       _storage = storage;
+       _storage = storage,
+       _auth = auth;
 
   @override
   Future<List<Task>> getTasks({required String ownerId}) async {
@@ -52,17 +56,19 @@ class FirebaseRemoteDataSource implements TasksRemoteDataSource {
   }
 
   @override
-  Future<TaskAttachment> uploadFile({
-    required String ownerId,
-    required String taskId,
-    required TaskAttachment file,
-  }) async {
+  Future<TaskAttachment> uploadFile({required String taskId, required TaskAttachment file}) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('Firebase uploadFile requires an authenticated user.');
+    }
+    final ownerId = user.uid;
+
     final bytes = file.bytes ?? await readTaskAttachmentBytes(file.localPath);
     if (bytes == null) {
       throw UnsupportedError('Firebase uploadFile requires bytes or a readable localPath.');
     }
 
-    final storageKey = 'users/$ownerId/tasks/$taskId/files/${file.id}-${file.name}';
+    final storageKey = 'users/$ownerId/tasks/$taskId/files/$file.id-$file.name';
     final ref = _storage.ref(storageKey);
     await ref.putData(bytes);
     return file.copyWith(storageKey: storageKey);

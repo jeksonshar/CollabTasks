@@ -1,4 +1,4 @@
-import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
+﻿import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
 import 'package:collab_tasks/features/tasks/domain/models/errors/data_exception.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:drift/drift.dart';
@@ -59,6 +59,7 @@ class DriftTasksLocalDataSource implements TasksLocalDataSource {
         taskIsCompleted: Value(task.isCompleted),
         taskDeadline: Value(task.deadline),
         taskIsPinned: Value(task.isPinned),
+        taskIsSynced: Value(task.isSynced),
         taskUpdatedAt: Value(task.updatedAt),
       );
 
@@ -96,6 +97,7 @@ extension TaskEntityDataMapper on TaskEntityData {
     isCompleted: taskIsCompleted,
     deadline: taskDeadline,
     isPinned: taskIsPinned,
+    isSynced: taskIsSynced,
     updatedAt: taskUpdatedAt,
   );
 }

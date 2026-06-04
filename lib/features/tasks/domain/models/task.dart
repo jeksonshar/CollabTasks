@@ -15,6 +15,7 @@ class Task extends Equatable {
   final bool isCompleted;
   final DateTime? deadline;
   final bool isPinned;
+  final bool isSynced;
   final int updatedAt;
 
   const Task({
@@ -28,6 +29,7 @@ class Task extends Equatable {
     this.isCompleted = false,
     this.deadline,
     this.isPinned = false,
+    this.isSynced = false,
     int? updatedAt,
   }) : updatedAt = updatedAt ?? 0;
 
@@ -42,6 +44,7 @@ class Task extends Equatable {
     bool? isCompleted,
     DateTime? deadline,
     bool? isPinned,
+    bool? isSynced,
     int? updatedAt,
   }) {
     return Task(
@@ -55,6 +58,7 @@ class Task extends Equatable {
       isCompleted: isCompleted ?? this.isCompleted,
       deadline: deadline ?? this.deadline,
       isPinned: isPinned ?? this.isPinned,
+      isSynced: isSynced ?? this.isSynced,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -70,6 +74,7 @@ class Task extends Equatable {
     'isCompleted': isCompleted,
     'deadline': deadline?.toIso8601String(),
     'isPinned': isPinned,
+    'isSynced': isSynced,
     'updatedAt': updatedAt,
   };
 
@@ -133,6 +138,7 @@ class Task extends Equatable {
     isCompleted,
     deadline,
     isPinned,
+    isSynced,
     updatedAt,
   ];
 }

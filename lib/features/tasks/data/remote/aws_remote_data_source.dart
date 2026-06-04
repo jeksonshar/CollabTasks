@@ -57,20 +57,23 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
   }
 
   @override
-  Future<TaskAttachment> uploadFile({
-    required String ownerId,
-    required String taskId,
-    required TaskAttachment file,
-  }) async {
-    final storageKey = 'private/$ownerId/tasks/$taskId/files/${file.id}-${file.name}';
+  Future<TaskAttachment> uploadFile({required String taskId, required TaskAttachment file}) async {
+    // We form a path using a special callback.
+    // stringId will automatically be replaced with the real Identity ID (for example, us-east-1:xxx)
+    final storagePath = StoragePath.fromIdentityId(
+      (stringId) => 'private/$stringId/tasks/$taskId/files/${file.id}-${file.name}',
+    );
+
+    // Working with bytes
     if (file.bytes != null) {
       final result = await Amplify.Storage.uploadData(
         data: StorageDataPayload.bytes(file.bytes!),
-        path: StoragePath.fromString(storageKey),
+        path: storagePath,
       ).result;
       return file.copyWith(storageKey: result.uploadedItem.path);
     }
 
+    // Working with a file
     final localPath = file.localPath;
     if (localPath == null || localPath.isEmpty) {
       throw UnsupportedError('AWS uploadFile requires bytes or localPath.');
@@ -78,7 +81,7 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
 
     final result = await Amplify.Storage.uploadFile(
       localFile: AWSFile.fromPath(localPath),
-      path: StoragePath.fromString(storageKey),
+      path: storagePath,
     ).result;
     return file.copyWith(storageKey: result.uploadedItem.path);
   }

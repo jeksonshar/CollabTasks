@@ -112,11 +112,16 @@ class TaskRepositoryImpl implements TaskRepository {
         Task? syncedTask;
 
         if (local == null && remote != null) {
-          await _localDataSource.upsertTask(ownerId: ownerId, task: remote);
-          syncedTask = remote;
+          final syncedRemote = remote.copyWith(isSynced: true);
+          await _localDataSource.upsertTask(ownerId: ownerId, task: syncedRemote);
+          syncedTask = syncedRemote;
         } else if (local != null && remote == null) {
-          await _tryPushTask(ownerId: ownerId, task: local, createRemote: true);
-          syncedTask = local;
+          if (local.isSynced) {
+            await _localDataSource.deleteTask(ownerId: ownerId, id: local.id);
+          } else {
+            await _tryPushTask(ownerId: ownerId, task: local, createRemote: true);
+            syncedTask = local;
+          }
         } else if (local != null && remote != null) {
           if (local.updatedAt == remote.updatedAt) {
             syncedTask = local;
@@ -124,13 +129,16 @@ class TaskRepositoryImpl implements TaskRepository {
             await _tryPushTask(ownerId: ownerId, task: local, createRemote: false);
             syncedTask = local;
           } else {
-            await _localDataSource.upsertTask(ownerId: ownerId, task: remote);
-            syncedTask = remote;
+            final syncedRemote = remote.copyWith(isSynced: true);
+            await _localDataSource.upsertTask(ownerId: ownerId, task: syncedRemote);
+            syncedTask = syncedRemote;
           }
         }
 
         if (syncedTask != null) {
           await _rescheduleNotificationIfNeeded(syncedTask);
+        } else {
+          await _notificationService.cancelTaskNotifications(id);
         }
       }
     } catch (error, stackTrace) {
@@ -173,15 +181,15 @@ class TaskRepositoryImpl implements TaskRepository {
     required bool createRemote,
   }) async {
     final remoteTask = await _withUploadedFiles(ownerId: ownerId, task: task);
-    if (remoteTask.attachments != task.attachments) {
-      await _localDataSource.upsertTask(ownerId: ownerId, task: remoteTask);
-    }
 
     if (createRemote) {
       await _remoteDataSource.createTask(ownerId: ownerId, task: remoteTask);
     } else {
       await _remoteDataSource.updateTask(ownerId: ownerId, task: remoteTask);
     }
+
+    final syncedLocal = remoteTask.copyWith(isSynced: true);
+    await _localDataSource.upsertTask(ownerId: ownerId, task: syncedLocal);
   }
 
   Future<Task> _withUploadedFiles({required String ownerId, required Task task}) async {
@@ -194,11 +202,7 @@ class TaskRepositoryImpl implements TaskRepository {
         continue;
       }
 
-      final uploadedFile = await _remoteDataSource.uploadFile(
-        ownerId: ownerId,
-        taskId: task.id,
-        file: file,
-      );
+      final uploadedFile = await _remoteDataSource.uploadFile(taskId: task.id, file: file);
       uploadedFiles.add(uploadedFile);
       changed = true;
     }

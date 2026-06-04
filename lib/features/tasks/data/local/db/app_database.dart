@@ -1,4 +1,4 @@
-import 'package:collab_tasks/features/tasks/data/local/db/entities/task_entity.dart';
+﻿import 'package:collab_tasks/features/tasks/data/local/db/entities/task_entity.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_subtask.dart';
 import 'package:drift/drift.dart';
@@ -12,7 +12,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,11 +45,11 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 6) {
-        await m.addColumn(taskEntity, taskEntity.taskDeadline);
+        await m.addColumn(taskEntity, taskEntity.taskIsPinned);
       }
 
       if (from < 7) {
-        await m.addColumn(taskEntity, taskEntity.taskIsPinned);
+        await m.addColumn(taskEntity, taskEntity.taskDeadline);
       }
 
       if (from < 8) {
@@ -110,6 +110,9 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('PRAGMA foreign_keys=ON;');
         });
       }
+      if (from < 13) {
+        await m.addColumn(taskEntity, taskEntity.taskIsSynced);
+      }
     },
   );
 
@@ -117,8 +120,6 @@ class AppDatabase extends _$AppDatabase {
     return driftDatabase(
       name: 'task_manager_db',
       native: const DriftNativeOptions(
-        // drift_flutter backs this with a DriftIsolate, keeping sqlite work
-        // off the UI isolate and sharing one database server across isolates.
         shareAcrossIsolates: true,
         databaseDirectory: getApplicationSupportDirectory,
       ),

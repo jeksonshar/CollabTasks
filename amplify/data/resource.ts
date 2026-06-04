@@ -1,21 +1,21 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
 const schema = a.schema({
-  // Описываем кастомный объект подзадачи
+  // Describing a custom subtask object
   Subtask: a.customType({
     id: a.id().required(),
     title: a.string().required(),
     isCompleted: a.boolean().required(),
   }),
 
-  // Описываем кастомный объект метаданных файла
+  // Describing a custom file metadata object
   FileMeta: a.customType({
     id: a.id().required(),
     name: a.string().required(),
     storageKey: a.string().required(),
   }),
 
-  // Основная модель Задачи
+  // Basic Model Tasks
   Task: a
       .model({
         id: a.id().required(),
@@ -23,13 +23,13 @@ const schema = a.schema({
         description: a.string(),
         deadline: a.float(), // Unix timestamp (int)
         isCompleted: a.boolean().required(),
-        priority: a.string().required(), // low, medium, high, urgent
-        subtasks: a.ref('Subtask').array(), // Список подзадач
-        files: a.ref('FileMeta').array(),   // Список файлов
-        updatedAtMillis: a.float().required(),  // Важно для твоей синхронизации
+        priority: a.string().required(), // low, medium, high, no priority
+        subtasks: a.ref('Subtask').array(), // List of subtasks
+        files: a.ref('FileMeta').array(),   // List of files
+        updatedAtMillis: a.float(), // Important for synchronization
       })
       .authorization((allow) => [
-        // Правило: доступ имеет только владелец записи (owner) через Cognito
+        // Rule: Only the owner of the record has access via Cognito
         allow.owner(),
       ]),
 });
@@ -39,6 +39,6 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool', // Авторизация через Cognito User Pools
+    defaultAuthorizationMode: 'userPool', // Authorization via Cognito User Pools
   },
 });

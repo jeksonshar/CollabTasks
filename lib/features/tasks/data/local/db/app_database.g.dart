@@ -117,6 +117,17 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("task_is_pinned" IN (0, 1))'),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _taskIsSyncedMeta = const VerificationMeta('taskIsSynced');
+  @override
+  late final GeneratedColumn<bool> taskIsSynced = GeneratedColumn<bool>(
+    'task_is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("task_is_synced" IN (0, 1))'),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _taskUpdatedAtMeta = const VerificationMeta('taskUpdatedAt');
   @override
   late final GeneratedColumn<int> taskUpdatedAt = GeneratedColumn<int>(
@@ -141,6 +152,7 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
     taskIsCompleted,
     taskDeadline,
     taskIsPinned,
+    taskIsSynced,
     taskUpdatedAt,
   ];
 
@@ -215,6 +227,12 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         taskIsPinned.isAcceptableOrUnknown(data['task_is_pinned']!, _taskIsPinnedMeta),
       );
     }
+    if (data.containsKey('task_is_synced')) {
+      context.handle(
+        _taskIsSyncedMeta,
+        taskIsSynced.isAcceptableOrUnknown(data['task_is_synced']!, _taskIsSyncedMeta),
+      );
+    }
     if (data.containsKey('task_updated_at')) {
       context.handle(
         _taskUpdatedAtMeta,
@@ -279,6 +297,10 @@ class $TaskEntityTable extends TaskEntity with TableInfo<$TaskEntityTable, TaskE
         DriftSqlType.bool,
         data['${effectivePrefix}task_is_pinned'],
       )!,
+      taskIsSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}task_is_synced'],
+      )!,
       taskUpdatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}task_updated_at'],
@@ -309,6 +331,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
   final bool taskIsCompleted;
   final DateTime? taskDeadline;
   final bool taskIsPinned;
+  final bool taskIsSynced;
   final int taskUpdatedAt;
 
   const TaskEntityData({
@@ -323,6 +346,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     required this.taskIsCompleted,
     this.taskDeadline,
     required this.taskIsPinned,
+    required this.taskIsSynced,
     required this.taskUpdatedAt,
   });
 
@@ -350,6 +374,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       map['task_deadline'] = Variable<DateTime>(taskDeadline);
     }
     map['task_is_pinned'] = Variable<bool>(taskIsPinned);
+    map['task_is_synced'] = Variable<bool>(taskIsSynced);
     map['task_updated_at'] = Variable<int>(taskUpdatedAt);
     return map;
   }
@@ -369,6 +394,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ? const Value.absent()
           : Value(taskDeadline),
       taskIsPinned: Value(taskIsPinned),
+      taskIsSynced: Value(taskIsSynced),
       taskUpdatedAt: Value(taskUpdatedAt),
     );
   }
@@ -387,6 +413,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       taskIsCompleted: serializer.fromJson<bool>(json['taskIsCompleted']),
       taskDeadline: serializer.fromJson<DateTime?>(json['taskDeadline']),
       taskIsPinned: serializer.fromJson<bool>(json['taskIsPinned']),
+      taskIsSynced: serializer.fromJson<bool>(json['taskIsSynced']),
       taskUpdatedAt: serializer.fromJson<int>(json['taskUpdatedAt']),
     );
   }
@@ -406,6 +433,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
       'taskIsCompleted': serializer.toJson<bool>(taskIsCompleted),
       'taskDeadline': serializer.toJson<DateTime?>(taskDeadline),
       'taskIsPinned': serializer.toJson<bool>(taskIsPinned),
+      'taskIsSynced': serializer.toJson<bool>(taskIsSynced),
       'taskUpdatedAt': serializer.toJson<int>(taskUpdatedAt),
     };
   }
@@ -422,6 +450,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     bool? taskIsCompleted,
     Value<DateTime?> taskDeadline = const Value.absent(),
     bool? taskIsPinned,
+    bool? taskIsSynced,
     int? taskUpdatedAt,
   }) => TaskEntityData(
     taskId: taskId ?? this.taskId,
@@ -435,6 +464,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
     taskDeadline: taskDeadline.present ? taskDeadline.value : this.taskDeadline,
     taskIsPinned: taskIsPinned ?? this.taskIsPinned,
+    taskIsSynced: taskIsSynced ?? this.taskIsSynced,
     taskUpdatedAt: taskUpdatedAt ?? this.taskUpdatedAt,
   );
 
@@ -455,6 +485,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           : this.taskIsCompleted,
       taskDeadline: data.taskDeadline.present ? data.taskDeadline.value : this.taskDeadline,
       taskIsPinned: data.taskIsPinned.present ? data.taskIsPinned.value : this.taskIsPinned,
+      taskIsSynced: data.taskIsSynced.present ? data.taskIsSynced.value : this.taskIsSynced,
       taskUpdatedAt: data.taskUpdatedAt.present ? data.taskUpdatedAt.value : this.taskUpdatedAt,
     );
   }
@@ -473,6 +504,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           ..write('taskIsCompleted: $taskIsCompleted, ')
           ..write('taskDeadline: $taskDeadline, ')
           ..write('taskIsPinned: $taskIsPinned, ')
+          ..write('taskIsSynced: $taskIsSynced, ')
           ..write('taskUpdatedAt: $taskUpdatedAt')
           ..write(')'))
         .toString();
@@ -491,6 +523,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
     taskIsCompleted,
     taskDeadline,
     taskIsPinned,
+    taskIsSynced,
     taskUpdatedAt,
   );
 
@@ -509,6 +542,7 @@ class TaskEntityData extends DataClass implements Insertable<TaskEntityData> {
           other.taskIsCompleted == this.taskIsCompleted &&
           other.taskDeadline == this.taskDeadline &&
           other.taskIsPinned == this.taskIsPinned &&
+          other.taskIsSynced == this.taskIsSynced &&
           other.taskUpdatedAt == this.taskUpdatedAt);
 }
 
@@ -524,6 +558,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
   final Value<bool> taskIsCompleted;
   final Value<DateTime?> taskDeadline;
   final Value<bool> taskIsPinned;
+  final Value<bool> taskIsSynced;
   final Value<int> taskUpdatedAt;
   final Value<int> rowid;
 
@@ -539,6 +574,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskIsCompleted = const Value.absent(),
     this.taskDeadline = const Value.absent(),
     this.taskIsPinned = const Value.absent(),
+    this.taskIsSynced = const Value.absent(),
     this.taskUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -555,6 +591,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     this.taskIsCompleted = const Value.absent(),
     this.taskDeadline = const Value.absent(),
     this.taskIsPinned = const Value.absent(),
+    this.taskIsSynced = const Value.absent(),
     this.taskUpdatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
@@ -574,6 +611,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Expression<bool>? taskIsCompleted,
     Expression<DateTime>? taskDeadline,
     Expression<bool>? taskIsPinned,
+    Expression<bool>? taskIsSynced,
     Expression<int>? taskUpdatedAt,
     Expression<int>? rowid,
   }) {
@@ -589,6 +627,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       if (taskIsCompleted != null) 'task_is_completed': taskIsCompleted,
       if (taskDeadline != null) 'task_deadline': taskDeadline,
       if (taskIsPinned != null) 'task_is_pinned': taskIsPinned,
+      if (taskIsSynced != null) 'task_is_synced': taskIsSynced,
       if (taskUpdatedAt != null) 'task_updated_at': taskUpdatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -606,6 +645,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     Value<bool>? taskIsCompleted,
     Value<DateTime?>? taskDeadline,
     Value<bool>? taskIsPinned,
+    Value<bool>? taskIsSynced,
     Value<int>? taskUpdatedAt,
     Value<int>? rowid,
   }) {
@@ -621,6 +661,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
       taskIsCompleted: taskIsCompleted ?? this.taskIsCompleted,
       taskDeadline: taskDeadline ?? this.taskDeadline,
       taskIsPinned: taskIsPinned ?? this.taskIsPinned,
+      taskIsSynced: taskIsSynced ?? this.taskIsSynced,
       taskUpdatedAt: taskUpdatedAt ?? this.taskUpdatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -666,6 +707,9 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
     if (taskIsPinned.present) {
       map['task_is_pinned'] = Variable<bool>(taskIsPinned.value);
     }
+    if (taskIsSynced.present) {
+      map['task_is_synced'] = Variable<bool>(taskIsSynced.value);
+    }
     if (taskUpdatedAt.present) {
       map['task_updated_at'] = Variable<int>(taskUpdatedAt.value);
     }
@@ -689,6 +733,7 @@ class TaskEntityCompanion extends UpdateCompanion<TaskEntityData> {
           ..write('taskIsCompleted: $taskIsCompleted, ')
           ..write('taskDeadline: $taskDeadline, ')
           ..write('taskIsPinned: $taskIsPinned, ')
+          ..write('taskIsSynced: $taskIsSynced, ')
           ..write('taskUpdatedAt: $taskUpdatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -723,6 +768,7 @@ typedef $$TaskEntityTableCreateCompanionBuilder =
       Value<bool> taskIsCompleted,
       Value<DateTime?> taskDeadline,
       Value<bool> taskIsPinned,
+      Value<bool> taskIsSynced,
       Value<int> taskUpdatedAt,
       Value<int> rowid,
     });
@@ -739,6 +785,7 @@ typedef $$TaskEntityTableUpdateCompanionBuilder =
       Value<bool> taskIsCompleted,
       Value<DateTime?> taskDeadline,
       Value<bool> taskIsPinned,
+      Value<bool> taskIsSynced,
       Value<int> taskUpdatedAt,
       Value<int> rowid,
     });
@@ -793,6 +840,9 @@ class $$TaskEntityTableFilterComposer extends Composer<_$AppDatabase, $TaskEntit
   ColumnFilters<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<bool> get taskIsSynced =>
+      $composableBuilder(column: $table.taskIsSynced, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<int> get taskUpdatedAt =>
       $composableBuilder(column: $table.taskUpdatedAt, builder: (column) => ColumnFilters(column));
 }
@@ -845,6 +895,9 @@ class $$TaskEntityTableOrderingComposer extends Composer<_$AppDatabase, $TaskEnt
   ColumnOrderings<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get taskIsSynced =>
+      $composableBuilder(column: $table.taskIsSynced, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get taskUpdatedAt => $composableBuilder(
     column: $table.taskUpdatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -893,6 +946,9 @@ class $$TaskEntityTableAnnotationComposer extends Composer<_$AppDatabase, $TaskE
   GeneratedColumn<bool> get taskIsPinned =>
       $composableBuilder(column: $table.taskIsPinned, builder: (column) => column);
 
+  GeneratedColumn<bool> get taskIsSynced =>
+      $composableBuilder(column: $table.taskIsSynced, builder: (column) => column);
+
   GeneratedColumn<int> get taskUpdatedAt =>
       $composableBuilder(column: $table.taskUpdatedAt, builder: (column) => column);
 }
@@ -934,6 +990,7 @@ class $$TaskEntityTableTableManager
                 Value<bool> taskIsCompleted = const Value.absent(),
                 Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<bool> taskIsPinned = const Value.absent(),
+                Value<bool> taskIsSynced = const Value.absent(),
                 Value<int> taskUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion(
@@ -948,6 +1005,7 @@ class $$TaskEntityTableTableManager
                 taskIsCompleted: taskIsCompleted,
                 taskDeadline: taskDeadline,
                 taskIsPinned: taskIsPinned,
+                taskIsSynced: taskIsSynced,
                 taskUpdatedAt: taskUpdatedAt,
                 rowid: rowid,
               ),
@@ -964,6 +1022,7 @@ class $$TaskEntityTableTableManager
                 Value<bool> taskIsCompleted = const Value.absent(),
                 Value<DateTime?> taskDeadline = const Value.absent(),
                 Value<bool> taskIsPinned = const Value.absent(),
+                Value<bool> taskIsSynced = const Value.absent(),
                 Value<int> taskUpdatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskEntityCompanion.insert(
@@ -978,6 +1037,7 @@ class $$TaskEntityTableTableManager
                 taskIsCompleted: taskIsCompleted,
                 taskDeadline: taskDeadline,
                 taskIsPinned: taskIsPinned,
+                taskIsSynced: taskIsSynced,
                 taskUpdatedAt: taskUpdatedAt,
                 rowid: rowid,
               ),
