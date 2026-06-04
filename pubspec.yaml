@@ -88,6 +88,8 @@ dependencies:
   amplify_storage_s3: ^2.7.0
 
   flutter_svg: ^2.3.0
+  #  for android version getting
+  device_info_plus: ^12.4.0
 
 dev_dependencies:
   drift_dev: ^2.31.0

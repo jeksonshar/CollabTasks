@@ -32,6 +32,7 @@ void main() {
   late MockCancelTaskNotificationsUseCase mockCancelNotificationsUseCase;
   late MockGetNotificationTapStreamUseCase mockGetNotificationStreamUseCase;
   late MockConsumeInitialNotificationPayloadUseCase mockConsumePayloadUseCase;
+  late MockSyncTasksUseCase mockSyncTasksUseCase;
   late StreamController<NotificationTapPayload> notificationController;
 
   setUpAll(() {
@@ -50,6 +51,7 @@ void main() {
     mockCancelNotificationsUseCase = MockCancelTaskNotificationsUseCase();
     mockGetNotificationStreamUseCase = MockGetNotificationTapStreamUseCase();
     mockConsumePayloadUseCase = MockConsumeInitialNotificationPayloadUseCase();
+    mockSyncTasksUseCase = MockSyncTasksUseCase();
     // Initialize the controller BEFORE creating the BLoC
     notificationController = StreamController<NotificationTapPayload>.broadcast();
   }
@@ -74,6 +76,7 @@ void main() {
     when(() => mockScheduleNotificationsUseCase(any())).thenAnswer((_) async => {});
     // 3. Rest
     when(() => mockCancelNotificationsUseCase(any())).thenAnswer((_) async => {});
+    when(() => mockSyncTasksUseCase()).thenAnswer((_) async => {});
     // Overriding behavior for notification tests
     when(() => mockGetNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
   }
@@ -93,6 +96,7 @@ void main() {
       cancelTaskNotificationsUseCase: mockCancelNotificationsUseCase,
       getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
+      syncTasksUseCase: mockSyncTasksUseCase,
     );
   });
 
@@ -282,6 +286,18 @@ void main() {
             ),
           ),
         ).called(1);
+      },
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should call SyncTasksUseCase when TasksRefreshRequested is added',
+      build: () {
+        when(() => mockSyncTasksUseCase()).thenAnswer((_) async => {});
+        return taskBloc;
+      },
+      act: (bloc) => bloc.add(const TasksRefreshRequested()),
+      verify: (_) {
+        verify(() => mockSyncTasksUseCase()).called(1);
       },
     );
   });
@@ -611,6 +627,7 @@ void main() {
           deleteTaskUseCase: mockDeleteTasksUseCase,
           getTaskViewPreferencesUseCase: mockGetPrefsUseCase,
           setTaskViewPreferencesUseCase: mockSetPrefsUseCase,
+          syncTasksUseCase: mockSyncTasksUseCase,
         );
       },
       act: (bloc) => notificationController.add(

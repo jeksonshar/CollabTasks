@@ -14,6 +14,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_not
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/sync_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
@@ -33,6 +34,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final CancelTaskNotificationsUseCase cancelTaskNotificationsUseCase;
   final GetNotificationTapStreamUseCase getNotificationTapStreamUseCase;
   final ConsumeInitialNotificationPayloadUseCase consumeInitialNotificationPayloadUseCase;
+  final SyncTasksUseCase syncTasksUseCase;
 
   StreamSubscription? _notificationTapSubscription;
 
@@ -47,9 +49,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.cancelTaskNotificationsUseCase,
     required this.getNotificationTapStreamUseCase,
     required this.consumeInitialNotificationPayloadUseCase,
+    required this.syncTasksUseCase,
   }) : super(const TaskState()) {
     // 1. Main Event: Base Surveillance Launch
     on<LoadTasksStarted>(_onLoadTasks);
+    on<TasksRefreshRequested>(_onTasksRefreshRequested);
     // 2. The remaining events now only perform an Action.
     on<TaskAdded>(_onAddTask);
     on<TaskUpdated>(_onUpdateTask);
@@ -311,6 +315,19 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     sortList(others);
 
     return [...pinned, ...others];
+  }
+
+  Future<void> _onTasksRefreshRequested(
+    TasksRefreshRequested event,
+    Emitter<TaskState> emit,
+  ) async {
+    try {
+      await syncTasksUseCase();
+    } catch (e, s) {
+      _logError('refreshTasks', e, s);
+    } finally {
+      event.completer?.complete();
+    }
   }
 
   void _logError(String context, Object error, [StackTrace? stackTrace]) {

@@ -7,6 +7,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_not
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/sync_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:mocktail/mocktail.dart';
@@ -34,3 +35,5 @@ class MockGetNotificationTapStreamUseCase extends Mock implements GetNotificatio
 
 class MockConsumeInitialNotificationPayloadUseCase extends Mock
     implements ConsumeInitialNotificationPayloadUseCase {}
+
+class MockSyncTasksUseCase extends Mock implements SyncTasksUseCase {}

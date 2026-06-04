@@ -40,6 +40,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_not
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/sync_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
@@ -91,6 +92,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton(() => WatchTasksUseCase(getIt()))
     ..registerLazySingleton(() => AddTaskUseCase(getIt()))
+    ..registerLazySingleton(() => SyncTasksUseCase(getIt()))
     ..registerLazySingleton(() => UpdateTaskUseCase(getIt()))
     ..registerLazySingleton(() => DeleteTaskUseCase(getIt()))
     ..registerLazySingleton(() => GetSavedLanguageUseCase(getIt()))
@@ -175,6 +177,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         cancelTaskNotificationsUseCase: getIt(),
         getNotificationTapStreamUseCase: getIt(),
         consumeInitialNotificationPayloadUseCase: getIt(),
+        syncTasksUseCase: getIt(),
       ),
     );
 }

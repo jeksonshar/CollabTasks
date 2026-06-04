@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/core/enums/task_filter_type.dart';
 import 'package:collab_tasks/core/enums/task_sort_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
@@ -11,6 +13,15 @@ abstract class TaskEvent extends Equatable {
 }
 
 class LoadTasksStarted extends TaskEvent {}
+
+class TasksRefreshRequested extends TaskEvent {
+  final Completer<void>? completer;
+
+  const TasksRefreshRequested([this.completer]);
+
+  @override
+  List<Object?> get props => [completer];
+}
 
 class TaskAdded extends TaskEvent {
   final TaskDraft draft;

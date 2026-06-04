@@ -5,6 +5,7 @@ import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/result/result.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -126,9 +127,21 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
         return Success(AuthUserModel.fromFirebaseUser(user));
       }
 
+      bool isLegacyAndroid = false;
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final androidInfo = await DeviceInfoPlugin().androidInfo;
+          isLegacyAndroid = androidInfo.version.sdkInt < 35;
+        } catch (e) {
+          isLegacyAndroid = true;
+        }
+      }
+
       if (defaultTargetPlatform == TargetPlatform.windows ||
           defaultTargetPlatform == TargetPlatform.linux ||
-          defaultTargetPlatform == TargetPlatform.macOS) {
+          defaultTargetPlatform == TargetPlatform.macOS ||
+          isLegacyAndroid) {
         final provider = firebase_auth.GoogleAuthProvider();
         try {
           final userCredential = await _firebaseAuth.signInWithProvider(provider);
@@ -137,9 +150,10 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
             return const FailureResult(UnknownAuthFailure());
           }
           return Success(AuthUserModel.fromFirebaseUser(user));
-        } on firebase_auth.FirebaseAuthException {
+        } on firebase_auth.FirebaseAuthException catch (e) {
           // Fallback to google_sign_in below when native provider flow
           // is unavailable in current environment.
+          return FailureResult(_mapFirebaseException(e));
         }
       }
 
@@ -259,6 +273,12 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
         return const InvalidCredentialFailure();
       case 'popup-closed-by-user':
       case 'cancelled-popup-request':
+      case 'auth/popup-closed-by-user':
+      case 'canceled':
+      case 'sign_in_canceled':
+      case 'abort':
+      case 'acct_cancelled':
+      case 'web-context-canceled':
         return const CanceledByUserFailure();
       case 'operation-not-allowed':
         return const OperationNotAllowedFailure();

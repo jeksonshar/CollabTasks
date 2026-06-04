@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/core/enums/task_error_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
@@ -108,9 +110,33 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
             final filteredTasks = state.filteredTasks;
 
             if (filteredTasks.isEmpty) {
-              return _emptyState(context);
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      final completer = Completer<void>();
+                      context.read<TaskBloc>().add(TasksRefreshRequested(completer));
+                      await completer.future;
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Center(child: _emptyState(context)),
+                      ),
+                    ),
+                  );
+                },
+              );
             }
-            return _tasksListView(filteredTasks);
+            return RefreshIndicator(
+              onRefresh: () async {
+                final completer = Completer<void>();
+                context.read<TaskBloc>().add(TasksRefreshRequested(completer));
+                await completer.future;
+              },
+              child: _tasksListView(filteredTasks),
+            );
           },
         ),
         floatingActionButtonLocation: fabLocation,
@@ -144,6 +170,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
 
   Widget _tasksListView(List<Task> tasks) {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tasks.length,
       // separatorBuilder: (_, _) => const Divider(height: 1),
