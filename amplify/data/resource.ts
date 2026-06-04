@@ -21,12 +21,12 @@ const schema = a.schema({
         id: a.id().required(),
         title: a.string().required(),
         description: a.string(),
-        deadline: a.integer(), // Unix timestamp (int)
+        deadline: a.float(), // Unix timestamp (int)
         isCompleted: a.boolean().required(),
         priority: a.string().required(), // low, medium, high, urgent
         subtasks: a.ref('Subtask').array(), // Список подзадач
         files: a.ref('FileMeta').array(),   // Список файлов
-        updatedAt: a.integer().required(),  // Важно для твоей синхронизации
+        updatedAtMillis: a.float().required(),  // Важно для твоей синхронизации
       })
       .authorization((allow) => [
         // Правило: доступ имеет только владелец записи (owner) через Cognito

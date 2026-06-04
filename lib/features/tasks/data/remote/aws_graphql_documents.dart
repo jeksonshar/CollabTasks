@@ -22,7 +22,7 @@ query ListTasks {
         storageKey
       }
       createdAt
-      updatedAt
+      updatedAtMillis
     }
   }
 }
@@ -48,7 +48,7 @@ query GetTask($id: ID!) {
       storageKey
     }
     createdAt
-    updatedAt
+    updatedAtMillis
   }
 }
 ''';
@@ -73,7 +73,7 @@ mutation CreateTask($input: CreateTaskInput!) {
       storageKey
     }
     createdAt
-    updatedAt
+    updatedAtMillis
   }
 }
 ''';
@@ -98,7 +98,7 @@ mutation UpdateTask($input: UpdateTaskInput!) {
       storageKey
     }
     createdAt
-    updatedAt
+    updatedAtMillis
   }
 }
 ''';

@@ -8,7 +8,7 @@ import 'package:collab_tasks/features/tasks/domain/services/task_notification_ti
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 @pragma('vm:entry-point')
@@ -219,10 +219,27 @@ class TaskNotificationsManager implements TaskNotificationService {
     tz_data.initializeTimeZones();
 
     try {
-      final timezoneName = await FlutterTimezone.getLocalTimezone();
-      final location = tz.getLocation(timezoneName);
-      tz.setLocalLocation(location);
-      debugPrint('NotificationsManager: timezone configured name=$timezoneName');
+      var timezoneName = await FlutterTimezone.getLocalTimezone();
+
+      // Мягкий хак для Украины: если система отдает старый формат,
+      // но в базе лежит новый (или наоборот), подменяем строку.
+      if (timezoneName == 'Europe/Kiev') {
+        timezoneName = 'Europe/Kyiv';
+      }
+      try {
+        final location = tz.getLocation(timezoneName);
+        tz.setLocalLocation(location);
+        debugPrint('NotificationsManager: timezone configured name=$timezoneName');
+      } catch (_) {
+        // Если Europe/Kyiv не нашелся, пробуем откатиться обратно на Europe/Kiev
+        if (timezoneName == 'Europe/Kyiv') {
+          final fallbackLocation = tz.getLocation('Europe/Kiev');
+          tz.setLocalLocation(fallbackLocation);
+          debugPrint('NotificationsManager: timezone configured with fallback name=Europe/Kiev');
+        } else {
+          rethrow;
+        }
+      }
     } catch (error, stackTrace) {
       debugPrint('NotificationsManager timezone fallback to UTC: $error\n$stackTrace');
       tz.setLocalLocation(tz.UTC);

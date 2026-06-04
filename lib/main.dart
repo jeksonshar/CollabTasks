@@ -4,7 +4,6 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
-import 'package:collab_tasks/amplify_configuration.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
@@ -18,6 +17,7 @@ import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -39,13 +39,16 @@ Future<void> _configureSelectedAuthBackend() async {
   }
 
   try {
-    final authPlugin = AmplifyAuthCognito();
-    final apiPlugin = AmplifyAPI();
-    final storagePlugin = AmplifyStorageS3();
-    await Amplify.addPlugin(authPlugin);
-    await Amplify.addPlugin(apiPlugin);
-    await Amplify.addPlugin(storagePlugin);
-    await Amplify.configure(amplifyConfig).timeout(const Duration(seconds: 10));
+    // Add plugins
+    await Amplify.addPlugin(AmplifyAuthCognito());
+    await Amplify.addPlugin(AmplifyAPI());
+    await Amplify.addPlugin(AmplifyStorageS3());
+
+    // 1. Read string from assets
+    final configString = await rootBundle.loadString('amplify_outputs.json');
+    await Amplify.configure(configString).timeout(const Duration(seconds: 10));
+
+    safePrint('Amplify successfully configured with Gen 2 outputs!');
   } on AmplifyAlreadyConfiguredException {
     safePrint('Amplify was already configured.');
   } on TimeoutException {

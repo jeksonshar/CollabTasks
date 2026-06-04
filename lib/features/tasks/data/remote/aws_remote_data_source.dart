@@ -36,18 +36,14 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
 
   @override
   Future<void> createTask({required String ownerId, required Task task}) async {
-    await _mutation(
-      AwsTaskGraphqlDocuments.createTask,
-      variables: {'input': _toAwsTaskInput(task, ownerId: ownerId)},
-    );
+    final input = _toAwsTaskInput(task, ownerId: ownerId);
+    await _mutation(AwsTaskGraphqlDocuments.createTask, variables: {'input': input});
   }
 
   @override
   Future<void> updateTask({required String ownerId, required Task task}) async {
-    await _mutation(
-      AwsTaskGraphqlDocuments.updateTask,
-      variables: {'input': _toAwsTaskInput(task, ownerId: ownerId)},
-    );
+    final input = _toAwsTaskInput(task, ownerId: ownerId);
+    await _mutation(AwsTaskGraphqlDocuments.updateTask, variables: {'input': input});
   }
 
   @override
@@ -103,7 +99,7 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
       'priority': map['priority'],
       'subtasks': map['subtasks'],
       'files': map['files'],
-      'updatedAt': map['updatedAt'],
+      'updatedAtMillis': map['updatedAtMillis'],
     };
   }
 

@@ -17,7 +17,7 @@ class RemoteTaskMapper {
       'subtasks': task.subtasks.map(subtaskToRemoteMap).toList(growable: false),
       'files': task.attachments.map(fileToRemoteMap).toList(growable: false),
       'createdAt': task.createdAt.millisecondsSinceEpoch,
-      'updatedAt': task.updatedAt,
+      'updatedAtMillis': task.updatedAt,
       'isPinned': task.isPinned,
     };
   }
@@ -46,7 +46,7 @@ class RemoteTaskMapper {
                 .map((item) => fileFromRemoteMap(Map<String, dynamic>.from(item)))
                 .toList(growable: false)
           : const [],
-      updatedAt: (map['updatedAt'] as num?)?.toInt() ?? 0,
+      updatedAt: (map['updatedAtMillis'] as num?)?.toInt() ?? 0,
       isPinned: map['isPinned'] as bool? ?? false,
     );
   }

@@ -1,9 +1,11 @@
-/// Amplify configuration for AWS Cognito.
+/// Amplify configuration for AWS Cognito, API, and Storage.
 ///
 /// Replace placeholder values with your real:
 /// - region
 /// - userPoolId
 /// - userPoolClientId
+/// - bucket
+/// - ApiUrl
 const String amplifyConfig = '''
 {
   "auth": {
@@ -16,9 +18,9 @@ const String amplifyConfig = '''
         },
         "CognitoUserPool": {
           "Default": {
-            "PoolId": "eu-north-1_gG4RPjCTa",
-            "AppClientId": "67n1ier0tol0fmsfbmg2bur2c0",
-            "Region": "eu-north-1"
+            "PoolId": "eu-central-1_eFhEsK3Fo",
+            "AppClientId": "1lr13oaa6tp4cv7kdrqevmbbmh",
+            "Region": "eu-central-1"
           }
         },
         "Auth": {
@@ -45,8 +47,8 @@ const String amplifyConfig = '''
               "EMAIL"
             ],
             "OAuth": {
-              "WebDomain": "eu-north-1gg4rpjcta.auth.eu-north-1.amazoncognito.com",
-              "AppClientId": "67n1ier0tol0fmsfbmg2bur2c0",
+              "WebDomain": "collabtasks-app.auth.eu-central-1.amazoncognito.com",
+              "AppClientId": "1lr13oaa6tp4cv7kdrqevmbbmh",
               "SignInRedirectURI": "http://localhost:3000/,collabtasks://callback/",
               "SignOutRedirectURI": "http://localhost:3000/,collabtasks://callback/",
               "Scopes": [
@@ -58,6 +60,26 @@ const String amplifyConfig = '''
               ]
             }
           }
+        }
+      }
+    }
+  },
+  "storage": {
+    "plugins": {
+      "awsS3StoragePlugin": {
+        "bucket": "amplify-collabtasks-admin-collabtasksfilesbucket2f-rgwyq1xzyhmd",
+        "region": "eu-central-1",
+        "defaultAccessLevel": "guest"
+      }
+    }
+  },
+  "api": {
+    "plugins": {
+      "awsAppSyncApiPlugin": {
+        "Default": {
+          "ApiUrl": "https://jgj2ctj7njgq5bl34jvmtxlyjq.appsync-api.eu-central-1.amazonaws.com/graphql",
+          "Region": "eu-central-1",
+          "AuthMode": "AMAZON_COGNITO_USER_POOLS"
         }
       }
     }
