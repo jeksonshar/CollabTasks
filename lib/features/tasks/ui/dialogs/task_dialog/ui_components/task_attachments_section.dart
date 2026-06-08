@@ -3,6 +3,7 @@ import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
 import 'package:collab_tasks/core/theme/app_text_styles.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_event.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/confirmation_dialog.dart';
@@ -29,6 +30,7 @@ class TaskAttachmentsSection extends StatefulWidget {
 
 class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L10nMixin {
   late final List<TaskAttachment> _attachments = List<TaskAttachment>.of(widget.initialAttachments);
+  final Set<String> _loadingAttachmentIds = {};
 
   @override
   void didUpdateWidget(covariant TaskAttachmentsSection oldWidget) {
@@ -157,8 +159,11 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
           ],
         ),
         if (_attachments.isNotEmpty) ...[
-          ..._attachments.map(
-            (attachment) => Padding(
+          ..._attachments.map((attachment) {
+            // проверяем, качается ли файл:
+            final isLoading = _loadingAttachmentIds.contains(attachment.id);
+
+            return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: TaskAttachmentTile(
                 attachment: attachment,
@@ -166,16 +171,46 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
                   context: context,
                   attachment: attachment,
                   localization: localization,
+                  repository: getIt<TaskRepository>(),
+                  onStartLoading: () {
+                    setState(() => _loadingAttachmentIds.add(attachment.id));
+                  },
+                  onEndLoading: () {
+                    setState(() => _loadingAttachmentIds.remove(attachment.id));
+                  },
+                  onCacheSynced: (newPath, sizeBytes) async {
+                    // Находим индекс элемента, который только что скачался
+                    final index = _attachments.indexWhere((e) => e.id == attachment.id);
+                    if (index != -1) {
+                      setState(() {
+                        // Обновляем во внутренней копии списка
+                        _attachments[index] = _attachments[index].copyWith(
+                          localPath: newPath,
+                          sizeBytes: sizeBytes,
+                        );
+                      });
+                      // Уведомляем родительский экран (Диалог / Экран редактирования)
+                      _notifyParent();
+                    }
+                  },
                 ),
                 onDownload: () => handleDownloadAttachment(
                   context: context,
                   attachment: attachment,
                   localization: localization,
+                  repository: getIt<TaskRepository>(),
+                  onStartLoading: () {
+                    setState(() => _loadingAttachmentIds.add(attachment.id));
+                  },
+                  onEndLoading: () {
+                    setState(() => _loadingAttachmentIds.remove(attachment.id));
+                  },
                 ),
                 onDelete: () => _showRemoveConfirmation(context, attachment),
+                isLoading: isLoading,
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ],
     );

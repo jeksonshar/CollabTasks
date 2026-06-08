@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 
 abstract class TaskRepository {
@@ -12,4 +14,6 @@ abstract class TaskRepository {
   Future<void> toggleTask(String id);
 
   Future<void> syncTasks();
+
+  Future<Uint8List> getAttachmentBytes(String storageKey);
 }

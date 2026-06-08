@@ -1,4 +1,5 @@
 import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
+import 'package:collab_tasks/core/ui/small_progress_indicator.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -11,12 +12,15 @@ class TaskAttachmentTile extends StatelessWidget {
   final VoidCallback onDownload;
   final VoidCallback onDelete;
 
+  final bool isLoading;
+
   const TaskAttachmentTile({
     super.key,
     required this.attachment,
     required this.onView,
     required this.onDownload,
     required this.onDelete,
+    required this.isLoading,
   });
 
   @override
@@ -34,26 +38,28 @@ class TaskAttachmentTile extends StatelessWidget {
           '${attachment.extension.toUpperCase()} • ${_formatBytes(attachment.sizeBytes, localization)}',
         ),
         onTap: onView,
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'view':
-                onView();
-                break;
-              case 'download':
-                onDownload();
-                break;
-              case 'delete':
-                onDelete();
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(value: 'view', child: Text(localization.viewFileTitle)),
-            PopupMenuItem(value: 'download', child: Text(localization.downloadFileTitle)),
-            PopupMenuItem(value: 'delete', child: Text(localization.deleteFileTitle)),
-          ],
-        ),
+        trailing: isLoading
+            ? const SmallProgressIndicator()
+            : PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'view':
+                      onView();
+                      break;
+                    case 'download':
+                      onDownload();
+                      break;
+                    case 'delete':
+                      onDelete();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: 'view', child: Text(localization.viewFileTitle)),
+                  PopupMenuItem(value: 'download', child: Text(localization.downloadFileTitle)),
+                  PopupMenuItem(value: 'delete', child: Text(localization.deleteFileTitle)),
+                ],
+              ),
       ),
     );
   }

@@ -59,6 +59,8 @@ dependencies:
   file_picker: ^10.3.10
   open_filex: ^4.7.0
   path: ^1.9.1
+  url_launcher: ^6.3.2
+  http: ^1.6.0
 
   # BLoC pattern
   flutter_bloc: ^9.1.1
@@ -90,6 +92,8 @@ dependencies:
   flutter_svg: ^2.3.0
   #  for android version getting
   device_info_plus: ^12.4.0
+  #  surfing the net
+  dio: ^5.9.2
 
 dev_dependencies:
   drift_dev: ^2.31.0

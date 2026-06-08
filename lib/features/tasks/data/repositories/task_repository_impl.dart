@@ -97,6 +97,11 @@ class TaskRepositoryImpl implements TaskRepository {
     }
   }
 
+  @override
+  Future<Uint8List> getAttachmentBytes(String storageKey) async {
+    return _remoteDataSource.downloadAttachmentBytes(storageKey);
+  }
+
   Future<void> _syncTasksForOwner(String ownerId) async {
     try {
       final localTasks = await _localDataSource.getTasks(ownerId: ownerId);

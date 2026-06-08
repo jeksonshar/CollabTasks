@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:collab_tasks/features/tasks/data/remote/aws_graphql_documents.dart';
@@ -84,6 +85,22 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
       path: storagePath,
     ).result;
     return file.copyWith(storageKey: result.uploadedItem.path);
+  }
+
+  @override
+  Future<Uint8List> downloadAttachmentBytes(String storageKey) async {
+    try {
+      // В AWS Amplify это делается через Storage SDK
+      // Используем StoragePath.fromString, если в storageKey у тебя хранится полный путь в бакете
+      // (например: 'public/uploads/file.pdf' или 'tracks/xyz.jpg')
+      final result = await Amplify.Storage.downloadData(
+        path: StoragePath.fromString(storageKey),
+      ).result;
+
+      return Uint8List.fromList(result.bytes);
+    } catch (e) {
+      throw Exception('Ошибка AWS S3 при скачивании файла: $e');
+    }
   }
 
   Future<Map<String, dynamic>> _query(String document, {required Map<String, Object?> variables}) {

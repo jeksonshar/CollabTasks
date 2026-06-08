@@ -22,6 +22,8 @@ class TaskAttachment {
 
   bool get isWeb => bytes != null;
 
+  bool get isRemote => localPath == null && storageKey != null && storageKey!.isNotEmpty;
+
   TaskAttachment copyWith({
     String? id,
     String? name,

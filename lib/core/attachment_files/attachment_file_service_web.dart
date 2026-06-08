@@ -3,8 +3,10 @@ import 'dart:typed_data';
 
 import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:web/web.dart' as web;
 
 Future<String?> attachmentsDirectory() async {
@@ -72,18 +74,30 @@ web.Blob _createBlob(TaskAttachment attachment, Uint8List bytes) {
 }
 
 Future<void> openAttachment(TaskAttachment attachment) async {
-  final bytes = attachment.bytes;
-  if (bytes == null) return;
+  final path = attachment.localPath;
+  if (path == null) return;
+  final uri = Uri.parse(path);
 
-  final blob = _createBlob(attachment, bytes);
-  final url = web.URL.createObjectURL(blob);
-
-  web.window.open(url, '_blank');
-
-  Future.delayed(const Duration(seconds: 1), () {
-    web.URL.revokeObjectURL(url);
-  });
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else {
+    throw Exception('Could not launch $path');
+  }
 }
+
+// Future<void> openAttachment(TaskAttachment attachment) async {
+//   final bytes = attachment.bytes;
+//   if (bytes == null) return;
+//
+//   final blob = _createBlob(attachment, bytes);
+//   final url = web.URL.createObjectURL(blob);
+//
+//   web.window.open(url, '_blank');
+//
+//   Future.delayed(const Duration(seconds: 1), () {
+//     web.URL.revokeObjectURL(url);
+//   });
+// }
 
 Future<String?> tryReadTextAttachment(TaskAttachment attachment) async {
   final ext = attachment.extension.toLowerCase();
@@ -95,7 +109,7 @@ Future<String?> tryReadTextAttachment(TaskAttachment attachment) async {
   return String.fromCharCodes(bytes);
 }
 
-Future<bool> downloadAttachmentFile(TaskAttachment attachment) async {
+Future<bool> downloadAttachmentFile(TaskAttachment attachment, TaskRepository repository) async {
   final bytes = attachment.bytes;
   if (bytes == null) return false;
 
@@ -117,3 +131,40 @@ Future<bool> downloadAttachmentFile(TaskAttachment attachment) async {
 Future<bool> removeAttachmentFile(TaskAttachment attachment) async {
   return true;
 }
+
+Future<String> downloadRemoteAttachmentToCache(
+  TaskAttachment attachment,
+  TaskRepository repository,
+) async {
+  throw UnsupportedError('Кэширование файлов в файловую систему не поддерживается на Web');
+}
+
+// нужен настроенный CORS на сервере
+// Future<String> downloadRemoteAttachmentToCache(
+//     TaskAttachment attachment,
+//     TaskRepository repository,
+//     ) async {
+//   if (attachment.storageKey == null || attachment.storageKey!.isEmpty) {
+//     throw Exception('Файл отсутствует локально и нет storageKey для скачивания');
+//   }
+//
+//   debugPrint('downloadRemoteAttachmentToCache() WEB');
+//   // 1. Качаем байты через SDK (вызывая репозиторий)
+//   final bytes = await repository.getAttachmentBytes(attachment.storageKey!);
+//   debugPrint('downloadRemoteAttachmentToCache() WEB 1');
+// // 1. Получаем Uint8List из байт
+//   final u8List = bytes.buffer.asUint8List();
+//
+//   debugPrint('downloadRemoteAttachmentToCache() WEB 2');
+//   // 2. Оборачиваем в JS-массив. Пакет web поймет u8List как BlobPart автоматически,
+//   // если мы превратим сам List в JSArray с помощью расширения .toJS
+//   final jsArray = [u8List.toJS].toJS;
+//   debugPrint('downloadRemoteAttachmentToCache() WEB 3');
+//   // 3. Создаем Blob
+//   final blob = web.Blob(jsArray);
+//   debugPrint('downloadRemoteAttachmentToCache() WEB 4');
+//
+//   final url = web.URL.createObjectURL(blob);
+//   return url;
+//   // throw UnsupportedError('Кэширование файлов в файловую систему не поддерживается на Web');
+// }

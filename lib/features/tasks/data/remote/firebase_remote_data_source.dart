@@ -6,6 +6,8 @@ import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' hide Task;
+import 'package:flutter/foundation.dart';
+// import 'package:http/http.dart' as http;
 
 class FirebaseRemoteDataSource implements TasksRemoteDataSource {
   static const String _usersCollection = 'users';
@@ -73,6 +75,52 @@ class FirebaseRemoteDataSource implements TasksRemoteDataSource {
     await ref.putData(bytes);
     return file.copyWith(storageKey: storageKey);
   }
+
+  @override
+  Future<Uint8List> downloadAttachmentBytes(String storageKey) async {
+    try {
+      debugPrint('downloadAttachmentBytes() 0');
+      // В Firebase storageKey — это обычно полный путь к файлу внутри бакета (например, "uploads/tasks/file.pdf")
+      final ref = _storage.ref().child(storageKey);
+      debugPrint('downloadAttachmentBytes() 1');
+
+      // Получаем байты напрямую через Firebase SDK.
+      // 20 * 1024 * 1024 — это максимальный размер файла (20 МБ), настрой под себя.
+      final Uint8List? data = await ref.getData(20 * 1024 * 1024);
+      debugPrint('downloadAttachmentBytes() 2');
+
+      if (data == null) {
+        throw Exception('Firebase Storage вернул пустые байты');
+      }
+      return data;
+    } catch (e) {
+      throw Exception('Ошибка Firebase Storage при скачивании файла: $e');
+    }
+  }
+
+  // @override
+  // Future<Uint8List> downloadAttachmentBytes(String storageKey) async {
+  //   final ref = _storage.ref().child(storageKey);
+  //   debugPrint('downloadAttachmentBytes() 0');
+  //   if (kIsWeb) {
+  //     // 1. Получаем публичный URL (работает без CORS)
+  //     final url = await ref.getDownloadURL();
+  //     debugPrint('downloadAttachmentBytes() 1');
+  //     // 2. Скачиваем байты по ссылке через HTTP (нужен настроенный CORS на сервере)
+  //     final response = await http.get(Uri.parse(url));
+  //     debugPrint('downloadAttachmentBytes() 2');
+  //     if (response.statusCode == 200) {
+  //       return response.bodyBytes; // Это и есть Uint8List
+  //     } else {
+  //       throw Exception('Не удалось скачать файл через HTTP: ${response.statusCode}');
+  //     }
+  //   } else {
+  //     // НА МОБИЛКАХ: Firebase SDK работает стабильно и без CORS
+  //     final Uint8List? data = await ref.getData(20 * 1024 * 1024);
+  //     if (data == null) throw Exception('Пустые байты от Firebase');
+  //     return data;
+  //   }
+  // }
 
   CollectionReference<Map<String, dynamic>> _tasksRef(String ownerId) {
     return _firestore.collection(_usersCollection).doc(ownerId).collection(_tasksCollection);

@@ -1,6 +1,9 @@
 import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
 import 'package:collab_tasks/core/task_priority/task_priority_utils.dart';
+import 'package:collab_tasks/core/ui/small_progress_indicator.dart';
+import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/home_screen/components/task_rich_preview.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +37,7 @@ class TaskListTile extends StatefulWidget {
 
 class _TaskListTileState extends State<TaskListTile> {
   bool _isExpanded = false;
+  final Set<String> _loadingAttachmentIds = {};
 
   bool get _isDeadlineOverdue {
     final deadline = widget.task.deadline;
@@ -260,36 +264,60 @@ class _TaskListTileState extends State<TaskListTile> {
           if (widget.task.attachments.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(localization.attachmentsTitle, style: Theme.of(context).textTheme.titleSmall),
-            ...widget.task.attachments.map(
-              (attachment) => ListTile(
+            ...widget.task.attachments.map((attachment) {
+              // проверяем, качается ли файл:
+              final isLoading = _loadingAttachmentIds.contains(attachment.id);
+
+              return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(iconForExtension(attachment.extension)),
                 title: Text(attachment.name),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.visibility),
-                      onPressed: () => handleViewAttachment(
-                        context: context,
-                        attachment: attachment,
-                        localization: localization,
-                      ),
-                      tooltip: localization.viewFileTitle,
-                    ),
+                    isLoading
+                        ? const SmallProgressIndicator()
+                        : IconButton(
+                            icon: const Icon(Icons.visibility),
+                            onPressed: () => handleViewAttachment(
+                              context: context,
+                              attachment: attachment,
+                              localization: localization,
+                              repository: getIt<TaskRepository>(),
+                              onStartLoading: () {
+                                setState(() => _loadingAttachmentIds.add(attachment.id));
+                              },
+                              onEndLoading: () {
+                                setState(() => _loadingAttachmentIds.remove(attachment.id));
+                              },
+                              onCacheSynced: (newPath, sizeBytes) async {
+                                // TODO implement maybe in future, for now it not need
+                              },
+                            ),
+                            tooltip: localization.viewFileTitle,
+                          ),
                     IconButton(
                       icon: const Icon(Icons.download),
-                      onPressed: () => handleDownloadAttachment(
-                        context: context,
-                        attachment: attachment,
-                        localization: localization,
-                      ),
+                      onPressed: isLoading
+                          ? null
+                          : () => handleDownloadAttachment(
+                              context: context,
+                              attachment: attachment,
+                              localization: localization,
+                              onStartLoading: () {
+                                setState(() => _loadingAttachmentIds.add(attachment.id));
+                              },
+                              onEndLoading: () {
+                                setState(() => _loadingAttachmentIds.remove(attachment.id));
+                              },
+                              repository: getIt<TaskRepository>(),
+                            ),
                       tooltip: localization.downloadFileTitle,
                     ),
                   ],
                 ),
-              ),
-            ),
+              );
+            }),
           ],
         ],
       ),

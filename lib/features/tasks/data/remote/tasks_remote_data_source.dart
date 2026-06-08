@@ -1,4 +1,6 @@
-﻿import 'package:collab_tasks/features/tasks/domain/models/task.dart';
+﻿import 'dart:typed_data';
+
+import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 
 abstract class TasksRemoteDataSource {
@@ -13,4 +15,6 @@ abstract class TasksRemoteDataSource {
   Future<void> deleteTask({required String ownerId, required String taskId});
 
   Future<TaskAttachment> uploadFile({required String taskId, required TaskAttachment file});
+
+  Future<Uint8List> downloadAttachmentBytes(String storageKey);
 }

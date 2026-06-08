@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
@@ -77,38 +79,76 @@ Future<String?> tryReadTextAttachment(TaskAttachment attachment) async {
   return file.readAsString();
 }
 
-Future<bool> downloadAttachmentFile(TaskAttachment attachment) async {
-  final path = attachment.localPath;
-  if (path == null) return false;
+/// Метод сохранения файла на девайс (FilePicker)
+Future<bool> downloadAttachmentFile(TaskAttachment attachment, TaskRepository repository) async {
+  Uint8List bytes;
 
-  final bytes = await File(path).readAsBytes();
+  try {
+    if (attachment.localPath != null && File(attachment.localPath!).existsSync()) {
+      bytes = await File(attachment.localPath!).readAsBytes();
+    } else if (attachment.storageKey != null) {
+      // Качаем через репозиторий
+      final cachedPath = await downloadRemoteAttachmentToCache(attachment, repository);
+      bytes = await File(cachedPath).readAsBytes();
+    } else {
+      return false;
+    }
 
-  final outputPath = await FilePicker.platform.saveFile(
-    dialogTitle: 'Сохранить файл',
-    fileName: attachment.name,
-    bytes: bytes,
-  );
+    final outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Сохранить файл',
+      fileName: attachment.name,
+      bytes: bytes,
+    );
 
-  return outputPath != null;
+    return outputPath != null;
+  } catch (e) {
+    debugPrint('Ошибка при сохранении файла: $e');
+    return false;
+  }
+}
+
+/// Скачивает файл по storageKey во временный кэш девайса и возвращает локальный путь.
+Future<String> downloadRemoteAttachmentToCache(
+  TaskAttachment attachment,
+  TaskRepository repository,
+) async {
+  if (attachment.storageKey == null || attachment.storageKey!.isEmpty) {
+    throw Exception('Файл отсутствует локально и нет storageKey для скачивания');
+  }
+  debugPrint('downloadRemoteAttachmentToCache() not WEB');
+  // 1. Качаем байты через SDK (вызывая репозиторий)
+  final bytes = await repository.getAttachmentBytes(attachment.storageKey!);
+  // 2. Сохраняем во временный кэш
+  final tempDir = await getTemporaryDirectory();
+  final cachePath = p.join(tempDir.path, '${attachment.id}_${attachment.name}');
+  final file = File(cachePath);
+  await file.writeAsBytes(bytes);
+
+  return cachePath;
 }
 
 Future<bool> removeAttachmentFile(TaskAttachment attachment) async {
   try {
     final path = attachment.localPath;
+    // Если пути нет, значит файл не скачивался на это устройство.
+    // Удалять с диска нечего, но для UI это успешное "удаление".
     if (path == null) {
-      debugPrint('Cannot remove attachment: localPath is null');
-      return false;
+      debugPrint('removeAttachmentFile: localPath is null (remote file), skipping disk deletion.');
+      return true;
     }
 
     final file = File(path);
 
+    // Если файл не существует в кэше (например, операционка сама очистила temp директорию)
+    // Тоже возвращаем true, так как подчищать за собой не нужно.
     if (!file.existsSync()) {
-      debugPrint('Cannot remove attachment: file does not exist at $path');
-      return false;
+      debugPrint('removeAttachmentFile: file does not exist at $path, skipping disk deletion.');
+      return true;
     }
 
+    // Файл физически есть — удаляем
     await file.delete();
-    debugPrint('Successfully removed attachment file: $path');
+    debugPrint('Successfully removed attachment file from disk: $path');
     return true;
   } catch (e, s) {
     debugPrint('Error removing attachment file: $e\n$s');
