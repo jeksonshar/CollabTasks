@@ -64,7 +64,12 @@ class RemoteTaskMapper {
   }
 
   static Map<String, dynamic> fileToRemoteMap(TaskAttachment file) {
-    return {'id': file.id, 'name': file.name, 'storageKey': file.storageKey ?? ''};
+    return {
+      'id': file.id,
+      'name': file.name,
+      'storageKey': file.storageKey ?? '',
+      'sizeBytes': file.sizeBytes,
+    };
   }
 
   static TaskAttachment fileFromRemoteMap(Map<String, dynamic> map) {
