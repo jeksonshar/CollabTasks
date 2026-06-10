@@ -70,7 +70,7 @@ class FirebaseRemoteDataSource implements TasksRemoteDataSource {
       throw UnsupportedError('Firebase uploadFile requires bytes or a readable localPath.');
     }
 
-    final storageKey = 'users/$ownerId/tasks/$taskId/files/$file.id-$file.name';
+    final storageKey = 'users/$ownerId/tasks/$taskId/files/${file.id}-${file.name}';
     final ref = _storage.ref(storageKey);
     await ref.putData(bytes);
     return file.copyWith(storageKey: storageKey);
