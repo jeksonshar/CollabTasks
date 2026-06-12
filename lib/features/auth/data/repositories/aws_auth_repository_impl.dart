@@ -6,6 +6,7 @@ import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/result/result.dart';
+import 'package:flutter/cupertino.dart';
 
 class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
   AwsAuthRepositoryImpl({this.requireEmailVerifiedForEmailLogin = false});
@@ -97,8 +98,9 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
     try {
       // We invoke authorization through the Google provider.
       // Amplify will automatically open the Hosted UI browser.
+      debugPrint('signInWithGoogle() 0 started');
       final result = await Amplify.Auth.signInWithWebUI(provider: AuthProvider.google);
-
+      debugPrint('signInWithGoogle() 1 result = $result');
       // Checking if the login was successful
       if (!result.isSignedIn) {
         return FailureResult(
@@ -111,6 +113,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
 
       // We retrieve the current user's data (the session is already active)
       final user = await _getCurrentUserOrNull();
+      debugPrint('signInWithGoogle() 2 user = $user');
       if (user == null) {
         return const FailureResult(UnknownAuthFailure());
       }
@@ -297,6 +300,7 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
       case 'UserCancelledException':
         return const CanceledByUserFailure();
       default:
+        debugPrint('_mapAuthException() error = $exception');
         return UnknownAuthFailure(exception.message);
     }
   }

@@ -25,7 +25,7 @@
                 android:exported="true"
                 android:hardwareAccelerated="true"
                 android:clearTaskOnLaunch="true"
-                android:launchMode="singleTask"
+                android:launchMode="singleTop"
                 android:theme="@style/LaunchTheme"
                 android:windowSoftInputMode="adjustResize">
             <!-- Specifies an Android theme to apply to this Activity as soon as
@@ -48,6 +48,18 @@
                 <data android:scheme="collabtasks" android:host="callback" tools:ignore="AppLinkUrlError"/>
             </intent-filter>
         </activity>
+
+<!--        <activity-->
+<!--            android:name="com.amplifyframework.auth.cognito.activities.HostedUIRedirectActivity"-->
+<!--            android:exported="true"-->
+<!--            tools:node="merge">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.VIEW"/>-->
+<!--                <category android:name="android.intent.category.DEFAULT"/>-->
+<!--                <category android:name="android.intent.category.BROWSABLE"/>-->
+<!--                <data android:scheme="collabtasks" android:host="callback"/>-->
+<!--            </intent-filter>-->
+<!--        </activity>-->
 
         <receiver android:exported="false"
                   android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>

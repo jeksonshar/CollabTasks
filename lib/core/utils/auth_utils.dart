@@ -3,7 +3,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 
 enum AuthBackend { aws, firebase }
 
-const AuthBackend authBackend = AuthBackend.firebase;
+const AuthBackend authBackend = AuthBackend.aws;
 
 enum StorageBackend { aws, firebase }
 
