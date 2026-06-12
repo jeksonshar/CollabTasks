@@ -110,6 +110,24 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
 
   Map<String, dynamic> _toAwsTaskInput(Task task, {required String ownerId}) {
     final map = RemoteTaskMapper.toRemoteMap(task, ownerId: ownerId);
+
+    // Безопасно вытаскиваем массив файлов из маппера
+    final rawFiles = map['files'];
+    List<Map<String, dynamic>>? cleanFiles;
+
+    if (rawFiles is List) {
+      cleanFiles = rawFiles
+          .map((file) {
+            if (file is Map) {
+              // ЖЕСТКАЯ САНАЦИЯ: Оставляем только те 3 поля, которые прописаны в FileMetaInput
+              return {'id': file['id'], 'name': file['name'], 'storageKey': file['storageKey']};
+            }
+            return <String, dynamic>{};
+          })
+          .where((file) => file.isNotEmpty)
+          .toList();
+    }
+
     return {
       'id': map['id'],
       'title': map['title'],
@@ -118,7 +136,7 @@ class AWSRemoteDataSource implements TasksRemoteDataSource {
       'isCompleted': map['isCompleted'],
       'priority': map['priority'],
       'subtasks': map['subtasks'],
-      'files': map['files'],
+      'files': cleanFiles, // Передаем очищенный массив
       'updatedAtMillis': map['updatedAtMillis'],
     };
   }
