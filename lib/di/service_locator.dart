@@ -45,6 +45,24 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/update_task_use_cas
 import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
+import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
+import 'package:collab_tasks/features/working_groups/data/remote/aws_working_groups_remote_data_source.dart';
+import 'package:collab_tasks/features/working_groups/data/remote/firebase_working_groups_remote_data_source.dart';
+import 'package:collab_tasks/features/working_groups/data/remote/working_groups_remote_data_source.dart';
+import 'package:collab_tasks/features/working_groups/data/repositories/working_groups_repository_impl.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
+import 'package:collab_tasks/features/working_groups/domain/repositories/working_groups_repository.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/add_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/claim_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/create_working_group_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_participants_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_tasks_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_groups_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
@@ -73,6 +91,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton<TaskNotificationService>(() => getIt<TaskNotificationsManager>())
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
     ..registerLazySingleton<TasksLocalDataSource>(() => DriftTasksLocalDataSource(getIt()))
+    ..registerLazySingleton<WorkingGroupsLocalDataSource>(
+      () => DriftWorkingGroupsLocalDataSource(getIt()),
+    )
     ..registerLazySingleton<TasksRemoteDataSource>(
       () => switch (storageBackend) {
         StorageBackend.aws => const AWSRemoteDataSource(),
@@ -83,12 +104,27 @@ void setupLocator(SharedPreferences sharedPreferences) {
         ),
       },
     )
+    ..registerLazySingleton<WorkingGroupsRemoteDataSource>(
+      () => switch (authBackend) {
+        AuthBackend.aws => const AWSWorkingGroupsRemoteDataSource(),
+        AuthBackend.firebase => FirebaseWorkingGroupsRemoteDataSource(
+          firestore: getIt<FirebaseFirestore>(),
+        ),
+      },
+    )
     ..registerLazySingleton<TaskRepository>(
       () => TaskRepositoryImpl(
         localDataSource: getIt(),
         remoteDataSource: getIt(),
         authRepository: getIt(),
         notificationService: getIt(),
+      ),
+    )
+    ..registerLazySingleton<WorkingGroupsRepository>(
+      () => WorkingGroupsRepositoryImpl(
+        localDataSource: getIt(),
+        remoteDataSource: getIt(),
+        authRepository: getIt(),
       ),
     )
     ..registerLazySingleton(() => WatchTasksUseCase(getIt()))
@@ -104,6 +140,14 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => CancelTaskNotificationsUseCase(getIt()))
     ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
     ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
+    ..registerLazySingleton(() => GetWorkingGroupsUseCase(getIt()))
+    ..registerLazySingleton(() => GetGroupTasksUseCase(getIt()))
+    ..registerLazySingleton(() => GetGroupParticipantsUseCase(getIt()))
+    ..registerLazySingleton(() => CreateWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => AddGroupTaskUseCase(getIt()))
+    ..registerLazySingleton(() => UpdateGroupTaskUseCase(getIt()))
+    ..registerLazySingleton(() => ClaimGroupTaskUseCase(getIt()))
+    ..registerLazySingleton(() => ReleaseGroupTaskUseCase(getIt()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -166,6 +210,26 @@ void setupLocator(SharedPreferences sharedPreferences) {
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())
+    ..registerFactory(
+      () => WorkingGroupsBloc(getWorkingGroupsUseCase: getIt(), createWorkingGroupUseCase: getIt()),
+    )
+    ..registerFactoryParam<GroupDetailsBloc, String, void>(
+      (groupId, _) => GroupDetailsBloc(
+        groupId: groupId,
+        getGroupTasksUseCase: getIt(),
+        getGroupParticipantsUseCase: getIt(),
+        addGroupTaskUseCase: getIt(),
+        authRepository: getIt(),
+      ),
+    )
+    ..registerFactoryParam<GroupTaskDetailsBloc, GroupTask, void>(
+      (task, _) => GroupTaskDetailsBloc(
+        task: task,
+        claimGroupTaskUseCase: getIt(),
+        releaseGroupTaskUseCase: getIt(),
+        updateGroupTaskUseCase: getIt(),
+      ),
+    )
     ..registerFactory(
       () => TaskBloc(
         watchTasksUseCase: getIt(),

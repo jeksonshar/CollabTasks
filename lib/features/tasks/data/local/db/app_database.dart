@@ -1,18 +1,19 @@
-﻿import 'package:collab_tasks/features/tasks/data/local/db/entities/task_entity.dart';
+import 'package:collab_tasks/features/tasks/data/local/db/entities/task_entity.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_subtask.dart';
+import 'package:collab_tasks/features/working_groups/data/local/db/entities/working_group_entities.dart';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [TaskEntity])
+@DriftDatabase(tables: [TaskEntity, WorkingGroupsTable, GroupParticipantsTable, GroupTasksTable])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +113,11 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 13) {
         await m.addColumn(taskEntity, taskEntity.taskIsSynced);
+      }
+      if (from < 14) {
+        await m.createTable(workingGroupsTable);
+        await m.createTable(groupParticipantsTable);
+        await m.createTable(groupTasksTable);
       }
     },
   );

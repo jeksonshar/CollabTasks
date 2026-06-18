@@ -1,0 +1,265 @@
+import 'dart:async';
+
+import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
+import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/tasks/domain/models/errors/data_exception.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
+import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
+import 'package:collab_tasks/features/working_groups/data/remote/working_groups_remote_data_source.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/group_task_assignment_exception.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
+import 'package:collab_tasks/features/working_groups/domain/repositories/working_groups_repository.dart';
+import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
+
+class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
+  WorkingGroupsRepositoryImpl({
+    required WorkingGroupsLocalDataSource localDataSource,
+    required WorkingGroupsRemoteDataSource remoteDataSource,
+    required AuthRepository authRepository,
+  }) : _localDataSource = localDataSource,
+       _remoteDataSource = remoteDataSource,
+       _authRepository = authRepository;
+
+  final WorkingGroupsLocalDataSource _localDataSource;
+  final WorkingGroupsRemoteDataSource _remoteDataSource;
+  final AuthRepository _authRepository;
+  final Map<String, StreamSubscription<List<GroupParticipant>>> _participantSubscriptions = {};
+  final Map<String, StreamSubscription<List<GroupTask>>> _taskSubscriptions = {};
+  StreamSubscription<List<WorkingGroup>>? _groupsSubscription;
+  String? _subscribedUserId;
+
+  @override
+  Stream<List<WorkingGroup>> watchGroups() {
+    return _authRepository.watchAuthState().asyncExpand((user) async* {
+      if (user == null) {
+        yield const <WorkingGroup>[];
+        return;
+      }
+      _ensureGroupsSubscription(user.id);
+      yield* _localDataSource.watchGroups();
+    });
+  }
+
+  @override
+  Stream<List<GroupParticipant>> watchParticipants(String groupId) {
+    _ensureGroupSubscriptions(groupId);
+    return _localDataSource.watchParticipants(groupId);
+  }
+
+  @override
+  Stream<List<GroupTask>> watchGroupTasks(String groupId) {
+    _ensureGroupSubscriptions(groupId);
+    return _localDataSource.watchTasks(groupId);
+  }
+
+  @override
+  Future<WorkingGroup> createGroup({required String title, required String description}) async {
+    final user = await _requireCurrentUser();
+    final now = DateTime.now();
+    final updatedAt = now.millisecondsSinceEpoch;
+    final group = WorkingGroup(
+      id: const Uuid().v4(),
+      title: title,
+      description: description,
+      createdAt: now,
+      updatedAt: updatedAt,
+    );
+    final participant = _participantForUser(groupId: group.id, user: user, updatedAt: updatedAt);
+    await _localDataSource.upsertGroup(group);
+    await _localDataSource.upsertParticipant(participant);
+    await _remoteDataSource.upsertGroup(group: group, participantUserIds: [user.id]);
+    await _remoteDataSource.upsertParticipant(participant);
+    return group;
+  }
+
+  @override
+  Future<void> addGroupTask({required String groupId, required TaskDraft draft}) async {
+    final now = DateTime.now();
+    final task = GroupTask.fromTask(
+      groupId: groupId,
+      task: Task(
+        id: const Uuid().v4(),
+        createdAt: now,
+        title: draft.title,
+        description: draft.descriptionJson,
+        priority: draft.priority,
+        attachments: draft.attachments,
+        subtasks: draft.subtasks,
+        isCompleted: draft.isCompleted,
+        deadline: draft.deadline,
+        updatedAt: now.millisecondsSinceEpoch,
+      ),
+    );
+    await _localDataSource.upsertTask(task);
+    await _tryRemote(() => _remoteDataSource.upsertTask(task.copyWith(isSynced: true)));
+  }
+
+  @override
+  Future<void> updateGroupTask(GroupTask task) async {
+    final currentUser = await _requireCurrentUser();
+    final participants = await _localDataSource.getParticipants(task.groupId);
+    final assigned = _assignedParticipant(task, participants);
+    if (assigned != null && assigned.userId != currentUser.id) {
+      throw GroupTaskAssignmentException('Task is in progress by ${assigned.name}.');
+    }
+    final updated = task.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch);
+    await _localDataSource.upsertTask(updated);
+    await _tryRemote(() => _remoteDataSource.upsertTask(updated.copyWith(isSynced: true)));
+  }
+
+  @override
+  Future<void> claimGroupTask({required String groupId, required String taskId}) async {
+    final user = await _requireCurrentUser();
+    final task = await _requireTask(groupId: groupId, taskId: taskId);
+    final participant = await _ensureCurrentParticipant(groupId: groupId, user: user);
+    if (task.assignedUserId != null &&
+        task.assignedUserId!.isNotEmpty &&
+        task.assignedUserId != participant.id) {
+      throw const GroupTaskAssignmentException('Task is already claimed by another participant.');
+    }
+    final updatedAt = DateTime.now().millisecondsSinceEpoch;
+    final updated = task.copyWith(assignedUserId: participant.id, updatedAt: updatedAt);
+    await _localDataSource.upsertTask(updated);
+    await _remoteDataSource.claimTask(
+      groupId: groupId,
+      taskId: taskId,
+      participantId: participant.id,
+      updatedAt: updatedAt,
+    );
+  }
+
+  @override
+  Future<void> releaseGroupTask({required String groupId, required String taskId}) async {
+    final user = await _requireCurrentUser();
+    final task = await _requireTask(groupId: groupId, taskId: taskId);
+    final participant = await _localDataSource.getParticipantByUserId(
+      groupId: groupId,
+      userId: user.id,
+    );
+    if (participant == null || task.assignedUserId != participant.id) {
+      throw const GroupTaskAssignmentException('Only current assignee can release this task.');
+    }
+    final updated = task.copyWith(
+      assignedUserId: null,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _localDataSource.upsertTask(updated);
+    await _tryRemote(() => _remoteDataSource.upsertTask(updated.copyWith(isSynced: true)));
+  }
+
+  void _ensureGroupsSubscription(String userId) {
+    if (_subscribedUserId == userId && _groupsSubscription != null) return;
+    _groupsSubscription?.cancel();
+    _subscribedUserId = userId;
+    _groupsSubscription = _remoteDataSource
+        .watchGroups(userId: userId)
+        .listen(
+          (groups) async {
+            for (final group in groups) {
+              await _localDataSource.upsertGroup(group);
+              _ensureGroupSubscriptions(group.id);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('WorkingGroupsRepository.groupsSubscription failed: $error\n$stackTrace');
+          },
+        );
+  }
+
+  void _ensureGroupSubscriptions(String groupId) {
+    _participantSubscriptions[groupId] ??= _remoteDataSource
+        .watchParticipants(groupId: groupId)
+        .listen(
+          (participants) async {
+            for (final participant in participants) {
+              await _localDataSource.upsertParticipant(participant);
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint(
+              'WorkingGroupsRepository.participantsSubscription failed: $error\n$stackTrace',
+            );
+          },
+        );
+    _taskSubscriptions[groupId] ??= _remoteDataSource
+        .watchTasks(groupId: groupId)
+        .listen(
+          (tasks) async {
+            for (final task in tasks) {
+              await _localDataSource.upsertTask(task.copyWith(isSynced: true));
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('WorkingGroupsRepository.tasksSubscription failed: $error\n$stackTrace');
+          },
+        );
+  }
+
+  Future<GroupParticipant> _ensureCurrentParticipant({
+    required String groupId,
+    required AuthUser user,
+  }) async {
+    final existing = await _localDataSource.getParticipantByUserId(
+      groupId: groupId,
+      userId: user.id,
+    );
+    if (existing != null) return existing;
+    final participant = _participantForUser(
+      groupId: groupId,
+      user: user,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _localDataSource.upsertParticipant(participant);
+    await _tryRemote(() => _remoteDataSource.upsertParticipant(participant));
+    return participant;
+  }
+
+  GroupParticipant _participantForUser({
+    required String groupId,
+    required AuthUser user,
+    required int updatedAt,
+  }) {
+    return GroupParticipant(
+      id: '$groupId:${user.id}',
+      groupId: groupId,
+      userId: user.id,
+      name: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : user.email,
+      updatedAt: updatedAt,
+    );
+  }
+
+  GroupParticipant? _assignedParticipant(GroupTask task, List<GroupParticipant> participants) {
+    final assignedUserId = task.assignedUserId;
+    if (assignedUserId == null || assignedUserId.isEmpty) return null;
+    for (final participant in participants) {
+      if (participant.id == assignedUserId) return participant;
+    }
+    return null;
+  }
+
+  Future<GroupTask> _requireTask({required String groupId, required String taskId}) async {
+    final task = await _localDataSource.getTask(groupId: groupId, taskId: taskId);
+    if (task == null) throw DataException('Group task $taskId was not found.');
+    return task;
+  }
+
+  Future<AuthUser> _requireCurrentUser() async {
+    final user = await _authRepository.watchAuthState().first;
+    if (user == null) {
+      throw DataException('Working groups require an authenticated user.');
+    }
+    return user;
+  }
+
+  Future<void> _tryRemote(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (error, stackTrace) {
+      debugPrint('WorkingGroupsRepository remote operation failed: $error\n$stackTrace');
+    }
+  }
+}
