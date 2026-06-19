@@ -7,6 +7,8 @@ import 'package:drift/drift.dart';
 abstract class WorkingGroupsLocalDataSource {
   Stream<List<WorkingGroup>> watchGroups();
 
+  Stream<WorkingGroup?> watchGroup(String groupId);
+
   Stream<List<GroupParticipant>> watchParticipants(String groupId);
 
   Stream<List<GroupTask>> watchTasks(String groupId);
@@ -28,6 +30,8 @@ abstract class WorkingGroupsLocalDataSource {
 
   Future<void> upsertTask(GroupTask task);
 
+  Future<void> deleteGroup(String groupId);
+
   Future<void> deleteTask({required String groupId, required String taskId});
 }
 
@@ -42,6 +46,13 @@ class DriftWorkingGroupsLocalDataSource implements WorkingGroupsLocalDataSource 
           ..orderBy([(row) => OrderingTerm.desc(row.createdAt)]))
         .watch()
         .map((rows) => rows.map((row) => row.toModel()).toList(growable: false));
+  }
+
+  @override
+  Stream<WorkingGroup?> watchGroup(String groupId) {
+    return (_db.select(
+      _db.workingGroupsTable,
+    )..where((row) => row.id.equals(groupId))).watchSingleOrNull().map((row) => row?.toModel());
   }
 
   @override
@@ -101,6 +112,7 @@ class DriftWorkingGroupsLocalDataSource implements WorkingGroupsLocalDataSource 
       id: group.id,
       title: group.title,
       description: Value(group.description),
+      avatarUrl: Value(group.avatarUrl),
       createdAt: group.createdAt,
       updatedAt: Value(group.updatedAt),
     );
@@ -146,6 +158,11 @@ class DriftWorkingGroupsLocalDataSource implements WorkingGroupsLocalDataSource 
   }
 
   @override
+  Future<void> deleteGroup(String groupId) {
+    return (_db.delete(_db.workingGroupsTable)..where((group) => group.id.equals(groupId))).go();
+  }
+
+  @override
   Future<void> deleteTask({required String groupId, required String taskId}) {
     return (_db.delete(
       _db.groupTasksTable,
@@ -158,6 +175,7 @@ extension WorkingGroupRowMapper on WorkingGroupsTableData {
     id: id,
     title: title,
     description: description,
+    avatarUrl: avatarUrl,
     createdAt: createdAt,
     updatedAt: updatedAt,
   );

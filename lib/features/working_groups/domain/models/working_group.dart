@@ -7,6 +7,7 @@ class WorkingGroup extends Equatable {
     required this.description,
     required this.createdAt,
     required this.updatedAt,
+    this.avatarUrl,
   });
 
   final String id;
@@ -14,6 +15,7 @@ class WorkingGroup extends Equatable {
   final String description;
   final DateTime createdAt;
   final int updatedAt;
+  final String? avatarUrl;
 
   WorkingGroup copyWith({
     String? id,
@@ -21,6 +23,7 @@ class WorkingGroup extends Equatable {
     String? description,
     DateTime? createdAt,
     int? updatedAt,
+    String? avatarUrl,
   }) {
     return WorkingGroup(
       id: id ?? this.id,
@@ -28,17 +31,23 @@ class WorkingGroup extends Equatable {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 
-  Map<String, dynamic> toMap({List<String> participantUserIds = const []}) {
+  Map<String, dynamic> toMap({
+    List<String> participantUserIds = const [],
+    List<String> participantEmails = const [],
+  }) {
     return {
       'id': id,
       'title': title,
       'description': description,
+      'avatarUrl': avatarUrl,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAtMillis': updatedAt,
       'participantUserIds': participantUserIds,
+      'participantEmails': participantEmails,
     };
   }
 
@@ -49,6 +58,7 @@ class WorkingGroup extends Equatable {
       description: map['description'] as String? ?? '',
       createdAt: _dateTimeFromMillis(map['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: (map['updatedAtMillis'] as num?)?.toInt() ?? 0,
+      avatarUrl: map['avatarUrl'] as String?,
     );
   }
 
@@ -61,5 +71,5 @@ class WorkingGroup extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, description, createdAt, updatedAt];
+  List<Object?> get props => [id, title, description, createdAt, updatedAt, avatarUrl];
 }

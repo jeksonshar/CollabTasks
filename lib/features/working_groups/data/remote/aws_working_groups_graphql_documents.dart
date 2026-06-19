@@ -8,7 +8,9 @@ query ListWorkingGroups {
       id
       title
       description
+      avatarUrl
       participantUserIds
+      participantEmails
       createdAt
       updatedAtMillis
     }
@@ -74,6 +76,18 @@ mutation UpdateWorkingGroup($input: UpdateWorkingGroupInput!) {
 }
 ''';
 
+  static const String deleteGroup = r'''
+mutation DeleteWorkingGroup($input: DeleteWorkingGroupInput!) {
+  deleteWorkingGroup(input: $input) { id }
+}
+''';
+
+  static const String inviteParticipantByEmail = r'''
+mutation InviteWorkingGroupParticipant($groupId: ID!, $email: String!) {
+  inviteWorkingGroupParticipant(groupId: $groupId, email: $email) { id }
+}
+''';
+
   static const String createParticipant = r'''
 mutation CreateGroupParticipant($input: CreateGroupParticipantInput!) {
   createGroupParticipant(input: $input) { id }
@@ -110,7 +124,9 @@ subscription OnWorkingGroupChanged {
     id
       title
       description
+      avatarUrl
       participantUserIds
+      participantEmails
       createdAt
       updatedAtMillis
   }

@@ -55,11 +55,15 @@ import 'package:collab_tasks/features/working_groups/domain/repositories/working
 import 'package:collab_tasks/features/working_groups/domain/use_cases/add_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/claim_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/create_working_group_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/delete_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_participants_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_tasks_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_groups_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
@@ -141,9 +145,13 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => GetNotificationTapStreamUseCase(getIt()))
     ..registerLazySingleton(() => ConsumeInitialNotificationPayloadUseCase(getIt()))
     ..registerLazySingleton(() => GetWorkingGroupsUseCase(getIt()))
+    ..registerLazySingleton(() => GetWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => GetGroupTasksUseCase(getIt()))
     ..registerLazySingleton(() => GetGroupParticipantsUseCase(getIt()))
     ..registerLazySingleton(() => CreateWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => UpdateWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => DeleteWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => InviteGroupParticipantUseCase(getIt()))
     ..registerLazySingleton(() => AddGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => UpdateGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => ClaimGroupTaskUseCase(getIt()))
@@ -207,6 +215,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         logOutUseCase: getIt(),
         watchAuthStateUseCase: getIt(),
         notificationService: getIt(),
+        workingGroupsRepository: getIt(),
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())
@@ -216,9 +225,13 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerFactoryParam<GroupDetailsBloc, String, void>(
       (groupId, _) => GroupDetailsBloc(
         groupId: groupId,
+        getWorkingGroupUseCase: getIt(),
         getGroupTasksUseCase: getIt(),
         getGroupParticipantsUseCase: getIt(),
         addGroupTaskUseCase: getIt(),
+        updateWorkingGroupUseCase: getIt(),
+        deleteWorkingGroupUseCase: getIt(),
+        inviteGroupParticipantUseCase: getIt(),
         authRepository: getIt(),
       ),
     )

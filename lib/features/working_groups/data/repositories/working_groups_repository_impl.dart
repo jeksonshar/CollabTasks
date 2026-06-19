@@ -39,9 +39,15 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
         yield const <WorkingGroup>[];
         return;
       }
-      _ensureGroupsSubscription(user.id);
+      _ensureGroupsSubscription(user);
       yield* _localDataSource.watchGroups();
     });
+  }
+
+  @override
+  Stream<WorkingGroup?> watchGroup(String groupId) {
+    _ensureGroupSubscriptions(groupId);
+    return _localDataSource.watchGroup(groupId);
   }
 
   @override
@@ -71,9 +77,47 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     final participant = _participantForUser(groupId: group.id, user: user, updatedAt: updatedAt);
     await _localDataSource.upsertGroup(group);
     await _localDataSource.upsertParticipant(participant);
-    await _remoteDataSource.upsertGroup(group: group, participantUserIds: [user.id]);
+    await _remoteDataSource.upsertGroup(
+      group: group,
+      participantUserIds: [user.id],
+      participantEmails: [user.email],
+    );
     await _remoteDataSource.upsertParticipant(participant);
     return group;
+  }
+
+  @override
+  Future<void> updateGroup(WorkingGroup group) async {
+    final updated = group.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch);
+    await _localDataSource.upsertGroup(updated);
+    await _tryRemote(() => _remoteDataSource.upsertGroup(group: updated));
+  }
+
+  @override
+  Future<void> deleteGroup(String groupId) async {
+    await _localDataSource.deleteGroup(groupId);
+    await _tryRemote(() => _remoteDataSource.deleteGroup(groupId));
+  }
+
+  @override
+  Future<void> inviteParticipantByEmail({required String groupId, required String email}) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
+      throw DataException('Enter a valid email address.');
+    }
+    final updatedAt = DateTime.now().millisecondsSinceEpoch;
+    final participant = GroupParticipant(
+      id: '$groupId:invite:$normalizedEmail',
+      groupId: groupId,
+      userId: normalizedEmail,
+      name: normalizedEmail,
+      updatedAt: updatedAt,
+    );
+    await _localDataSource.upsertParticipant(participant);
+    await _tryRemote(() async {
+      await _remoteDataSource.inviteParticipantByEmail(groupId: groupId, email: normalizedEmail);
+      await _remoteDataSource.upsertParticipant(participant);
+    });
   }
 
   @override
@@ -151,12 +195,12 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     await _tryRemote(() => _remoteDataSource.upsertTask(updated.copyWith(isSynced: true)));
   }
 
-  void _ensureGroupsSubscription(String userId) {
-    if (_subscribedUserId == userId && _groupsSubscription != null) return;
+  void _ensureGroupsSubscription(AuthUser user) {
+    if (_subscribedUserId == user.id && _groupsSubscription != null) return;
     _groupsSubscription?.cancel();
-    _subscribedUserId = userId;
+    _subscribedUserId = user.id;
     _groupsSubscription = _remoteDataSource
-        .watchGroups(userId: userId)
+        .watchGroups(userId: user.id, userEmail: user.email)
         .listen(
           (groups) async {
             for (final group in groups) {
@@ -261,5 +305,27 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     } catch (error, stackTrace) {
       debugPrint('WorkingGroupsRepository remote operation failed: $error\n$stackTrace');
     }
+  }
+
+  @override
+  void clearSubscriptions() {
+    // 1. Отменяем подписку на список групп
+    _groupsSubscription?.cancel();
+    _groupsSubscription = null;
+    _subscribedUserId = null;
+
+    // 2. В цикле закрываем все подписки на участников групп
+    for (final subscription in _participantSubscriptions.values) {
+      subscription.cancel();
+    }
+    _participantSubscriptions.clear();
+
+    // 3. В цикле закрываем все подписки на задачи групп
+    for (final subscription in _taskSubscriptions.values) {
+      subscription.cancel();
+    }
+    _taskSubscriptions.clear();
+
+    debugPrint('WorkingGroupsRepository: All remote subscriptions cleared safely.');
   }
 }

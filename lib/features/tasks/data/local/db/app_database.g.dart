@@ -777,6 +777,15 @@ class $WorkingGroupsTableTable extends WorkingGroupsTable
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _avatarUrlMeta = const VerificationMeta('avatarUrl');
+  @override
+  late final GeneratedColumn<String> avatarUrl = GeneratedColumn<String>(
+    'avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta('createdAt');
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
@@ -798,7 +807,7 @@ class $WorkingGroupsTableTable extends WorkingGroupsTable
   );
 
   @override
-  List<GeneratedColumn> get $columns => [id, title, description, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [id, title, description, avatarUrl, createdAt, updatedAt];
 
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -828,6 +837,12 @@ class $WorkingGroupsTableTable extends WorkingGroupsTable
       context.handle(
         _descriptionMeta,
         description.isAcceptableOrUnknown(data['description']!, _descriptionMeta),
+      );
+    }
+    if (data.containsKey('avatar_url')) {
+      context.handle(
+        _avatarUrlMeta,
+        avatarUrl.isAcceptableOrUnknown(data['avatar_url']!, _avatarUrlMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -863,6 +878,10 @@ class $WorkingGroupsTableTable extends WorkingGroupsTable
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       )!,
+      avatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_url'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -884,6 +903,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
   final String id;
   final String title;
   final String description;
+  final String? avatarUrl;
   final DateTime createdAt;
   final int updatedAt;
 
@@ -891,6 +911,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
     required this.id,
     required this.title,
     required this.description,
+    this.avatarUrl,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -901,6 +922,9 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['description'] = Variable<String>(description);
+    if (!nullToAbsent || avatarUrl != null) {
+      map['avatar_url'] = Variable<String>(avatarUrl);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
@@ -911,6 +935,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
       id: Value(id),
       title: Value(title),
       description: Value(description),
+      avatarUrl: avatarUrl == null && nullToAbsent ? const Value.absent() : Value(avatarUrl),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -925,6 +950,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String>(json['description']),
+      avatarUrl: serializer.fromJson<String?>(json['avatarUrl']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
@@ -937,6 +963,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String>(description),
+      'avatarUrl': serializer.toJson<String?>(avatarUrl),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
@@ -946,12 +973,14 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
     String? id,
     String? title,
     String? description,
+    Value<String?> avatarUrl = const Value.absent(),
     DateTime? createdAt,
     int? updatedAt,
   }) => WorkingGroupsTableData(
     id: id ?? this.id,
     title: title ?? this.title,
     description: description ?? this.description,
+    avatarUrl: avatarUrl.present ? avatarUrl.value : this.avatarUrl,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -961,6 +990,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       description: data.description.present ? data.description.value : this.description,
+      avatarUrl: data.avatarUrl.present ? data.avatarUrl.value : this.avatarUrl,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -972,6 +1002,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('avatarUrl: $avatarUrl, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -979,7 +1010,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
   }
 
   @override
-  int get hashCode => Object.hash(id, title, description, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, title, description, avatarUrl, createdAt, updatedAt);
 
   @override
   bool operator ==(Object other) =>
@@ -988,6 +1019,7 @@ class WorkingGroupsTableData extends DataClass implements Insertable<WorkingGrou
           other.id == this.id &&
           other.title == this.title &&
           other.description == this.description &&
+          other.avatarUrl == this.avatarUrl &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -996,6 +1028,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
   final Value<String> id;
   final Value<String> title;
   final Value<String> description;
+  final Value<String?> avatarUrl;
   final Value<DateTime> createdAt;
   final Value<int> updatedAt;
   final Value<int> rowid;
@@ -1004,6 +1037,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1013,6 +1047,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
     required String id,
     required String title,
     this.description = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1024,6 +1059,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
     Expression<String>? id,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? avatarUrl,
     Expression<DateTime>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
@@ -1032,6 +1068,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1042,6 +1079,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
     Value<String>? id,
     Value<String>? title,
     Value<String>? description,
+    Value<String?>? avatarUrl,
     Value<DateTime>? createdAt,
     Value<int>? updatedAt,
     Value<int>? rowid,
@@ -1050,6 +1088,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1067,6 +1106,9 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (avatarUrl.present) {
+      map['avatar_url'] = Variable<String>(avatarUrl.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1086,6 +1128,7 @@ class WorkingGroupsTableCompanion extends UpdateCompanion<WorkingGroupsTableData
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('avatarUrl: $avatarUrl, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -2633,6 +2676,7 @@ typedef $$WorkingGroupsTableTableCreateCompanionBuilder =
       required String id,
       required String title,
       Value<String> description,
+      Value<String?> avatarUrl,
       required DateTime createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -2642,6 +2686,7 @@ typedef $$WorkingGroupsTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> title,
       Value<String> description,
+      Value<String?> avatarUrl,
       Value<DateTime> createdAt,
       Value<int> updatedAt,
       Value<int> rowid,
@@ -2702,6 +2747,9 @@ class $$WorkingGroupsTableTableFilterComposer
 
   ColumnFilters<String> get description =>
       $composableBuilder(column: $table.description, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -2769,6 +2817,9 @@ class $$WorkingGroupsTableTableOrderingComposer
   ColumnOrderings<String> get description =>
       $composableBuilder(column: $table.description, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -2794,6 +2845,9 @@ class $$WorkingGroupsTableTableAnnotationComposer
 
   GeneratedColumn<String> get description =>
       $composableBuilder(column: $table.description, builder: (column) => column);
+
+  GeneratedColumn<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2873,6 +2927,7 @@ class $$WorkingGroupsTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> description = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2880,6 +2935,7 @@ class $$WorkingGroupsTableTableTableManager
                 id: id,
                 title: title,
                 description: description,
+                avatarUrl: avatarUrl,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2889,6 +2945,7 @@ class $$WorkingGroupsTableTableTableManager
                 required String id,
                 required String title,
                 Value<String> description = const Value.absent(),
+                Value<String?> avatarUrl = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2896,6 +2953,7 @@ class $$WorkingGroupsTableTableTableManager
                 id: id,
                 title: title,
                 description: description,
+                avatarUrl: avatarUrl,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

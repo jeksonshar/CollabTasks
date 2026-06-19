@@ -39,11 +39,13 @@ const schema = a.schema({
             id: a.id().required(),
             title: a.string().required(),
             description: a.string(),
+            avatarUrl: a.string(),
             participantUserIds: a.string().array(),
+            participantEmails: a.email().array(),
             updatedAtMillis: a.float(),
         })
         .authorization((allow) => [
-            // Group records are additionally filtered by participantUserIds in client queries.
+            // Group records are additionally filtered by participantUserIds/participantEmails in client queries.
             allow.authenticated(),
         ]),
 
@@ -78,6 +80,21 @@ const schema = a.schema({
         .authorization((allow) => [
             allow.authenticated(),
         ]),
+
+    inviteWorkingGroupParticipant: a
+        .mutation()
+        .arguments({
+            groupId: a.id().required(),
+            email: a.email().required(),
+        })
+        .returns(a.ref('WorkingGroup'))
+        .authorization((allow) => [
+            allow.authenticated(),
+        ])
+        .handler(a.handler.custom({
+            dataSource: a.ref('WorkingGroup'),
+            entry: './invite-working-group-participant.js',
+        })),
 });
 
 export type Schema = ClientSchema<typeof schema>;

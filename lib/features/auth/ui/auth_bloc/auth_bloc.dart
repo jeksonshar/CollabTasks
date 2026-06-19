@@ -17,10 +17,13 @@ import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
 import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
+import 'package:collab_tasks/features/working_groups/domain/repositories/working_groups_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  final WorkingGroupsRepository _workingGroupsRepository;
+
   AuthBloc({
     required RegisterWithEmailUseCase registerWithEmailUseCase,
     required LoginWithEmailUseCase loginWithEmailUseCase,
@@ -32,6 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required LogOutUseCase logOutUseCase,
     required WatchAuthStateUseCase watchAuthStateUseCase,
     required TaskNotificationService notificationService,
+    required WorkingGroupsRepository workingGroupsRepository,
   }) : _registerWithEmailUseCase = registerWithEmailUseCase,
        _loginWithEmailUseCase = loginWithEmailUseCase,
        _signInWithGoogleUseCase = signInWithGoogleUseCase,
@@ -42,6 +46,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _logOutUseCase = logOutUseCase,
        _watchAuthStateUseCase = watchAuthStateUseCase,
        _notificationService = notificationService,
+       _workingGroupsRepository = workingGroupsRepository,
        super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
     on<AuthRegisterRequested>(_onRegisterRequested);
@@ -326,6 +331,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) async {
     // Show loading
     emit(state.copyWith(status: AuthStatus.loadingFormSubmit, clearFailure: true));
+
+    _workingGroupsRepository.clearSubscriptions();
 
     final result = await _logOutUseCase();
 

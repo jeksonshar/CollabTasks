@@ -3,13 +3,21 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task.da
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 
 abstract class WorkingGroupsRemoteDataSource {
-  Stream<List<WorkingGroup>> watchGroups({required String userId});
+  Stream<List<WorkingGroup>> watchGroups({required String userId, required String userEmail});
 
   Stream<List<GroupParticipant>> watchParticipants({required String groupId});
 
   Stream<List<GroupTask>> watchTasks({required String groupId});
 
-  Future<void> upsertGroup({required WorkingGroup group, required List<String> participantUserIds});
+  Future<void> upsertGroup({
+    required WorkingGroup group,
+    List<String> participantUserIds,
+    List<String> participantEmails,
+  });
+
+  Future<void> deleteGroup(String groupId);
+
+  Future<void> inviteParticipantByEmail({required String groupId, required String email});
 
   Future<void> upsertParticipant(GroupParticipant participant);
 

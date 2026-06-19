@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
@@ -8,6 +10,7 @@ import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/grou
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_state.dart';
 import 'package:collab_tasks/features/working_groups/ui/screens/group_task_details_screen.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -30,10 +33,61 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
           getIt<GroupDetailsBloc>(param1: widget.group.id)..add(const GroupDetailsStarted()),
       child: Builder(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: Text(widget.group.title), centerTitle: false),
-          body: BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
+          appBar: AppBar(
+            title: BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
+              builder: (context, state) {
+                final group = state.group ?? widget.group;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(group.title),
+                    if (group.description.trim().isNotEmpty)
+                      Text(
+                        group.description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                );
+              },
+            ),
+            centerTitle: false,
+            actions: [
+              BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
+                builder: (context, state) {
+                  final group = state.group ?? widget.group;
+                  return PopupMenuButton<_GroupAction>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (action) => _handleGroupAction(context, action, group),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: _GroupAction.edit, child: Text('Редактировать')),
+                      PopupMenuItem(
+                        value: _GroupAction.invite,
+                        child: Text('Пригласить участника'),
+                      ),
+                      PopupMenuItem(value: _GroupAction.delete, child: Text('Удалить')),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+          body: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
+            listener: (context, state) {
+              if (state.status == GroupDetailsStatus.deleted) {
+                Navigator.of(context).pop();
+              }
+              if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+              }
+            },
             builder: (context, state) {
-              if (state.status == GroupDetailsStatus.loading) {
+              if (state.status == GroupDetailsStatus.loading ||
+                  state.status == GroupDetailsStatus.saving) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (state.status == GroupDetailsStatus.error) {
@@ -67,6 +121,188 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     if (draft != null) {
       bloc.add(GroupTaskAdded(draft));
     }
+  }
+
+  Future<void> _handleGroupAction(
+    BuildContext context,
+    _GroupAction action,
+    WorkingGroup group,
+  ) async {
+    switch (action) {
+      case _GroupAction.edit:
+        await _showEditGroupDialog(context, group);
+      case _GroupAction.invite:
+        await _showInviteDialog(context);
+      case _GroupAction.delete:
+        await _confirmDeleteGroup(context);
+    }
+  }
+
+  Future<void> _showEditGroupDialog(BuildContext context, WorkingGroup group) async {
+    final titleController = TextEditingController(text: group.title);
+    final descriptionController = TextEditingController(text: group.description);
+    var avatarUrl = group.avatarUrl;
+    final bloc = context.read<GroupDetailsBloc>();
+    final result = await showDialog<WorkingGroup>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Редактировать группу'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _GroupAvatar(avatarUrl: avatarUrl, radius: 36),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () async {
+                    final pickedAvatar = await _pickAvatarDataUri();
+                    if (pickedAvatar != null) {
+                      setDialogState(() => avatarUrl = pickedAvatar);
+                    }
+                  },
+                  icon: const Icon(Icons.image),
+                  label: const Text('Сменить аватарку'),
+                ),
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Название'),
+                  autofocus: true,
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Описание'),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                if (title.isEmpty) return;
+                Navigator.of(dialogContext).pop(
+                  group.copyWith(
+                    title: title,
+                    description: descriptionController.text.trim(),
+                    avatarUrl: avatarUrl,
+                  ),
+                );
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null) {
+      bloc.add(WorkingGroupUpdated(result));
+    }
+  }
+
+  Future<void> _showInviteDialog(BuildContext context) async {
+    final emailController = TextEditingController();
+    final bloc = context.read<GroupDetailsBloc>();
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Пригласить участника'),
+        content: TextField(
+          controller: emailController,
+          decoration: const InputDecoration(labelText: 'Email'),
+          keyboardType: TextInputType.emailAddress,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = emailController.text.trim();
+              if (value.isEmpty) return;
+              Navigator.of(dialogContext).pop(value);
+            },
+            child: const Text('Пригласить'),
+          ),
+        ],
+      ),
+    );
+    if (email != null) {
+      bloc.add(GroupParticipantInvited(email));
+    }
+  }
+
+  Future<void> _confirmDeleteGroup(BuildContext context) async {
+    final bloc = context.read<GroupDetailsBloc>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить группу?'),
+        content: const Text('Группа, участники и задачи будут удалены.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      bloc.add(const WorkingGroupDeleted());
+    }
+  }
+
+  Future<String?> _pickAvatarDataUri() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    final file = result?.files.single;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null) return null;
+    final extension = file.extension?.toLowerCase();
+    final mime = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      _ => 'image/png',
+    };
+    return 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+}
+
+enum _GroupAction { edit, invite, delete }
+
+class _GroupAvatar extends StatelessWidget {
+  const _GroupAvatar({required this.avatarUrl, this.radius = 20});
+
+  final String? avatarUrl;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = avatarUrl;
+    if (value != null && value.isNotEmpty) {
+      if (value.startsWith('data:image/')) {
+        final commaIndex = value.indexOf(',');
+        if (commaIndex != -1) {
+          final bytes = base64Decode(value.substring(commaIndex + 1));
+          return CircleAvatar(radius: radius, backgroundImage: MemoryImage(bytes));
+        }
+      }
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return CircleAvatar(radius: radius, backgroundImage: NetworkImage(value));
+      }
+    }
+    return CircleAvatar(radius: radius, child: const Icon(Icons.groups));
   }
 }
 

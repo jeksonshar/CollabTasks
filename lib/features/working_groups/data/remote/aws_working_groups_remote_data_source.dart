@@ -12,14 +12,17 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
   const AWSWorkingGroupsRemoteDataSource();
 
   @override
-  Stream<List<WorkingGroup>> watchGroups({required String userId}) async* {
-    yield await _listGroups(userId: userId);
+  Stream<List<WorkingGroup>> watchGroups({
+    required String userId,
+    required String userEmail,
+  }) async* {
+    yield await _listGroups(userId: userId, userEmail: userEmail);
     yield* _subscribeList<WorkingGroup>(
       AwsWorkingGroupsGraphqlDocuments.onGroupChanged,
       variables: const {},
       rootKey: 'onCreateWorkingGroup',
       mapper: WorkingGroup.fromMap,
-    ).where((group) => _isGroupVisibleToUser(group, userId)).map((group) => [group]);
+    ).where((group) => _isGroupVisibleToUser(group, userId, userEmail)).map((group) => [group]);
   }
 
   @override
@@ -47,12 +50,35 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
   @override
   Future<void> upsertGroup({
     required WorkingGroup group,
-    required List<String> participantUserIds,
+    List<String> participantUserIds = const [],
+    List<String> participantEmails = const [],
   }) {
     return _createOrUpdate(
       createDocument: AwsWorkingGroupsGraphqlDocuments.createGroup,
       updateDocument: AwsWorkingGroupsGraphqlDocuments.updateGroup,
-      input: _groupInput(group, participantUserIds: participantUserIds),
+      input: _groupInput(
+        group,
+        participantUserIds: participantUserIds,
+        participantEmails: participantEmails,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteGroup(String groupId) {
+    return _mutation(
+      AwsWorkingGroupsGraphqlDocuments.deleteGroup,
+      variables: {
+        'input': {'id': groupId},
+      },
+    );
+  }
+
+  @override
+  Future<void> inviteParticipantByEmail({required String groupId, required String email}) {
+    return _mutation(
+      AwsWorkingGroupsGraphqlDocuments.inviteParticipantByEmail,
+      variables: {'groupId': groupId, 'email': email.trim().toLowerCase()},
     );
   }
 
@@ -99,13 +125,16 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
     );
   }
 
-  Future<List<WorkingGroup>> _listGroups({required String userId}) async {
+  Future<List<WorkingGroup>> _listGroups({
+    required String userId,
+    required String userEmail,
+  }) async {
     final data = await _query(AwsWorkingGroupsGraphqlDocuments.listGroups, variables: const {});
     final items = data['listWorkingGroups']?['items'];
     if (items is! List) return const [];
     return items
         .whereType<Map>()
-        .where((item) => _rawGroupVisibleToUser(item, userId))
+        .where((item) => _rawGroupVisibleToUser(item, userId, userEmail))
         .map((item) => WorkingGroup.fromMap(Map<String, dynamic>.from(item)))
         .toList();
   }
@@ -146,10 +175,19 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
     return Amplify.API
         .subscribe(request, onEstablished: () {})
         .where((response) => response.data != null && response.data!.isNotEmpty)
-        .map(
-          (response) =>
-              mapper(Map<String, dynamic>.from(jsonDecode(response.data!)[rootKey] as Map)),
-        );
+        .asyncExpand((response) async* {
+          try {
+            final decoded = jsonDecode(response.data!) as Map<String, dynamic>;
+            final rawObject = decoded[rootKey];
+
+            // Защита от Null: если объект пустой — просто пропускаем ивент
+            if (rawObject is Map) {
+              yield mapper(Map<String, dynamic>.from(rawObject));
+            }
+          } catch (e, stack) {
+            safePrint('Error parsing subscription data: $e\n$stack');
+          }
+        });
   }
 
   Future<Map<String, dynamic>> _query(String document, {required Map<String, Object?> variables}) {
@@ -174,14 +212,25 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
     }
   }
 
-  Map<String, Object?> _groupInput(WorkingGroup group, {required List<String> participantUserIds}) {
-    return {
+  Map<String, Object?> _groupInput(
+    WorkingGroup group, {
+    required List<String> participantUserIds,
+    required List<String> participantEmails,
+  }) {
+    final input = <String, Object?>{
       'id': group.id,
       'title': group.title,
       'description': group.description,
-      'participantUserIds': participantUserIds,
+      'avatarUrl': group.avatarUrl,
       'updatedAtMillis': group.updatedAt,
     };
+    if (participantUserIds.isNotEmpty) {
+      input['participantUserIds'] = participantUserIds;
+    }
+    if (participantEmails.isNotEmpty) {
+      input['participantEmails'] = participantEmails.map((email) => email.toLowerCase()).toList();
+    }
+    return input;
   }
 
   Map<String, Object?> _taskInput(GroupTask task) {
@@ -218,12 +267,14 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
     };
   }
 
-  bool _rawGroupVisibleToUser(Map item, String userId) {
+  bool _rawGroupVisibleToUser(Map item, String userId, String userEmail) {
     final participantUserIds = item['participantUserIds'];
-    return participantUserIds is List && participantUserIds.contains(userId);
+    final participantEmails = item['participantEmails'];
+    return participantUserIds is List && participantUserIds.contains(userId) ||
+        participantEmails is List && participantEmails.contains(userEmail.trim().toLowerCase());
   }
 
-  bool _isGroupVisibleToUser(WorkingGroup group, String userId) {
+  bool _isGroupVisibleToUser(WorkingGroup group, String userId, String userEmail) {
     return true;
   }
 

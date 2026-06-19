@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
@@ -107,7 +109,7 @@ class _WorkingGroupTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.groups)),
+        leading: _GroupAvatar(avatarUrl: group.avatarUrl),
         title: Text(group.title),
         subtitle: group.description.isEmpty ? null : Text(group.description),
         trailing: const Icon(Icons.chevron_right),
@@ -118,6 +120,30 @@ class _WorkingGroupTile extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _GroupAvatar extends StatelessWidget {
+  const _GroupAvatar({required this.avatarUrl});
+
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = avatarUrl;
+    if (value != null && value.isNotEmpty) {
+      if (value.startsWith('data:image/')) {
+        final commaIndex = value.indexOf(',');
+        if (commaIndex != -1) {
+          final bytes = base64Decode(value.substring(commaIndex + 1));
+          return CircleAvatar(backgroundImage: MemoryImage(bytes));
+        }
+      }
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return CircleAvatar(backgroundImage: NetworkImage(value));
+      }
+    }
+    return const CircleAvatar(child: Icon(Icons.groups));
   }
 }
 

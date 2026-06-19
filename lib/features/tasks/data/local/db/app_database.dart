@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -118,6 +118,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(workingGroupsTable);
         await m.createTable(groupParticipantsTable);
         await m.createTable(groupTasksTable);
+      }
+      if (from < 15) {
+        await m.addColumn(workingGroupsTable, workingGroupsTable.avatarUrl);
       }
     },
   );

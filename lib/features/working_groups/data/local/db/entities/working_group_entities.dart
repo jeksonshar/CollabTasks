@@ -8,6 +8,8 @@ class WorkingGroupsTable extends Table {
 
   TextColumn get description => text().withDefault(const Constant(''))();
 
+  TextColumn get avatarUrl => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
 
   IntColumn get updatedAt => integer().withDefault(const Constant(0))();
