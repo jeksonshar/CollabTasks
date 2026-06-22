@@ -31,34 +31,37 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     return BlocProvider(
       create: (_) =>
           getIt<GroupDetailsBloc>(param1: widget.group.id)..add(const GroupDetailsStarted()),
-      child: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
-              builder: (context, state) {
-                final group = state.group ?? widget.group;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(group.title),
-                    if (group.description.trim().isNotEmpty)
-                      Text(
-                        group.description,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                  ],
-                );
-              },
-            ),
-            centerTitle: false,
-            actions: [
-              BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
-                builder: (context, state) {
-                  final group = state.group ?? widget.group;
-                  return PopupMenuButton<_GroupAction>(
+      child: BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
+        buildWhen: (previous, current) =>
+            previous.isCurrentUserParticipant != current.isCurrentUserParticipant ||
+            previous.status != current.status ||
+            previous.group != current.group,
+        builder: (context, state) {
+          final isParticipant = state.isCurrentUserParticipant;
+          final group = state.group ?? widget.group;
+
+          final activeTab = isParticipant ? _tabIndex : 0;
+
+          return Scaffold(
+            appBar: AppBar(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(group.title),
+                  if (group.description.trim().isNotEmpty)
+                    Text(
+                      group.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+              centerTitle: false,
+              actions: [
+                if (isParticipant)
+                  PopupMenuButton<_GroupAction>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (action) => _handleGroupAction(context, action, group),
                     itemBuilder: (context) => const [
@@ -69,48 +72,52 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                       ),
                       PopupMenuItem(value: _GroupAction.delete, child: Text('Удалить')),
                     ],
-                  );
-                },
-              ),
-            ],
-          ),
-          body: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
-            listener: (context, state) {
-              if (state.status == GroupDetailsStatus.deleted) {
-                Navigator.of(context).pop();
-              }
-              if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-              }
-            },
-            builder: (context, state) {
-              if (state.status == GroupDetailsStatus.loading ||
-                  state.status == GroupDetailsStatus.saving) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (state.status == GroupDetailsStatus.error) {
-                return Center(child: Text(state.errorMessage ?? 'Ошибка загрузки группы'));
-              }
-              return _tabIndex == 0 ? _ParticipantsTab(state: state) : _TasksTab(state: state);
-            },
-          ),
-          floatingActionButton: _tabIndex == 1
-              ? FloatingActionButton(
-                  onPressed: () => _showAddTaskDialog(context),
-                  child: const Icon(Icons.add_task),
-                )
-              : null,
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _tabIndex,
-            onTap: (index) => setState(() => _tabIndex = index),
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Участники'),
-              BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Задачи'),
-            ],
-          ),
-        ),
+                  ),
+              ],
+            ),
+            body: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
+              listenWhen: (previous, current) => previous.status != current.status,
+              listener: (context, state) {
+                if (state.status == GroupDetailsStatus.deleted) {
+                  Navigator.of(context).pop();
+                }
+                if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+                }
+              },
+              builder: (context, state) {
+                if (state.status == GroupDetailsStatus.loading ||
+                    state.status == GroupDetailsStatus.saving) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state.status == GroupDetailsStatus.error) {
+                  return Center(child: Text(state.errorMessage ?? 'Ошибка загрузки группы'));
+                }
+                return activeTab == 0
+                    ? _ParticipantsTab(state: state, isParticipant: isParticipant)
+                    : _TasksTab(state: state);
+              },
+            ),
+            floatingActionButton: (isParticipant && activeTab == 1)
+                ? FloatingActionButton(
+                    onPressed: () => _showAddTaskDialog(context),
+                    child: const Icon(Icons.add_task),
+                  )
+                : null,
+            bottomNavigationBar: isParticipant
+                ? BottomNavigationBar(
+                    currentIndex: activeTab,
+                    onTap: (index) => setState(() => _tabIndex = index),
+                    items: const [
+                      BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Участники'),
+                      BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Задачи'),
+                    ],
+                  )
+                : null,
+          );
+        },
       ),
     );
   }
@@ -307,26 +314,74 @@ class _GroupAvatar extends StatelessWidget {
 }
 
 class _ParticipantsTab extends StatelessWidget {
-  const _ParticipantsTab({required this.state});
+  const _ParticipantsTab({required this.state, required this.isParticipant});
 
   final GroupDetailsState state;
+  final bool isParticipant;
 
   @override
   Widget build(BuildContext context) {
     if (state.participants.isEmpty) {
       return const Center(child: Text('Участники еще не синхронизированы'));
     }
-    return ListView.builder(
-      itemCount: state.participants.length,
-      itemBuilder: (context, index) {
-        final participant = state.participants[index];
-        return ListTile(
-          leading: _ParticipantAvatar(participant: participant),
-          title: Text(participant.name),
-          subtitle: participant.userId == state.currentUserId ? const Text('Вы') : null,
-        );
-      },
+
+    return CustomScrollView(
+      slivers: [
+        if (!isParticipant)
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyHeaderDelegate(
+              child: Container(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                padding: const EdgeInsets.only(left: 24, right: 16, top: 0, bottom: 0),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Участники',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.indigo.shade500,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final participant = state.participants[index];
+            return ListTile(
+              leading: _ParticipantAvatar(participant: participant),
+              title: Text(participant.name),
+              subtitle: participant.userId == state.currentUserId ? const Text('Вы') : null,
+            );
+          }, childCount: state.participants.length),
+        ),
+      ],
     );
+  }
+}
+
+// Делегат для создания закрепленной панели
+class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _StickyHeaderDelegate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  double get maxExtent => 56.0; // Высота закрепленной панели
+
+  @override
+  double get minExtent => 56.0;
+
+  @override
+  bool shouldRebuild(covariant _StickyHeaderDelegate oldDelegate) {
+    return oldDelegate.child != child;
   }
 }
 

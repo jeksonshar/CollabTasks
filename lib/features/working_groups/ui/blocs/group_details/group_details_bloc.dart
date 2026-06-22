@@ -13,6 +13,8 @@ import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/grou
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+const _participantsOnlyActionError = 'Only group participants can perform this action.';
+
 class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   GroupDetailsBloc({
     required String groupId,
@@ -86,6 +88,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   }
 
   Future<void> _onGroupUpdated(WorkingGroupUpdated event, Emitter<GroupDetailsState> emit) async {
+    if (!_ensureCurrentUserIsParticipant(emit)) return;
     try {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _updateWorkingGroupUseCase(event.group);
@@ -96,6 +99,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   }
 
   Future<void> _onGroupDeleted(WorkingGroupDeleted event, Emitter<GroupDetailsState> emit) async {
+    if (!_ensureCurrentUserIsParticipant(emit)) return;
     try {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _deleteWorkingGroupUseCase(_groupId);
@@ -109,6 +113,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     GroupParticipantInvited event,
     Emitter<GroupDetailsState> emit,
   ) async {
+    if (!_ensureCurrentUserIsParticipant(emit)) return;
     try {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _inviteGroupParticipantUseCase(groupId: _groupId, email: event.email);
@@ -116,6 +121,14 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     } catch (error) {
       emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }
+  }
+
+  bool _ensureCurrentUserIsParticipant(Emitter<GroupDetailsState> emit) {
+    if (state.isCurrentUserParticipant) return true;
+    emit(
+      state.copyWith(status: GroupDetailsStatus.error, errorMessage: _participantsOnlyActionError),
+    );
+    return false;
   }
 }
 

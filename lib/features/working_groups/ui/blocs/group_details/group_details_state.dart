@@ -25,6 +25,12 @@ class GroupDetailsState extends Equatable {
   final WorkingGroup? group;
   final String? errorMessage;
 
+  bool get isCurrentUserParticipant {
+    final userId = currentUserId;
+    if (userId == null || userId.isEmpty) return false;
+    return participants.any((participant) => participant.userId == userId);
+  }
+
   List<GroupTask> get visibleTasks {
     return switch (filter) {
       GroupTaskFilter.all => tasks,
@@ -79,5 +85,6 @@ class GroupDetailsState extends Equatable {
     currentUserId,
     group,
     errorMessage,
+    isCurrentUserParticipant,
   ];
 }
