@@ -108,6 +108,7 @@ class FirebaseWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSo
   @override
   Future<void> upsertParticipant(GroupParticipant participant) async {
     await _participantsRef(participant.groupId).doc(participant.id).set(participant.toMap());
+    if (participant.userId.contains('@')) return;
     await _groupsRef().doc(participant.groupId).set({
       'participantUserIds': FieldValue.arrayUnion([participant.userId]),
     }, SetOptions(merge: true));

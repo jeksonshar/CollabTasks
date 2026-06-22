@@ -46,12 +46,14 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
 
   @override
   Stream<WorkingGroup?> watchGroup(String groupId) {
+    unawaited(_ensureCurrentParticipantForGroup(groupId));
     _ensureGroupSubscriptions(groupId);
     return _localDataSource.watchGroup(groupId);
   }
 
   @override
   Stream<List<GroupParticipant>> watchParticipants(String groupId) {
+    unawaited(_ensureCurrentParticipantForGroup(groupId));
     _ensureGroupSubscriptions(groupId);
     return _localDataSource.watchParticipants(groupId);
   }
@@ -205,6 +207,7 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
           (groups) async {
             for (final group in groups) {
               await _localDataSource.upsertGroup(group);
+              await _ensureCurrentParticipant(groupId: group.id, user: user);
               _ensureGroupSubscriptions(group.id);
             }
           },
@@ -260,6 +263,15 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     await _localDataSource.upsertParticipant(participant);
     await _tryRemote(() => _remoteDataSource.upsertParticipant(participant));
     return participant;
+  }
+
+  Future<void> _ensureCurrentParticipantForGroup(String groupId) async {
+    try {
+      final user = await _requireCurrentUser();
+      await _ensureCurrentParticipant(groupId: groupId, user: user);
+    } catch (error, stackTrace) {
+      debugPrint('WorkingGroupsRepository.ensureCurrentParticipant failed: $error\n$stackTrace');
+    }
   }
 
   GroupParticipant _participantForUser({

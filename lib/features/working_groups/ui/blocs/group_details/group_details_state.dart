@@ -13,6 +13,7 @@ class GroupDetailsState extends Equatable {
     this.tasks = const [],
     this.filter = GroupTaskFilter.all,
     this.currentUserId,
+    this.currentUserEmail,
     this.group,
     this.errorMessage,
   });
@@ -22,13 +23,34 @@ class GroupDetailsState extends Equatable {
   final List<GroupTask> tasks;
   final GroupTaskFilter filter;
   final String? currentUserId;
+  final String? currentUserEmail;
   final WorkingGroup? group;
   final String? errorMessage;
 
   bool get isCurrentUserParticipant {
     final userId = currentUserId;
-    if (userId == null || userId.isEmpty) return false;
-    return participants.any((participant) => participant.userId == userId);
+    final email = currentUserEmail?.trim().toLowerCase();
+    if ((userId == null || userId.isEmpty) && (email == null || email.isEmpty)) {
+      return false;
+    }
+    return participants.any(isCurrentUser);
+  }
+
+  List<GroupParticipant> get displayParticipants {
+    final userId = currentUserId;
+    final email = currentUserEmail?.trim().toLowerCase();
+    final hasCurrentUserParticipant =
+        userId != null &&
+        userId.isNotEmpty &&
+        participants.any((participant) => participant.userId == userId);
+
+    if (!hasCurrentUserParticipant || email == null || email.isEmpty) {
+      return participants;
+    }
+
+    return participants
+        .where((participant) => participant.userId.trim().toLowerCase() != email)
+        .toList(growable: false);
   }
 
   List<GroupTask> get visibleTasks {
@@ -42,10 +64,18 @@ class GroupDetailsState extends Equatable {
         tasks
             .where((task) {
               final participant = participantById(task.assignedUserId);
-              return participant?.userId == currentUserId;
+              return isCurrentUser(participant);
             })
             .toList(growable: false),
     };
+  }
+
+  bool isCurrentUser(GroupParticipant? participant) {
+    if (participant == null) return false;
+    final userId = currentUserId;
+    final email = currentUserEmail?.trim().toLowerCase();
+    final participantUserId = participant.userId.trim();
+    return participantUserId == userId || participantUserId.toLowerCase() == email;
   }
 
   GroupParticipant? participantById(String? id) {
@@ -62,6 +92,7 @@ class GroupDetailsState extends Equatable {
     List<GroupTask>? tasks,
     GroupTaskFilter? filter,
     String? currentUserId,
+    String? currentUserEmail,
     WorkingGroup? group,
     String? errorMessage,
   }) {
@@ -71,6 +102,7 @@ class GroupDetailsState extends Equatable {
       tasks: tasks ?? this.tasks,
       filter: filter ?? this.filter,
       currentUserId: currentUserId ?? this.currentUserId,
+      currentUserEmail: currentUserEmail ?? this.currentUserEmail,
       group: group ?? this.group,
       errorMessage: errorMessage,
     );
@@ -83,6 +115,7 @@ class GroupDetailsState extends Equatable {
     tasks,
     filter,
     currentUserId,
+    currentUserEmail,
     group,
     errorMessage,
     isCurrentUserParticipant,

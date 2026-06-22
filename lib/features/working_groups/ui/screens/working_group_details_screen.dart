@@ -35,7 +35,8 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         buildWhen: (previous, current) =>
             previous.isCurrentUserParticipant != current.isCurrentUserParticipant ||
             previous.status != current.status ||
-            previous.group != current.group,
+            previous.group != current.group ||
+            previous.displayParticipants != current.displayParticipants,
         builder: (context, state) {
           final isParticipant = state.isCurrentUserParticipant;
           final group = state.group ?? widget.group;
@@ -321,7 +322,8 @@ class _ParticipantsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.participants.isEmpty) {
+    final participants = state.displayParticipants;
+    if (participants.isEmpty) {
       return const Center(child: Text('Участники еще не синхронизированы'));
     }
 
@@ -349,13 +351,13 @@ class _ParticipantsTab extends StatelessWidget {
 
         SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
-            final participant = state.participants[index];
+            final participant = participants[index];
             return ListTile(
               leading: _ParticipantAvatar(participant: participant),
               title: Text(participant.name),
-              subtitle: participant.userId == state.currentUserId ? const Text('Вы') : null,
+              subtitle: state.isCurrentUser(participant) ? const Text('Вы') : null,
             );
-          }, childCount: state.participants.length),
+          }, childCount: participants.length),
         ),
       ],
     );

@@ -57,7 +57,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   Future<void> _onStarted(GroupDetailsStarted event, Emitter<GroupDetailsState> emit) async {
     emit(state.copyWith(status: GroupDetailsStatus.loading));
     final user = await _authRepository.watchAuthState().first;
-    emit(state.copyWith(currentUserId: user?.id));
+    emit(state.copyWith(currentUserId: user?.id, currentUserEmail: user?.email));
 
     await emit.forEach<_GroupDetailsSnapshot>(
       _getWorkingGroupUseCase(_groupId).asyncExpand((group) {
@@ -92,7 +92,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     try {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _updateWorkingGroupUseCase(event.group);
-      emit(state.copyWith(status: GroupDetailsStatus.loaded));
+      emit(state.copyWith(status: GroupDetailsStatus.loaded, group: event.group));
     } catch (error) {
       emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }
@@ -117,10 +117,33 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     try {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _inviteGroupParticipantUseCase(groupId: _groupId, email: event.email);
-      emit(state.copyWith(status: GroupDetailsStatus.loaded));
+      emit(
+        state.copyWith(
+          status: GroupDetailsStatus.loaded,
+          participants: _participantsWithInvite(event.email),
+        ),
+      );
     } catch (error) {
       emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }
+  }
+
+  List<GroupParticipant> _participantsWithInvite(String email) {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty) return state.participants;
+
+    final participant = GroupParticipant(
+      id: '$_groupId:invite:$normalizedEmail',
+      groupId: _groupId,
+      userId: normalizedEmail,
+      name: normalizedEmail,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    return [
+      for (final existing in state.participants)
+        if (existing.id != participant.id) existing,
+      participant,
+    ]..sort((a, b) => a.name.compareTo(b.name));
   }
 
   bool _ensureCurrentUserIsParticipant(Emitter<GroupDetailsState> emit) {
