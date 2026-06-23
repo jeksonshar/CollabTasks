@@ -115,6 +115,45 @@ class FirebaseWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSo
   }
 
   @override
+  Future<bool> isGroupMember({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  }) async {
+    final snapshot = await _groupsRef().doc(groupId).get();
+    final data = snapshot.data();
+    if (data == null) return false;
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final userIds = (data['participantUserIds'] as List?)?.whereType<String>() ?? const <String>[];
+    final emails = (data['participantEmails'] as List?)?.whereType<String>() ?? const <String>[];
+    return userIds.contains(userId) ||
+        emails.any((email) => email.trim().toLowerCase() == normalizedEmail);
+  }
+
+  @override
+  Future<void> leaveGroup({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+    required List<String> participantIds,
+  }) async {
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final batch = _firestore.batch();
+    final groupRef = _groupsRef().doc(groupId);
+
+    batch.set(groupRef, {
+      'participantUserIds': FieldValue.arrayRemove([userId]),
+      'participantEmails': FieldValue.arrayRemove([normalizedEmail]),
+    }, SetOptions(merge: true));
+
+    for (final participantId in participantIds) {
+      batch.delete(_participantsRef(groupId).doc(participantId));
+    }
+
+    await batch.commit();
+  }
+
+  @override
   Future<void> upsertTask(GroupTask task) {
     return _tasksRef(task.groupId).doc(task.id).set(task.toMap(), SetOptions(merge: true));
   }

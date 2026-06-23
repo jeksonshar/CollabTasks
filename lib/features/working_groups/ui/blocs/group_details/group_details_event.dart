@@ -45,6 +45,10 @@ class WorkingGroupDeleted extends GroupDetailsEvent {
   const WorkingGroupDeleted();
 }
 
+class WorkingGroupLeft extends GroupDetailsEvent {
+  const WorkingGroupLeft();
+}
+
 class GroupParticipantInvited extends GroupDetailsEvent {
   const GroupParticipantInvited(this.email);
 

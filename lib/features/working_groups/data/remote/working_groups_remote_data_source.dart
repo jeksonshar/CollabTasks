@@ -19,7 +19,23 @@ abstract class WorkingGroupsRemoteDataSource {
 
   Future<void> inviteParticipantByEmail({required String groupId, required String email});
 
+  /// Whether [userId]/[userEmail] is still listed as a member of [groupId]
+  /// according to the authoritative group record (its participant arrays).
+  /// Used to avoid re-adding a user who has explicitly left the group.
+  Future<bool> isGroupMember({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  });
+
   Future<void> upsertParticipant(GroupParticipant participant);
+
+  Future<void> leaveGroup({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+    required List<String> participantIds,
+  });
 
   Future<void> upsertTask(GroupTask task);
 

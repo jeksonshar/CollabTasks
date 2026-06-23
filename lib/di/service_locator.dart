@@ -61,6 +61,7 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_groups_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
@@ -152,6 +153,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => UpdateWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => DeleteWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => InviteGroupParticipantUseCase(getIt()))
+    ..registerLazySingleton(() => LeaveWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => AddGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => UpdateGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => ClaimGroupTaskUseCase(getIt()))
@@ -232,6 +234,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         updateWorkingGroupUseCase: getIt(),
         deleteWorkingGroupUseCase: getIt(),
         inviteGroupParticipantUseCase: getIt(),
+        leaveWorkingGroupUseCase: getIt(),
         authRepository: getIt(),
       ),
     )

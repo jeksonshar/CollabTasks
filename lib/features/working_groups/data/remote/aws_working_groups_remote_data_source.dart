@@ -92,6 +92,75 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
   }
 
   @override
+  Future<bool> isGroupMember({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  }) async {
+    final raw = await _findRawGroup(groupId);
+    if (raw == null) return false;
+    return _rawGroupVisibleToUser(raw, userId, userEmail);
+  }
+
+  @override
+  Future<void> leaveGroup({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+    required List<String> participantIds,
+  }) async {
+    // Remove the user from the group's visibility arrays first, so the group
+    // stops being listed for them and they are not re-added on the next sync.
+    await _removeUserFromGroupArrays(groupId: groupId, userId: userId, userEmail: userEmail);
+    for (final participantId in participantIds) {
+      await _mutation(
+        AwsWorkingGroupsGraphqlDocuments.deleteParticipant,
+        variables: {
+          'input': {'id': participantId},
+        },
+      );
+    }
+  }
+
+  Future<void> _removeUserFromGroupArrays({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  }) async {
+    final raw = await _findRawGroup(groupId);
+    if (raw == null) return;
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final userIds =
+        (raw['participantUserIds'] as List?)
+            ?.whereType<String>()
+            .where((id) => id != userId)
+            .toList(growable: false) ??
+        const <String>[];
+    final emails =
+        (raw['participantEmails'] as List?)
+            ?.whereType<String>()
+            .where((email) => email.trim().toLowerCase() != normalizedEmail)
+            .toList(growable: false) ??
+        const <String>[];
+    await _mutation(
+      AwsWorkingGroupsGraphqlDocuments.updateGroup,
+      variables: {
+        'input': {'id': groupId, 'participantUserIds': userIds, 'participantEmails': emails},
+      },
+    );
+  }
+
+  Future<Map?> _findRawGroup(String groupId) async {
+    final data = await _query(AwsWorkingGroupsGraphqlDocuments.listGroups, variables: const {});
+    final items = data['listWorkingGroups']?['items'];
+    if (items is! List) return null;
+    for (final item in items.whereType<Map>()) {
+      if (item['id'] == groupId) return item;
+    }
+    return null;
+  }
+
+  @override
   Future<void> upsertTask(GroupTask task) {
     return _createOrUpdate(
       createDocument: AwsWorkingGroupsGraphqlDocuments.createTask,

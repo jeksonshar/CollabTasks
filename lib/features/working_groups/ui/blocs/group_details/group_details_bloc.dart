@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
@@ -8,6 +10,7 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_tasks_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_state.dart';
@@ -25,6 +28,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     required UpdateWorkingGroupUseCase updateWorkingGroupUseCase,
     required DeleteWorkingGroupUseCase deleteWorkingGroupUseCase,
     required InviteGroupParticipantUseCase inviteGroupParticipantUseCase,
+    required LeaveWorkingGroupUseCase leaveWorkingGroupUseCase,
     required AuthRepository authRepository,
   }) : _groupId = groupId,
        _getWorkingGroupUseCase = getWorkingGroupUseCase,
@@ -34,6 +38,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
        _updateWorkingGroupUseCase = updateWorkingGroupUseCase,
        _deleteWorkingGroupUseCase = deleteWorkingGroupUseCase,
        _inviteGroupParticipantUseCase = inviteGroupParticipantUseCase,
+       _leaveWorkingGroupUseCase = leaveWorkingGroupUseCase,
        _authRepository = authRepository,
        super(const GroupDetailsState()) {
     on<GroupDetailsStarted>(_onStarted);
@@ -41,6 +46,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     on<GroupTaskAdded>(_onTaskAdded);
     on<WorkingGroupUpdated>(_onGroupUpdated);
     on<WorkingGroupDeleted>(_onGroupDeleted);
+    on<WorkingGroupLeft>(_onGroupLeft);
     on<GroupParticipantInvited>(_onParticipantInvited);
   }
 
@@ -52,6 +58,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   final UpdateWorkingGroupUseCase _updateWorkingGroupUseCase;
   final DeleteWorkingGroupUseCase _deleteWorkingGroupUseCase;
   final InviteGroupParticipantUseCase _inviteGroupParticipantUseCase;
+  final LeaveWorkingGroupUseCase _leaveWorkingGroupUseCase;
   final AuthRepository _authRepository;
 
   Future<void> _onStarted(GroupDetailsStarted event, Emitter<GroupDetailsState> emit) async {
@@ -60,14 +67,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     emit(state.copyWith(currentUserId: user?.id, currentUserEmail: user?.email));
 
     await emit.forEach<_GroupDetailsSnapshot>(
-      _getWorkingGroupUseCase(_groupId).asyncExpand((group) {
-        return _getGroupParticipantsUseCase(_groupId).asyncExpand((participants) {
-          return _getGroupTasksUseCase(_groupId).map(
-            (tasks) =>
-                _GroupDetailsSnapshot(group: group, participants: participants, tasks: tasks),
-          );
-        });
-      }),
+      _watchGroupDetails(),
       onData: (snapshot) => state.copyWith(
         status: GroupDetailsStatus.loaded,
         group: snapshot.group,
@@ -77,6 +77,66 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
       onError: (error, _) =>
           state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()),
     );
+  }
+
+  /// Combines the group, participants and task streams, re-emitting whenever
+  /// any of them changes. Unlike a nested [Stream.asyncExpand] (which never
+  /// advances past the first event of a non-completing `.watch()` stream), this
+  /// keeps reacting to later emissions — e.g. the current user being added back
+  /// to the participants table after the screen has already subscribed.
+  Stream<_GroupDetailsSnapshot> _watchGroupDetails() {
+    final groupStream = _getWorkingGroupUseCase(_groupId);
+    final participantsStream = _getGroupParticipantsUseCase(_groupId);
+    final tasksStream = _getGroupTasksUseCase(_groupId);
+
+    late final StreamController<_GroupDetailsSnapshot> controller;
+    final subscriptions = <StreamSubscription<dynamic>>[];
+
+    WorkingGroup? group;
+    List<GroupParticipant>? participants;
+    List<GroupTask>? tasks;
+    var hasGroup = false;
+
+    void emitIfReady() {
+      if (hasGroup && participants != null && tasks != null) {
+        controller.add(
+          _GroupDetailsSnapshot(group: group, participants: participants!, tasks: tasks!),
+        );
+      }
+    }
+
+    controller = StreamController<_GroupDetailsSnapshot>(
+      onListen: () {
+        subscriptions
+          ..add(
+            groupStream.listen((value) {
+              group = value;
+              hasGroup = true;
+              emitIfReady();
+            }, onError: controller.addError),
+          )
+          ..add(
+            participantsStream.listen((value) {
+              participants = value;
+              emitIfReady();
+            }, onError: controller.addError),
+          )
+          ..add(
+            tasksStream.listen((value) {
+              tasks = value;
+              emitIfReady();
+            }, onError: controller.addError),
+          );
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<void> _onTaskAdded(GroupTaskAdded event, Emitter<GroupDetailsState> emit) async {
@@ -104,6 +164,17 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _deleteWorkingGroupUseCase(_groupId);
       emit(state.copyWith(status: GroupDetailsStatus.deleted));
+    } catch (error) {
+      emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> _onGroupLeft(WorkingGroupLeft event, Emitter<GroupDetailsState> emit) async {
+    if (!_ensureCurrentUserIsParticipant(emit)) return;
+    try {
+      emit(state.copyWith(status: GroupDetailsStatus.saving));
+      await _leaveWorkingGroupUseCase(_groupId);
+      emit(state.copyWith(status: GroupDetailsStatus.left));
     } catch (error) {
       emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }

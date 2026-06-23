@@ -123,6 +123,39 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   }
 
   @override
+  Future<void> leaveGroup(String groupId) async {
+    final user = await _requireCurrentUser();
+    final normalizedEmail = user.email.trim().toLowerCase();
+    final participants = await _localDataSource.getParticipants(groupId);
+    final leavingParticipants = participants
+        .where(
+          (participant) =>
+              participant.userId == user.id ||
+              participant.userId.trim().toLowerCase() == normalizedEmail,
+        )
+        .toList(growable: false);
+
+    if (leavingParticipants.isEmpty) {
+      throw DataException('Current user is not a participant of this group.');
+    }
+
+    await _tryRemote(
+      () => _remoteDataSource.leaveGroup(
+        groupId: groupId,
+        userId: user.id,
+        userEmail: normalizedEmail,
+        participantIds: leavingParticipants.map((participant) => participant.id).toList(),
+      ),
+    );
+    for (final participant in leavingParticipants) {
+      await _localDataSource.deleteParticipant(participant.id);
+    }
+    await _localDataSource.deleteGroup(groupId);
+    await _participantSubscriptions.remove(groupId)?.cancel();
+    await _taskSubscriptions.remove(groupId)?.cancel();
+  }
+
+  @override
   Future<void> addGroupTask({required String groupId, required TaskDraft draft}) async {
     final now = DateTime.now();
     final task = GroupTask.fromTask(
@@ -268,6 +301,15 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   Future<void> _ensureCurrentParticipantForGroup(String groupId) async {
     try {
       final user = await _requireCurrentUser();
+      // Only self-heal the participant row for users who actually belong to the
+      // group. This prevents a user who deliberately left from being silently
+      // re-added when they (or a stale event) open the group again.
+      final isMember = await _remoteDataSource.isGroupMember(
+        groupId: groupId,
+        userId: user.id,
+        userEmail: user.email,
+      );
+      if (!isMember) return;
       await _ensureCurrentParticipant(groupId: groupId, user: user);
     } catch (error, stackTrace) {
       debugPrint('WorkingGroupsRepository.ensureCurrentParticipant failed: $error\n$stackTrace');

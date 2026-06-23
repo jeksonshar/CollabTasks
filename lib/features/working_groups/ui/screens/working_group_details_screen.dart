@@ -66,12 +66,13 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                     icon: const Icon(Icons.more_vert),
                     onSelected: (action) => _handleGroupAction(context, action, group),
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: _GroupAction.edit, child: Text('Редактировать')),
+                      PopupMenuItem(value: _GroupAction.edit, child: Text('Редактировать группу')),
                       PopupMenuItem(
                         value: _GroupAction.invite,
                         child: Text('Пригласить участника'),
                       ),
-                      PopupMenuItem(value: _GroupAction.delete, child: Text('Удалить')),
+                      PopupMenuItem(value: _GroupAction.leave, child: Text('Покинуть группу')),
+                      PopupMenuItem(value: _GroupAction.delete, child: Text('Удалить группу')),
                     ],
                   ),
               ],
@@ -79,7 +80,8 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
             body: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
               listenWhen: (previous, current) => previous.status != current.status,
               listener: (context, state) {
-                if (state.status == GroupDetailsStatus.deleted) {
+                if (state.status == GroupDetailsStatus.deleted ||
+                    state.status == GroupDetailsStatus.left) {
                   Navigator.of(context).pop();
                 }
                 if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
@@ -141,6 +143,8 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         await _showEditGroupDialog(context, group);
       case _GroupAction.invite:
         await _showInviteDialog(context);
+      case _GroupAction.leave:
+        await _confirmLeaveGroup(context);
       case _GroupAction.delete:
         await _confirmDeleteGroup(context);
     }
@@ -247,6 +251,29 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     }
   }
 
+  Future<void> _confirmLeaveGroup(BuildContext context) async {
+    final bloc = context.read<GroupDetailsBloc>();
+    final confirmed = await showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Покинуть группу?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Покинуть'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      bloc.add(const WorkingGroupLeft());
+    }
+  }
+
   Future<void> _confirmDeleteGroup(BuildContext context) async {
     final bloc = context.read<GroupDetailsBloc>();
     final confirmed = await showDialog<bool>(
@@ -287,7 +314,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
   }
 }
 
-enum _GroupAction { edit, invite, delete }
+enum _GroupAction { edit, invite, leave, delete }
 
 class _GroupAvatar extends StatelessWidget {
   const _GroupAvatar({required this.avatarUrl, this.radius = 20});

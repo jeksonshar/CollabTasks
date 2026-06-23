@@ -4,7 +4,7 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task_fi
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:equatable/equatable.dart';
 
-enum GroupDetailsStatus { loading, loaded, saving, deleted, error }
+enum GroupDetailsStatus { loading, loaded, saving, deleted, left, error }
 
 class GroupDetailsState extends Equatable {
   const GroupDetailsState({

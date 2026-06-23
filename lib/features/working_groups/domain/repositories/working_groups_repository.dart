@@ -20,6 +20,8 @@ abstract class WorkingGroupsRepository {
 
   Future<void> inviteParticipantByEmail({required String groupId, required String email});
 
+  Future<void> leaveGroup(String groupId);
+
   Future<void> addGroupTask({required String groupId, required TaskDraft draft});
 
   Future<void> updateGroupTask(GroupTask task);

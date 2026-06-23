@@ -100,6 +100,12 @@ mutation UpdateGroupParticipant($input: UpdateGroupParticipantInput!) {
 }
 ''';
 
+  static const String deleteParticipant = r'''
+mutation DeleteGroupParticipant($input: DeleteGroupParticipantInput!) {
+  deleteGroupParticipant(input: $input) { id }
+}
+''';
+
   static const String createTask = r'''
 mutation CreateGroupTask($input: CreateGroupTaskInput!) {
   createGroupTask(input: $input) { id }

@@ -30,6 +30,8 @@ abstract class WorkingGroupsLocalDataSource {
 
   Future<void> upsertTask(GroupTask task);
 
+  Future<void> deleteParticipant(String participantId);
+
   Future<void> deleteGroup(String groupId);
 
   Future<void> deleteTask({required String groupId, required String taskId});
@@ -155,6 +157,13 @@ class DriftWorkingGroupsLocalDataSource implements WorkingGroupsLocalDataSource 
       taskUpdatedAt: Value(task.updatedAt),
     );
     return _db.into(_db.groupTasksTable).insert(companion, onConflict: DoUpdate((_) => companion));
+  }
+
+  @override
+  Future<void> deleteParticipant(String participantId) {
+    return (_db.delete(
+      _db.groupParticipantsTable,
+    )..where((participant) => participant.id.equals(participantId))).go();
   }
 
   @override
