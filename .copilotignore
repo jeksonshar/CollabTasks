@@ -1,0 +1,23 @@
+# Cache, build artifacts and internal tooling
+.dart_tool/
+.pub-cache/
+.packages
+build/
+
+# Heavy assets only (keep config/localization JSONs if they are inside assets)
+assets/**/*.png
+assets/**/*.jpg
+assets/**/*.svg
+assets/**/*.mp4
+
+# Generated code (Drift, Freezed, JsonSerializable)
+**/*.g.dart
+**/*.freezed.dart
+**/*.generated.dart
+
+# Logs and environment dumps
+**/*.log
+.env*
+
+# AWS Amplify Outputs (Security & Token Efficiency)
+amplify_outputs*

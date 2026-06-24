@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      # Настройки для Drift (ORM & SQLite)
+      drift_dev:
+        generate_for:
+          include:
+            - lib/data/local/db/entities/**/*.dart
+            - lib/data/local/db/app_database.dart
+          exclude:
+            - test/**

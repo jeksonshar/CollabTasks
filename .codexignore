@@ -1,0 +1,22 @@
+# Cache and build artifacts
+.dart_tool/
+.pub-cache/
+.packages
+build/
+
+# Heavy media assets
+assets/**/*.png
+assets/**/*.jpg
+assets/**/*.svg
+assets/**/*.mp4
+
+# Code generation output
+**/*.g.dart
+**/*.freezed.dart
+**/*.generated.dart
+
+# System logs
+**/*.log
+
+# AWS Amplify Outputs (Security & Token Efficiency)
+amplify_outputs*
