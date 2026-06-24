@@ -1,4 +1,28 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:equatable/equatable.dart';
+
+/// Sealed класс для типов источников изображений, используемый в UI
+sealed class GroupAvatarSource {
+  const GroupAvatarSource();
+}
+
+class NetworkAvatar extends GroupAvatarSource {
+  final String url;
+
+  const NetworkAvatar(this.url);
+}
+
+class MemoryAvatar extends GroupAvatarSource {
+  final Uint8List bytes;
+
+  const MemoryAvatar(this.bytes);
+}
+
+class DefaultAvatar extends GroupAvatarSource {
+  const DefaultAvatar();
+}
 
 class WorkingGroup extends Equatable {
   const WorkingGroup({
@@ -16,6 +40,29 @@ class WorkingGroup extends Equatable {
   final DateTime createdAt;
   final int updatedAt;
   final String? avatarUrl;
+
+  /// Геттер для UI, инкапсулирующий логику парсинга строки
+  GroupAvatarSource get avatarSource {
+    final value = avatarUrl;
+    if (value == null || value.isEmpty) return const DefaultAvatar();
+
+    if (value.startsWith('data:image/')) {
+      final commaIndex = value.indexOf(',');
+      if (commaIndex != -1) {
+        try {
+          return MemoryAvatar(base64Decode(value.substring(commaIndex + 1)));
+        } catch (_) {
+          return const DefaultAvatar();
+        }
+      }
+    }
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NetworkAvatar(value);
+    }
+
+    return const DefaultAvatar();
+  }
 
   WorkingGroup copyWith({
     String? id,

@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_state.dart';
+import 'package:collab_tasks/features/working_groups/ui/dialogs/create_group_dialog.dart';
 import 'package:collab_tasks/features/working_groups/ui/screens/working_group_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -54,47 +53,16 @@ class _WorkingGroupsView extends StatelessWidget {
   }
 
   Future<void> _showCreateGroupDialog(BuildContext context) async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
     final bloc = context.read<WorkingGroupsBloc>();
-    final result = await showDialog<bool>(
+
+    final result = await showDialog<CreateGroupResult>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Новая рабочая группа'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Название'),
-              autofocus: true,
-            ),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Описание'),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Создать'),
-          ),
-        ],
-      ),
+      builder: (_) => const CreateGroupDialog(),
     );
-    if (result == true && titleController.text.trim().isNotEmpty) {
-      bloc.add(
-        WorkingGroupCreated(
-          title: titleController.text.trim(),
-          description: descriptionController.text.trim(),
-        ),
-      );
+
+    // Защита: проверяем, что данные получены, и что пользователь не закрыл экран во время ввода
+    if (result != null && context.mounted) {
+      bloc.add(WorkingGroupCreated(title: result.title, description: result.description));
     }
   }
 }
@@ -109,11 +77,12 @@ class _WorkingGroupTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
-        leading: _GroupAvatar(avatarUrl: group.avatarUrl),
+        leading: _GroupAvatar(source: group.avatarSource),
         title: Text(group.title),
         subtitle: group.description.isEmpty ? null : Text(group.description),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
+          // TODO: Заменить на декларативный роутинг согласно AGENTS.md, когда будет настроишь GoRouter
           Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => WorkingGroupDetailsScreen(group: group)));
@@ -124,26 +93,17 @@ class _WorkingGroupTile extends StatelessWidget {
 }
 
 class _GroupAvatar extends StatelessWidget {
-  const _GroupAvatar({required this.avatarUrl});
+  const _GroupAvatar({required this.source});
 
-  final String? avatarUrl;
+  final GroupAvatarSource source;
 
   @override
   Widget build(BuildContext context) {
-    final value = avatarUrl;
-    if (value != null && value.isNotEmpty) {
-      if (value.startsWith('data:image/')) {
-        final commaIndex = value.indexOf(',');
-        if (commaIndex != -1) {
-          final bytes = base64Decode(value.substring(commaIndex + 1));
-          return CircleAvatar(backgroundImage: MemoryImage(bytes));
-        }
-      }
-      if (value.startsWith('http://') || value.startsWith('https://')) {
-        return CircleAvatar(backgroundImage: NetworkImage(value));
-      }
-    }
-    return const CircleAvatar(child: Icon(Icons.groups));
+    return switch (source) {
+      NetworkAvatar(:final url) => CircleAvatar(backgroundImage: NetworkImage(url)),
+      MemoryAvatar(:final bytes) => CircleAvatar(backgroundImage: MemoryImage(bytes)),
+      DefaultAvatar() => const CircleAvatar(child: Icon(Icons.groups)),
+    };
   }
 }
 
