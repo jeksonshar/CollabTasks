@@ -1,3 +1,4 @@
+import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
 import 'package:equatable/equatable.dart';
 
@@ -23,4 +24,10 @@ class GroupTaskUpdateRequested extends GroupTaskDetailsEvent {
 
   @override
   List<Object?> get props => [draft];
+}
+
+final class UserAuthChanged extends GroupTaskDetailsEvent {
+  final AuthUser? user;
+
+  const UserAuthChanged(this.user);
 }

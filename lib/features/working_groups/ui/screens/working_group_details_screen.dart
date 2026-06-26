@@ -372,12 +372,7 @@ class _GroupTaskTile extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => GroupTaskDetailsScreen(
-                task: task,
-                assignee: assignee,
-                currentUserId: currentUserId,
-                participants: participants,
-              ),
+              builder: (_) => GroupTaskDetailsScreen(task: task, participants: participants),
             ),
           );
         },

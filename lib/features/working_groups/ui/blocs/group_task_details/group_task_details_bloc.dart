@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/claim_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
@@ -9,40 +12,75 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsState> {
   GroupTaskDetailsBloc({
     required GroupTask task,
+    required WatchAuthStateUseCase watchAuthStateUseCase,
     required ClaimGroupTaskUseCase claimGroupTaskUseCase,
     required ReleaseGroupTaskUseCase releaseGroupTaskUseCase,
     required UpdateGroupTaskUseCase updateGroupTaskUseCase,
-  }) : _task = task,
-       _claimGroupTaskUseCase = claimGroupTaskUseCase,
+  }) : _claimGroupTaskUseCase = claimGroupTaskUseCase,
        _releaseGroupTaskUseCase = releaseGroupTaskUseCase,
        _updateGroupTaskUseCase = updateGroupTaskUseCase,
-       super(const GroupTaskDetailsState()) {
+       super(
+         GroupTaskDetailsState(
+           task: task,
+           isAssignedToMe: false,
+           isAssignedToOther: task.assignedUserId != null,
+         ),
+       ) {
     on<GroupTaskClaimRequested>(_onClaim);
     on<GroupTaskReleaseRequested>(_onRelease);
     on<GroupTaskUpdateRequested>(_onUpdate);
+    on<UserAuthChanged>(_onUserAuthChanged); // Регистрируем обработчик
+
+    // Подписываемся на изменения состояния авторизации
+    _authSubscription = watchAuthStateUseCase().listen((user) {
+      add(UserAuthChanged(user));
+    });
   }
 
-  GroupTask _task;
   final ClaimGroupTaskUseCase _claimGroupTaskUseCase;
   final ReleaseGroupTaskUseCase _releaseGroupTaskUseCase;
   final UpdateGroupTaskUseCase _updateGroupTaskUseCase;
 
+  // Ссылка на подписку, чтобы избежать утечек памяти
+  late final StreamSubscription _authSubscription;
+
+  // Храним текущий ID пользователя для корректного вычисления флагов при обновлении таски
+  String? _currentUserId;
+
+  void _onUserAuthChanged(UserAuthChanged event, Emitter<GroupTaskDetailsState> emit) {
+    _currentUserId = event.user?.id; // Предполагается, что у AuthUser есть поле id (или uid)
+
+    emit(
+      state.copyWith(
+        isAssignedToMe: state.task.assignedUserId == _currentUserId,
+        isAssignedToOther:
+            state.task.assignedUserId != null && state.task.assignedUserId != _currentUserId,
+      ),
+    );
+  }
+
   Future<void> _onClaim(GroupTaskClaimRequested event, Emitter<GroupTaskDetailsState> emit) async {
-    await _run(emit, () => _claimGroupTaskUseCase(groupId: _task.groupId, taskId: _task.id));
+    await _run(
+      emit,
+      () => _claimGroupTaskUseCase(groupId: state.task.groupId, taskId: state.task.id),
+    );
   }
 
   Future<void> _onRelease(
     GroupTaskReleaseRequested event,
     Emitter<GroupTaskDetailsState> emit,
   ) async {
-    await _run(emit, () => _releaseGroupTaskUseCase(groupId: _task.groupId, taskId: _task.id));
+    await _run(
+      emit,
+      () => _releaseGroupTaskUseCase(groupId: state.task.groupId, taskId: state.task.id),
+    );
   }
 
   Future<void> _onUpdate(
     GroupTaskUpdateRequested event,
     Emitter<GroupTaskDetailsState> emit,
   ) async {
-    final updated = _task.copyWith(
+    final updated = state.task.copyWith(
       title: event.draft.title,
       description: event.draft.descriptionJson,
       priority: event.draft.priority,
@@ -53,7 +91,17 @@ class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsS
     );
     await _run(emit, () async {
       await _updateGroupTaskUseCase(updated);
-      _task = updated;
+
+      // Пересчитываем флаги на основе обновленной таски и сохраненного _currentUserId
+      emit(
+        state.copyWith(
+          task: updated,
+          status: GroupTaskDetailsStatus.success,
+          isAssignedToMe: updated.assignedUserId == _currentUserId,
+          isAssignedToOther:
+              updated.assignedUserId != null && updated.assignedUserId != _currentUserId,
+        ),
+      );
     });
   }
 
@@ -61,9 +109,15 @@ class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsS
     emit(state.copyWith(status: GroupTaskDetailsStatus.saving));
     try {
       await action();
-      emit(state.copyWith(status: GroupTaskDetailsStatus.success));
+      emit(state.copyWith(status: GroupTaskDetailsStatus.idle));
     } catch (error) {
       emit(state.copyWith(status: GroupTaskDetailsStatus.error, errorMessage: error.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _authSubscription.cancel();
+    return super.close();
   }
 }

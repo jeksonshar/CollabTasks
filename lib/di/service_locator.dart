@@ -241,6 +241,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerFactoryParam<GroupTaskDetailsBloc, GroupTask, void>(
       (task, _) => GroupTaskDetailsBloc(
         task: task,
+        watchAuthStateUseCase: getIt(),
         claimGroupTaskUseCase: getIt(),
         releaseGroupTaskUseCase: getIt(),
         updateGroupTaskUseCase: getIt(),

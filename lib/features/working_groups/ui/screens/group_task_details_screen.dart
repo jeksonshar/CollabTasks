@@ -11,75 +11,69 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class GroupTaskDetailsScreen extends StatelessWidget {
-  const GroupTaskDetailsScreen({
-    super.key,
-    required this.task,
-    required this.assignee,
-    required this.currentUserId,
-    required this.participants,
-  });
+  const GroupTaskDetailsScreen({super.key, required this.task, required this.participants});
 
   final GroupTask task;
-  final GroupParticipant? assignee;
-  final String? currentUserId;
   final List<GroupParticipant> participants;
-
-  bool get _isAssignedToCurrentUser => assignee != null && assignee!.userId == currentUserId;
-
-  bool get _isAssignedToOther => assignee != null && assignee!.userId != currentUserId;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<GroupTaskDetailsBloc>(param1: task),
       child: BlocConsumer<GroupTaskDetailsBloc, GroupTaskDetailsState>(
+        listenWhen: (prev, current) => prev.status != current.status,
         listener: (context, state) {
           if (state.status == GroupTaskDetailsStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.errorMessage ?? 'Ошибка обновления задачи')),
             );
           }
-          if (state.status == GroupTaskDetailsStatus.success) {
-            Navigator.of(context).pop();
-          }
         },
         builder: (context, state) {
+          final currentTask = state.task;
+          // Поиск исполнителя среди участников группы на основе актуального стейта задачи
+          final currentAssignee = participants.cast<GroupParticipant?>().firstWhere(
+            (p) => p?.userId == currentTask.assignedUserId,
+            orElse: () => null,
+          );
+
           return Scaffold(
             appBar: AppBar(
-              title: Text(task.title),
+              title: Text(currentTask.title),
               centerTitle: false,
               actions: [
                 IconButton(
                   icon: const Icon(Icons.edit),
-                  onPressed: _isAssignedToOther || state.status == GroupTaskDetailsStatus.saving
+                  onPressed:
+                      state.isAssignedToOther || state.status == GroupTaskDetailsStatus.saving
                       ? null
-                      : () => _showEditDialog(context),
+                      : () => _showEditDialog(context, currentTask),
                 ),
               ],
             ),
             body: Opacity(
-              opacity: _isAssignedToOther ? 0.55 : 1,
+              opacity: state.isAssignedToOther ? 0.55 : 1,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _AssignmentPanel(task: task, assignee: assignee),
+                  _AssignmentPanel(assignee: currentAssignee),
                   const SizedBox(height: 16),
                   Text('Описание', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: TaskRichPreview(deltaJson: task.description),
+                      child: TaskRichPreview(deltaJson: currentTask.description),
                     ),
                   ),
-                  if (task.deadline != null) ...[
+                  if (currentTask.deadline != null) ...[
                     const SizedBox(height: 16),
-                    Text('Срок: ${DateFormat.yMMMd().add_jm().format(task.deadline!)}'),
+                    Text('Срок: ${DateFormat.yMMMd().add_jm().format(currentTask.deadline!)}'),
                   ],
-                  if (task.subtasks.isNotEmpty) ...[
+                  if (currentTask.subtasks.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text('Подзадачи', style: Theme.of(context).textTheme.titleMedium),
-                    ...task.subtasks.map(
+                    ...currentTask.subtasks.map(
                       (subtask) => CheckboxListTile(
                         value: subtask.isCompleted,
                         onChanged: null,
@@ -92,7 +86,7 @@ class GroupTaskDetailsScreen extends StatelessWidget {
             ),
             bottomNavigationBar: Padding(
               padding: const EdgeInsets.all(16),
-              child: _buildAssignmentButton(context, state),
+              child: _buildAssignmentButton(context, state, currentAssignee),
             ),
           );
         },
@@ -100,8 +94,14 @@ class GroupTaskDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAssignmentButton(BuildContext context, GroupTaskDetailsState state) {
+  Widget _buildAssignmentButton(
+    BuildContext context,
+    GroupTaskDetailsState state,
+    GroupParticipant? assignee,
+  ) {
     final isSaving = state.status == GroupTaskDetailsStatus.saving;
+
+    // 1. Если задача ни на кого не назначена — показываем кнопку «Взять задачу»
     if (assignee == null) {
       return ElevatedButton.icon(
         onPressed: isSaving
@@ -111,7 +111,9 @@ class GroupTaskDetailsScreen extends StatelessWidget {
         label: const Text('Взять задачу'),
       );
     }
-    if (_isAssignedToCurrentUser) {
+
+    // 2. Если задача назначена на ТЕКУЩЕГО пользователя (реактивный флаг из Блока)
+    if (state.isAssignedToMe) {
       return OutlinedButton.icon(
         onPressed: isSaving
             ? null
@@ -120,23 +122,29 @@ class GroupTaskDetailsScreen extends StatelessWidget {
         label: const Text('Освободить задачу'),
       );
     }
-    return FilledButton.tonal(onPressed: null, child: Text('В работе у ${assignee!.name}'));
+
+    // 3. Если задача назначена на КОГО-ТО ДРУГОГО (state.isAssignedToOther)
+    return FilledButton.tonal(onPressed: null, child: Text('В работе у ${assignee.name}'));
   }
 
-  Future<void> _showEditDialog(BuildContext context) async {
+  Future<void> _showEditDialog(BuildContext context, GroupTask currentTask) async {
     final bloc = context.read<GroupTaskDetailsBloc>();
+
     final draft = await showDialog(
       context: context,
       builder: (_) => TaskDialog(
-        initialTitle: task.title,
-        initialDeltaJson: task.description,
-        initialAttachments: task.attachments,
-        initialPriority: task.priority,
-        initialIsCompletedState: task.isCompleted,
-        initialDeadline: task.deadline,
-        initialSubtasks: task.subtasks,
+        initialTitle: currentTask.title,
+        initialDeltaJson: currentTask.description,
+        initialAttachments: currentTask.attachments,
+        initialPriority: currentTask.priority,
+        initialIsCompletedState: currentTask.isCompleted,
+        initialDeadline: currentTask.deadline,
+        initialSubtasks: currentTask.subtasks,
       ),
     );
+
+    if (!context.mounted) return;
+
     if (draft != null) {
       bloc.add(GroupTaskUpdateRequested(draft));
     }
@@ -144,9 +152,8 @@ class GroupTaskDetailsScreen extends StatelessWidget {
 }
 
 class _AssignmentPanel extends StatelessWidget {
-  const _AssignmentPanel({required this.task, required this.assignee});
+  const _AssignmentPanel({required this.assignee});
 
-  final GroupTask task;
   final GroupParticipant? assignee;
 
   @override
