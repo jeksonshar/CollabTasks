@@ -65,8 +65,8 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_work
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_bloc.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -235,7 +235,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         deleteWorkingGroupUseCase: getIt(),
         inviteGroupParticipantUseCase: getIt(),
         leaveWorkingGroupUseCase: getIt(),
-        authRepository: getIt(),
+        watchAuthStateUseCase: getIt<WatchAuthStateUseCase>(),
       ),
     )
     ..registerFactoryParam<GroupTaskDetailsBloc, GroupTask, void>(

@@ -5,8 +5,8 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task.da
 import 'package:collab_tasks/features/working_groups/domain/use_cases/claim_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_event.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_state.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_event.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsState> {
@@ -29,7 +29,7 @@ class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsS
     on<GroupTaskClaimRequested>(_onClaim);
     on<GroupTaskReleaseRequested>(_onRelease);
     on<GroupTaskUpdateRequested>(_onUpdate);
-    on<UserAuthChanged>(_onUserAuthChanged); // Регистрируем обработчик
+    on<UserAuthChanged>(_onUserAuthChanged);
 
     // Подписываемся на изменения состояния авторизации
     _authSubscription = watchAuthStateUseCase().listen((user) {

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
@@ -12,8 +12,8 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/get_workin
 import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_event.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_state.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_event.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 const _participantsOnlyActionError = 'Only group participants can perform this action.';
@@ -29,7 +29,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     required DeleteWorkingGroupUseCase deleteWorkingGroupUseCase,
     required InviteGroupParticipantUseCase inviteGroupParticipantUseCase,
     required LeaveWorkingGroupUseCase leaveWorkingGroupUseCase,
-    required AuthRepository authRepository,
+    required WatchAuthStateUseCase watchAuthStateUseCase,
   }) : _groupId = groupId,
        _getWorkingGroupUseCase = getWorkingGroupUseCase,
        _getGroupTasksUseCase = getGroupTasksUseCase,
@@ -39,7 +39,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
        _deleteWorkingGroupUseCase = deleteWorkingGroupUseCase,
        _inviteGroupParticipantUseCase = inviteGroupParticipantUseCase,
        _leaveWorkingGroupUseCase = leaveWorkingGroupUseCase,
-       _authRepository = authRepository,
+       _watchAuthStateUseCase = watchAuthStateUseCase,
        super(const GroupDetailsState()) {
     on<GroupDetailsStarted>(_onStarted);
     on<GroupTaskFilterChanged>((event, emit) => emit(state.copyWith(filter: event.filter)));
@@ -59,11 +59,13 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   final DeleteWorkingGroupUseCase _deleteWorkingGroupUseCase;
   final InviteGroupParticipantUseCase _inviteGroupParticipantUseCase;
   final LeaveWorkingGroupUseCase _leaveWorkingGroupUseCase;
-  final AuthRepository _authRepository;
+  final WatchAuthStateUseCase _watchAuthStateUseCase;
 
   Future<void> _onStarted(GroupDetailsStarted event, Emitter<GroupDetailsState> emit) async {
     emit(state.copyWith(status: GroupDetailsStatus.loading));
-    final user = await _authRepository.watchAuthState().first;
+
+    // Получаем текущего сессионного пользователя через вызов UseCase
+    final user = await _watchAuthStateUseCase().first;
     emit(state.copyWith(currentUserId: user?.id, currentUserEmail: user?.email));
 
     await emit.forEach<_GroupDetailsSnapshot>(
@@ -80,10 +82,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   }
 
   /// Combines the group, participants and task streams, re-emitting whenever
-  /// any of them changes. Unlike a nested [Stream.asyncExpand] (which never
-  /// advances past the first event of a non-completing `.watch()` stream), this
-  /// keeps reacting to later emissions — e.g. the current user being added back
-  /// to the participants table after the screen has already subscribed.
+  /// any of them changes.
   Stream<_GroupDetailsSnapshot> _watchGroupDetails() {
     final groupStream = _getWorkingGroupUseCase(_groupId);
     final participantsStream = _getGroupParticipantsUseCase(_groupId);

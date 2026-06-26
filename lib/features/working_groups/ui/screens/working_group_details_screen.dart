@@ -4,12 +4,12 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_partici
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task_filter.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_bloc.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_event.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_details/group_details_state.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_event.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_state.dart';
 import 'package:collab_tasks/features/working_groups/ui/dialogs/edit_group_dialog.dart';
 import 'package:collab_tasks/features/working_groups/ui/dialogs/invite_participant_dialog.dart';
-import 'package:collab_tasks/features/working_groups/ui/screens/group_task_details_screen.dart';
+import 'package:collab_tasks/features/working_groups/ui/screens/working_group_task_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -32,16 +32,36 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     return BlocProvider(
       create: (_) =>
           getIt<GroupDetailsBloc>(param1: widget.group.id)..add(const GroupDetailsStarted()),
-      child: BlocBuilder<GroupDetailsBloc, GroupDetailsState>(
-        buildWhen: (previous, current) =>
-            previous.isCurrentUserParticipant != current.isCurrentUserParticipant ||
-            previous.status != current.status ||
-            previous.group != current.group ||
-            previous.displayParticipants != current.displayParticipants,
+      child: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
+        listenWhen: (previous, current) => previous.status != current.status,
+        listener: (context, state) {
+          if (state.status == GroupDetailsStatus.deleted ||
+              state.status == GroupDetailsStatus.left) {
+            Navigator.of(context).pop();
+          }
+          if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          }
+        },
         builder: (context, state) {
           final isParticipant = state.isCurrentUserParticipant;
           final group = state.group ?? widget.group;
           final activeTab = isParticipant ? _tabIndex : 0;
+
+          // Обработка состояний загрузки/ошибки на уровне всего экрана
+          if (state.status == GroupDetailsStatus.loading ||
+              state.status == GroupDetailsStatus.saving) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
+
+          if (state.status == GroupDetailsStatus.error && state.group == null) {
+            return Scaffold(
+              appBar: AppBar(title: Text(widget.group.title)),
+              body: Center(child: Text(state.errorMessage ?? 'Ошибка загрузки группы')),
+            );
+          }
 
           return Scaffold(
             appBar: AppBar(
@@ -77,32 +97,9 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   ),
               ],
             ),
-            body: BlocConsumer<GroupDetailsBloc, GroupDetailsState>(
-              listenWhen: (previous, current) => previous.status != current.status,
-              listener: (context, state) {
-                if (state.status == GroupDetailsStatus.deleted ||
-                    state.status == GroupDetailsStatus.left) {
-                  Navigator.of(context).pop();
-                }
-                if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-                }
-              },
-              builder: (context, state) {
-                if (state.status == GroupDetailsStatus.loading ||
-                    state.status == GroupDetailsStatus.saving) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (state.status == GroupDetailsStatus.error) {
-                  return Center(child: Text(state.errorMessage ?? 'Ошибка загрузки группы'));
-                }
-                return activeTab == 0
-                    ? _ParticipantsTab(state: state, isParticipant: isParticipant)
-                    : _TasksTab(state: state);
-              },
-            ),
+            body: activeTab == 0
+                ? _ParticipantsTab(state: state, isParticipant: isParticipant)
+                : _TasksTab(state: state),
             floatingActionButton: (isParticipant && activeTab == 1)
                 ? FloatingActionButton(
                     onPressed: () => _showAddTaskDialog(context),
@@ -372,7 +369,7 @@ class _GroupTaskTile extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => GroupTaskDetailsScreen(task: task, participants: participants),
+              builder: (_) => WorkingGroupTaskDetailsScreen(task: task, participants: participants),
             ),
           );
         },

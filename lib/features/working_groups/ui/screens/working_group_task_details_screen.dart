@@ -3,15 +3,15 @@ import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.d
 import 'package:collab_tasks/features/tasks/ui/screens/home_screen/components/task_rich_preview.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_bloc.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_event.dart';
-import 'package:collab_tasks/features/working_groups/ui/blocs/group_task_details/group_task_details_state.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_bloc.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_event.dart';
+import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-class GroupTaskDetailsScreen extends StatelessWidget {
-  const GroupTaskDetailsScreen({super.key, required this.task, required this.participants});
+class WorkingGroupTaskDetailsScreen extends StatelessWidget {
+  const WorkingGroupTaskDetailsScreen({super.key, required this.task, required this.participants});
 
   final GroupTask task;
   final List<GroupParticipant> participants;
