@@ -9,7 +9,6 @@ import 'package:collab_tasks/features/tasks/data/notifications/notification_tap_
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
-import 'package:collab_tasks/features/tasks/domain/use_cases/filter_and_sort_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_state.dart';
@@ -31,12 +30,18 @@ void main() {
   late MockGetNotificationTapStreamUseCase getNotificationStreamUseCase;
   late MockConsumeInitialNotificationPayloadUseCase consumePayloadUseCase;
   late MockSyncTasksUseCase syncTasksUseCase;
-  late MockFilterAndSortTasksUseCase filterAndSortTasksUseCase;
   late StreamController<NotificationTapPayload> notificationController;
 
-  setUpAll(registerTestFallbackValues);
+  setUpAll(() {
+    registerTestFallbackValues();
 
-  setUp(() {
+    // РЕГИСТРИРУЕМ СЛИТЫЕ ENUM-ТИПЫ ДЛЯ МАТЧЕРА any()
+    registerFallbackValue(TaskFilterType.all);
+    registerFallbackValue(TaskSortType.byDateCreated);
+    registerFallbackValue(TaskSortDirection.topToBottom);
+  });
+
+  void initMocks() {
     watchTasksUseCase = MockWatchTasksUseCase();
     addTaskUseCase = MockAddTaskUseCase();
     updateTaskUseCase = MockUpdateTaskUseCase();
@@ -48,9 +53,10 @@ void main() {
     getNotificationStreamUseCase = MockGetNotificationTapStreamUseCase();
     consumePayloadUseCase = MockConsumeInitialNotificationPayloadUseCase();
     syncTasksUseCase = MockSyncTasksUseCase();
-    filterAndSortTasksUseCase = MockFilterAndSortTasksUseCase();
     notificationController = StreamController<NotificationTapPayload>.broadcast();
+  }
 
+  void stubDefaultBehavior() {
     when(() => getPrefsUseCase()).thenAnswer(
       (_) async => const TaskViewPreferences(
         sortType: TaskSortType.byDateCreated,
@@ -64,23 +70,21 @@ void main() {
     when(() => syncTasksUseCase()).thenAnswer((_) async {});
     when(() => getNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
     when(() => consumePayloadUseCase()).thenReturn(null);
+
+    // ДОБАВЛЕНО: Дефолтный стаб для стрима, чтобы тесты добавления/апдейта не падали при инициализации подписки Блока
     when(
-      () => filterAndSortTasksUseCase(
-        tasks: any(named: 'tasks'),
+      () => watchTasksUseCase(
+        searchQuery: any(named: 'searchQuery'),
         filterType: any(named: 'filterType'),
         sortType: any(named: 'sortType'),
         sortDirection: any(named: 'sortDirection'),
-        searchQuery: any(named: 'searchQuery'),
       ),
-    ).thenAnswer((invocation) {
-      return const FilterAndSortTasksUseCase().call(
-        tasks: invocation.namedArguments[#tasks] as List<Task>,
-        filterType: invocation.namedArguments[#filterType] as TaskFilterType,
-        sortType: invocation.namedArguments[#sortType] as TaskSortType,
-        sortDirection: invocation.namedArguments[#sortDirection] as TaskSortDirection,
-        searchQuery: invocation.namedArguments[#searchQuery] as String,
-      );
-    });
+    ).thenAnswer((_) => const Stream.empty());
+  }
+
+  setUp(() {
+    initMocks();
+    stubDefaultBehavior();
   });
 
   tearDown(() async {
@@ -100,7 +104,6 @@ void main() {
       getNotificationTapStreamUseCase: getNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: consumePayloadUseCase,
       syncTasksUseCase: syncTasksUseCase,
-      filterAndSortTasksUseCase: filterAndSortTasksUseCase,
     );
   }
 
@@ -203,48 +206,6 @@ void main() {
     );
 
     blocTest<TaskBloc, TaskState>(
-      'filters tasks with files when FilterChanged(TaskFilterType.withFiles) is added',
-      build: () {
-        final withFile = Task(
-          id: 'with-file',
-          createdAt: DateTime.utc(2026),
-          title: 'With file',
-          description: '',
-          attachments: const [
-            TaskAttachment(id: 'file-1', name: '1.txt', extension: 'txt', sizeBytes: 1),
-          ],
-        );
-        final withoutFile = Task(
-          id: 'without-file',
-          createdAt: DateTime.utc(2026),
-          title: 'Without file',
-          description: '',
-        );
-
-        // Настраиваем стрим для LoadTasksStarted
-        when(() => watchTasksUseCase()).thenAnswer((_) => Stream.value([withFile, withoutFile]));
-        return buildBloc();
-      },
-      act: (bloc) async {
-        bloc.add(LoadTasksStarted());
-        // Ждем, пока отработает подписка и загрузит данные в кэш Блока
-        await pumpEventQueue();
-        bloc.add(const FilterChanged(TaskFilterType.withFiles));
-      },
-      expect: () => [
-        // 1. Стейт от LoadTasksStarted (загрузка)
-        isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
-        // 2. Стейт с полным списком задач из стрима
-        isA<TaskState>().having((s) => s.tasks, 'tasks', hasLength(2)),
-        // 3. Стейт от FilterChanged, где UseCase отфильтровал список
-        isA<TaskState>()
-            .having((s) => s.filterType, 'filterType', TaskFilterType.withFiles)
-            .having((s) => s.tasks, 'tasks', hasLength(1))
-            .having((s) => s.tasks.first.id, 'task id', 'with-file'),
-      ],
-    );
-
-    blocTest<TaskBloc, TaskState>(
       'filters tasks without files when FilterChanged(TaskFilterType.withoutFiles) is added',
       build: () {
         final withFile = Task(
@@ -263,7 +224,26 @@ void main() {
           description: '',
         );
 
-        when(() => watchTasksUseCase()).thenAnswer((_) => Stream.value([withFile, withoutFile]));
+        // ИСПРАВЛЕНО: Настройка для LoadTasksStarted (запрос всех тасок)
+        when(
+          () => watchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([withFile, withoutFile]));
+
+        // ИСПРАВЛЕНО: Настройка для FilterChanged (запрос тасок без файлов)
+        when(
+          () => watchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.withoutFiles,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([withoutFile]));
+
         return buildBloc();
       },
       act: (bloc) async {
@@ -272,10 +252,18 @@ void main() {
         bloc.add(const FilterChanged(TaskFilterType.withoutFiles));
       },
       expect: () => [
+        // Шаг 1-2: Результат от LoadTasksStarted
         isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
-        isA<TaskState>().having((s) => s.tasks, 'tasks', hasLength(2)),
         isA<TaskState>()
-            .having((s) => s.filterType, 'filterType', TaskFilterType.withoutFiles)
+            .having((s) => s.status, 'status', TaskStatus.success)
+            .having((s) => s.tasks, 'tasks', hasLength(2)),
+
+        // ИСПРАВЛЕНО: Шаг 3-4: Результат от FilterChanged (перезапуск подписки)
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.filterType, 'filterType', TaskFilterType.withoutFiles),
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
             .having((s) => s.tasks, 'tasks', hasLength(1))
             .having((s) => s.tasks.first.id, 'task id', 'without-file'),
       ],

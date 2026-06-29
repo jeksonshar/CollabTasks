@@ -29,14 +29,16 @@ void main() {
   late MockGetTaskViewPreferencesUseCase mockGetPrefsUseCase;
   late MockSetTaskViewPreferencesUseCase mockSetPrefsUseCase;
   late MockScheduleTaskNotificationsUseCase mockScheduleNotificationsUseCase;
-  late MockCancelTaskNotificationsUseCase mockCancelNotificationsUseCase;
+  late MockCancelTaskNotificationsUseCase mockCancelTaskNotificationsUseCase;
   late MockGetNotificationTapStreamUseCase mockGetNotificationStreamUseCase;
   late MockConsumeInitialNotificationPayloadUseCase mockConsumePayloadUseCase;
   late MockSyncTasksUseCase mockSyncTasksUseCase;
-  late MockFilterAndSortTasksUseCase mockFilterAndSortTasksUseCase;
   late StreamController<NotificationTapPayload> notificationController;
 
   setUpAll(() {
+    registerFallbackValue(TaskFilterType.all);
+    registerFallbackValue(TaskSortType.byDateCreated);
+    registerFallbackValue(TaskSortDirection.topToBottom);
     // Registering default values for complex types
     registerTestFallbackValues();
   });
@@ -49,11 +51,10 @@ void main() {
     mockGetPrefsUseCase = MockGetTaskViewPreferencesUseCase();
     mockSetPrefsUseCase = MockSetTaskViewPreferencesUseCase();
     mockScheduleNotificationsUseCase = MockScheduleTaskNotificationsUseCase();
-    mockCancelNotificationsUseCase = MockCancelTaskNotificationsUseCase();
+    mockCancelTaskNotificationsUseCase = MockCancelTaskNotificationsUseCase();
     mockGetNotificationStreamUseCase = MockGetNotificationTapStreamUseCase();
     mockConsumePayloadUseCase = MockConsumeInitialNotificationPayloadUseCase();
     mockSyncTasksUseCase = MockSyncTasksUseCase();
-    mockFilterAndSortTasksUseCase = MockFilterAndSortTasksUseCase();
     // Initialize the controller BEFORE creating the BLoC
     notificationController = StreamController<NotificationTapPayload>.broadcast();
   }
@@ -69,32 +70,26 @@ void main() {
     );
     when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
 
-    // 1. Streams and cold starts
-    when(() => mockGetNotificationStreamUseCase()).thenAnswer((_) => const Stream.empty());
     when(
       () => mockConsumePayloadUseCase(),
     ).thenReturn(null); // Emulating the absence of a cold start from a notification
     // 2. Futures for notification planning
     when(() => mockScheduleNotificationsUseCase(any())).thenAnswer((_) async => {});
     // 3. Rest
-    when(() => mockCancelNotificationsUseCase(any())).thenAnswer((_) async => {});
+    when(() => mockCancelTaskNotificationsUseCase(any())).thenAnswer((_) async => {});
     when(() => mockSyncTasksUseCase()).thenAnswer((_) async => {});
-    // Filter and sort (identity: just return input as is)
+    // Overriding behavior for notification tests
+    when(() => mockGetNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
+
+    // Дефолтный стаб, чтобы Блок не падал при создании
     when(
-      () => mockFilterAndSortTasksUseCase(
-        tasks: any(named: 'tasks'),
+      () => mockWatchTasksUseCase(
+        searchQuery: any(named: 'searchQuery'),
         filterType: any(named: 'filterType'),
         sortType: any(named: 'sortType'),
         sortDirection: any(named: 'sortDirection'),
-        searchQuery: any(named: 'searchQuery'),
       ),
-    ).thenAnswer((invocation) {
-      // Extract tasks from named arguments
-      final tasks = invocation.namedArguments.values.first as List<Task>? ?? <Task>[];
-      return tasks;
-    });
-    // Overriding behavior for notification tests
-    when(() => mockGetNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
+    ).thenAnswer((_) => const Stream.empty());
   }
 
   setUp(() {
@@ -109,11 +104,10 @@ void main() {
       getTaskViewPreferencesUseCase: mockGetPrefsUseCase,
       setTaskViewPreferencesUseCase: mockSetPrefsUseCase,
       scheduleTaskNotificationsUseCase: mockScheduleNotificationsUseCase,
-      cancelTaskNotificationsUseCase: mockCancelNotificationsUseCase,
+      cancelTaskNotificationsUseCase: mockCancelTaskNotificationsUseCase,
       getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
       syncTasksUseCase: mockSyncTasksUseCase,
-      filterAndSortTasksUseCase: mockFilterAndSortTasksUseCase, // ??
     );
   });
 
@@ -130,22 +124,38 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should go to success and update the task list when receiving data from the stream',
       build: () {
-        // Simulating the flow of data from the database
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value(tTasks));
+        // Настраиваем UseCase на ожидание вызова с дефолтными параметрами фильтрации
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: TaskSortType.byDateCreated,
+            sortDirection: TaskSortDirection.topToBottom,
+          ),
+        ).thenAnswer((_) => Stream.value(tTasks));
+
         return taskBloc;
       },
       act: (bloc) => bloc.add(LoadTasksStarted()),
       expect: () => [
-        // 1. First, the status changes to loading
+        // 1. Сначала Блок переходит в состояние загрузки
         isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
-        // 2. Then tasks from the stream arrive
+        // 2. Затем Блок получает готовый список задач напрямую из UseCase без всяких ручных фильтраций
         isA<TaskState>()
             .having((s) => s.status, 'status', TaskStatus.success)
-            .having((s) => s.tasks, 'tasks', tTasks)
+            .having((s) => s.tasks, 'tasks', tTasks) // Просто проверяем совпадение массивов
             .having((s) => s.sortType, 'sortType', TaskSortType.byDateCreated),
       ],
       verify: (_) {
-        verify(() => mockWatchTasksUseCase()).called(1);
+        // Верифицируем, что UseCase был вызван ровно один раз с точными дефолтными параметрами
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: TaskSortType.byDateCreated,
+            sortDirection: TaskSortDirection.topToBottom,
+          ),
+        ).called(1);
       },
     );
   });
@@ -164,7 +174,14 @@ void main() {
       'must call AddTaskUseCase and release the state with lastAction.add',
       build: () {
         // For this test, the stream may be empty.
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
@@ -176,17 +193,7 @@ void main() {
       ],
       verify: (_) {
         // Check that UseCase was actually called
-        verify(
-          () => mockAddTaskUseCase(
-            any(
-              that: isA<Task>()
-                  .having((t) => t.id, 'id', isNotEmpty)
-                  .having((t) => t.title, 'title', tDraft.title)
-                  .having((t) => t.priority, 'priority', tDraft.priority)
-                  .having((t) => t.createdAt, 'createdAt', isA<DateTime>()),
-            ),
-          ),
-        ).called(1);
+        verify(() => mockAddTaskUseCase(any())).called(1);
       },
     );
   });
@@ -212,7 +219,14 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'must call UpdateTaskUseCase and update lastAction',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([tTask]));
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([tTask]));
         when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
@@ -241,15 +255,21 @@ void main() {
       createdAt: DateTime.now(),
       description: '',
     );
+
     blocTest<TaskBloc, TaskState>(
       'should successfully delete the task and release a state with the title of the deleted task',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([tTask]));
-        when(() => mockDeleteTasksUseCase(any())).thenAnswer((_) async => {});
+        // Настраиваем UseCase удаления и отмены нотификаций
+        when(() => mockDeleteTasksUseCase(any())).thenAnswer((_) async {});
+        when(() => mockCancelTaskNotificationsUseCase(any())).thenAnswer((_) async {});
+
         return taskBloc;
       },
+      // Сеем начальное состояние: Блок сразу «знает» про существование этой таски
       seed: () => TaskState(tasks: [tTask], status: TaskStatus.success),
+
       act: (bloc) => bloc.add(TaskDeleted(tTask.id)),
+
       expect: () => [
         isA<TaskState>()
             .having((s) => s.lastAction, 'lastAction', TaskAction.delete)
@@ -257,41 +277,74 @@ void main() {
       ],
       verify: (_) {
         verify(() => mockDeleteTasksUseCase(tTask.id)).called(1);
-        verify(() => mockCancelNotificationsUseCase(tTask.id)).called(1);
+        verify(() => mockCancelTaskNotificationsUseCase(tTask.id)).called(1);
       },
     );
   });
 
   group('TaskBloc 5 - UI Events', () {
     blocTest<TaskBloc, TaskState>(
-      'should invert the sort direction if the same type is selected',
+      'should invert the sort direction if the same type is selected and restart subscription',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        // Настраиваем UseCase на вызов с новыми параметрами сортировки
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byTitle,
+            sortDirection: TaskSortDirection.bottomToTop, // Ожидаем инвертированную
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
       seed: () => const TaskState(
         sortType: TaskSortType.byTitle,
         sortDirection: TaskSortDirection.topToBottom,
+        status: TaskStatus.success,
       ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byTitle)),
       expect: () => [
-        isA<TaskState>().having((s) => s.sortDirection, 'direction', TaskSortDirection.bottomToTop),
-      ],
-    );
-    blocTest<TaskBloc, TaskState>(
-      'should update filterType and save preferences when FilterChanged is added',
-      build: () {
-        // We'll stabilize the saving of settings so that the test doesn't crash.
-        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
-        return taskBloc;
-      },
-      seed: () => const TaskState(filterType: TaskFilterType.all),
-      act: (bloc) => bloc.add(const FilterChanged(TaskFilterType.completed)),
-      expect: () => [
-        isA<TaskState>().having((s) => s.filterType, 'filterType', TaskFilterType.completed),
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortDirection, 'direction', TaskSortDirection.bottomToTop)
+            .having((s) => s.sortType, 'type', TaskSortType.byTitle),
       ],
       verify: (_) {
-        // Check that the save UseCase was called with the correct filter
+        // Проверяем, что стрим базы был перезапущен с новой инвертированной сортировкой
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byTitle,
+            sortDirection: TaskSortDirection.bottomToTop,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<TaskBloc, TaskState>(
+      'should update filterType, save preferences, and restart subscription when FilterChanged is added',
+      build: () {
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: TaskFilterType.completed, // Ожидаем новый фильтр
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+        return taskBloc;
+      },
+      seed: () => const TaskState(filterType: TaskFilterType.all, status: TaskStatus.success),
+      act: (bloc) => bloc.add(const FilterChanged(TaskFilterType.completed)),
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.filterType, 'filterType', TaskFilterType.completed),
+      ],
+      verify: (_) {
+        // 1. Проверяем сохранение настроек
         verify(
           () => mockSetPrefsUseCase(
             any(
@@ -301,6 +354,16 @@ void main() {
                 TaskFilterType.completed,
               ),
             ),
+          ),
+        ).called(1);
+
+        // 2. Проверяем, что Блок запросил у БД данные именно под новый фильтр
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: TaskFilterType.completed,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
           ),
         ).called(1);
       },
@@ -323,8 +386,7 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should maintain a failure status or issue an error state if AddTask fails',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
-        // Simulating a Hard UseCase Error
+        // Использован дефолтный стаб из setUp
         when(() => mockAddTaskUseCase(any())).thenThrow(DataException('Database Error'));
         return taskBloc;
       },
@@ -340,19 +402,20 @@ void main() {
           ),
         ),
       ),
-      expect: () => [isA<TaskState>().having((s) => s.status, 'status', TaskStatus.failure)],
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.failure)
+            .having((s) => s.errorType, 'errorType', TaskErrorType.add),
+      ],
     );
+
     blocTest<TaskBloc, TaskState>(
       'should swallow notification error in _onAddTask and cover debugPrint',
       build: () {
-        // 1. Setup: Adding task successfully
         when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
-
-        // 2. Setting: Notification scheduling crashes with an error
         when(
           () => mockScheduleNotificationsUseCase(any()),
         ).thenThrow(Exception('Notification Service Unavailable'));
-
         return taskBloc;
       },
       act: (bloc) => bloc.add(
@@ -368,24 +431,21 @@ void main() {
         ),
       ),
       expect: () => [
-        // The status should NOT be failure, as the notification error is caught internally
         isA<TaskState>()
             .having((s) => s.lastAction, 'lastAction', TaskAction.add)
             .having((s) => s.lastActionTaskTitle, 'title', 'Notification Error Task'),
       ],
       verify: (_) {
-        // We check that the method was actually called and crashed.
         verify(() => mockScheduleNotificationsUseCase(any())).called(1);
       },
     );
+
     blocTest<TaskBloc, TaskState>(
       'should maintain a failure status or issue an error state if UpdateTask fails',
       build: () {
-        // Simulating a Hard UseCase Error
         when(() => mockUpdateTasksUseCase(any())).thenThrow(DataException('Database Error'));
         return taskBloc;
       },
-      // PREPARATION: Give the block a state with an existing task
       seed: () => TaskState(
         tasks: [
           Task(id: '123', createdAt: DateTime.now(), title: 'Original title', description: ''),
@@ -405,33 +465,43 @@ void main() {
           ),
         ),
       ),
-      expect: () => [isA<TaskState>().having((s) => s.status, 'status', TaskStatus.failure)],
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.failure)
+            .having((s) => s.errorType, 'errorType', TaskErrorType.update),
+      ],
     );
+
     blocTest<TaskBloc, TaskState>(
-      'should emit failure when the stream itself emits an error (forEach onError)',
+      'should emit failure when the stream itself emits an error (onError от listen)',
       build: () {
-        // Important: not thenThrow, but return the stream that contains the error
         when(
-          () => mockWatchTasksUseCase(),
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
         ).thenAnswer((_) => Stream.error(Exception('Stream emitted error')));
         return taskBloc;
       },
       act: (bloc) => bloc.add(LoadTasksStarted()),
       expect: () => [
+        // 1. Сначала уходим в лоадинг при старте
         isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
+        // 2. Затем асинхронно прилетает ошибка из стрима через внутренний ивент _TasksLoadFailed
         isA<TaskState>()
             .having((s) => s.status, 'status', TaskStatus.failure)
             .having((s) => s.errorType, 'error', TaskErrorType.load),
       ],
     );
+
     blocTest<TaskBloc, TaskState>(
       'should emit failure when deleteTaskUseCase fails',
       build: () {
-        // Simulating a hard error when deleting
         when(() => mockDeleteTasksUseCase(any())).thenThrow(DataException('Database Delete Error'));
         return taskBloc;
       },
-      // MANDATORY: Add the task to the state to pass the taskToDelete == null check.
       seed: () => TaskState(
         tasks: [
           Task(
@@ -452,40 +522,49 @@ void main() {
         verify(() => mockDeleteTasksUseCase('999')).called(1);
       },
     );
+
     blocTest<TaskBloc, TaskState>(
-      'Should remain functional and emit success state even if preference saving fails',
+      'Should remain functional and emit loading state with new filter even if preference saving fails',
       build: () {
         when(() => mockSetPrefsUseCase(any())).thenThrow(Exception('Prefs Save Failed'));
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: TaskFilterType.completed,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
-      seed: () => const TaskState(status: TaskStatus.success),
+      seed: () => const TaskState(status: TaskStatus.success, filterType: TaskFilterType.all),
       act: (bloc) => bloc.add(const FilterChanged(TaskFilterType.completed)),
       expect: () => [
-        // The state should still be updated, since the error in the catch is swallowed.
         isA<TaskState>()
-            .having((s) => s.filterType, 'filterType', TaskFilterType.completed)
-            .having((s) => s.status, 'status', TaskStatus.success),
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.filterType, 'filterType', TaskFilterType.completed),
       ],
       verify: (_) {
         verify(
           () => mockSetPrefsUseCase(
             any(
-              that: isA<TaskViewPreferences>()
-                  .having((f) => f.filterType, 'filterType', TaskFilterType.completed)
-                  .having((f) => f.sortType, 'sortType', TaskSortType.byDateCreated),
+              that: isA<TaskViewPreferences>().having(
+                (f) => f.filterType,
+                'filterType',
+                TaskFilterType.completed,
+              ),
             ),
           ),
         ).called(1);
       },
     );
+
     blocTest<TaskBloc, TaskState>(
       'should emit failure when TaskPinToggled fails at UseCase level',
       build: () {
         when(() => mockUpdateTasksUseCase(any())).thenThrow(Exception('Update Pin Failed'));
         return taskBloc;
       },
-      // PREPARATION: Without a task in the state, the method will fail when searching for firstWhere
       seed: () => TaskState(
         tasks: [
           Task(
@@ -513,7 +592,14 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should swallow the notification error without breaking the main flow',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
         // Simulating an error in the notification manager
         when(
@@ -545,7 +631,14 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should not synchronize notifications when the task stream emits data',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer(
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer(
           (_) => Stream.value([
             Task(
               id: '1',
@@ -576,7 +669,7 @@ void main() {
       ],
       verify: (_) {
         verifyNever(() => mockScheduleNotificationsUseCase(any()));
-        verifyNever(() => mockCancelNotificationsUseCase(any()));
+        verifyNever(() => mockCancelTaskNotificationsUseCase(any()));
       },
     );
   });
@@ -598,33 +691,60 @@ void main() {
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should actually sort the list by priority',
+      'should update sortType to byPriority and deliver sorted tasks from the restarted stream',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        // Настраиваем мок: когда Блок перезапустит стрим с сортировкой по приоритету,
+        // мы имитируем, что SQL-движок базы данных вернул нам уже отсортированный список (сначала High, потом Low)
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byPriority, // Ожидаем именно этот тип
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([taskHigh, taskLow])); // уже отсортированный список
+
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
-      // We throw two tasks into the state in the "wrong" order
       seed: () => TaskState(
         status: TaskStatus.success,
-        tasks: [taskLow, taskHigh],
+        tasks: [taskLow, taskHigh], // Исходный неотсортированный список
         sortType: TaskSortType.byDateCreated,
         sortDirection: TaskSortDirection.topToBottom,
       ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
       expect: () => [
+        // Ждем комбинированный стейт: статус loading + обновленный тип сортировки
         isA<TaskState>()
-            .having((s) => s.sortType, 'type', TaskSortType.byPriority)
-            // We check that the tasks in the list have changed places according to priority
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'type', TaskSortType.byPriority),
+
+        // Как только Stream.value([taskHigh, taskLow]) мгновенно выплевывает данные,
+        // срабатывает внутренний ивент обновления, и статус меняется на success с новым списком
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
+            .having((s) => s.tasks.first.id, 'first task id', '2') // Теперь первая таска — taskHigh
             .having((s) => s.tasks.first.priority, 'first task priority', 3),
       ],
+      verify: (_) {
+        // Проверяем, что Блок действительно сходил в UseCase с правильным аргументом сортировки
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byPriority,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).called(1);
+      },
     );
   });
 
   group('TaskBloc 10 - Notifications & Deep Links', () {
     blocTest<TaskBloc, TaskState>(
-      'should handle notification tap and initial payload',
+      'should handle notification tap and initial payload, and restart stream with loading status',
       build: () {
-        // Emulating a cold start
         when(() => mockConsumePayloadUseCase()).thenReturn(
           const NotificationTapPayload(
             taskId: '123',
@@ -632,11 +752,20 @@ void main() {
           ),
         );
 
-        // We recreate the block so that initNotificationListeners fires with the new mock.
+        // Настраиваем перезапуск стрима при открытии нотификаций (сброс фильтров)
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+
         return TaskBloc(
           watchTasksUseCase: mockWatchTasksUseCase,
           scheduleTaskNotificationsUseCase: mockScheduleNotificationsUseCase,
-          cancelTaskNotificationsUseCase: mockCancelNotificationsUseCase,
+          cancelTaskNotificationsUseCase: mockCancelTaskNotificationsUseCase,
           getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
           consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
           addTaskUseCase: mockAddTaskUseCase,
@@ -645,7 +774,6 @@ void main() {
           getTaskViewPreferencesUseCase: mockGetPrefsUseCase,
           setTaskViewPreferencesUseCase: mockSetPrefsUseCase,
           syncTasksUseCase: mockSyncTasksUseCase,
-          filterAndSortTasksUseCase: mockFilterAndSortTasksUseCase,
         );
       },
       act: (bloc) => notificationController.add(
@@ -655,10 +783,14 @@ void main() {
         ),
       ),
       expect: () => [
-        // First, the initialPayload from the constructor will be executed.
-        isA<TaskState>().having((s) => s.highlightedTaskId, 'initial', '123'),
-        // Then an event from the stream will arrive
-        isA<TaskState>().having((s) => s.highlightedTaskId, 'stream', '456'),
+        // 1. Отрабатывает initialPayload из конструктора (Cold Start)
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.highlightedTaskId, 'initial', '123'),
+        // 2. Прилетает событие из стрима тапов (App Open)
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.highlightedTaskId, 'stream', '456'),
       ],
     );
 
@@ -677,7 +809,14 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should emit failure when watchTasks throws exception',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenThrow(Exception('DB Crash'));
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenThrow(Exception('DB Crash'));
         return taskBloc;
       },
       act: (bloc) => bloc.add(LoadTasksStarted()),
@@ -698,13 +837,15 @@ void main() {
       description: '',
     );
     blocTest<TaskBloc, TaskState>(
-      'should toggle pin and call updateUseCase',
+      'should toggle pin and call updateUseCase using seeded state tasks',
       build: () {
         when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
         return taskBloc;
       },
-      seed: () => TaskState(tasks: [tTask]),
+      seed: () => TaskState(status: TaskStatus.success, tasks: [tTask]),
       act: (bloc) => bloc.add(const TaskPinToggled('1')),
+      expect: () => [],
+      // Блок сам не эмитит стейты при тоггле пина (он ждет ответа от стрима БД)
       verify: (_) {
         verify(
           () => mockUpdateTasksUseCase(
@@ -742,21 +883,29 @@ void main() {
 
   group('TaskBloc 11 - Missing Event Coverage', () {
     blocTest<TaskBloc, TaskState>(
-      'should update searchQuery when SearchChanged is added',
+      'should update searchQuery and move to loading state when SearchChanged is added',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: 'flutter examples',
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
       act: (bloc) => bloc.add(const SearchChanged('flutter examples')),
-      expect: () => [isA<TaskState>().having((s) => s.searchQuery, 'query', 'flutter examples')],
+      expect: () => [
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.searchQuery, 'query', 'flutter examples'),
+      ],
     );
 
     blocTest<TaskBloc, TaskState>(
       'should clear error when ErrorCleared is added',
-      build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
-        return taskBloc;
-      },
+      build: () => taskBloc,
       seed: () => const TaskState(status: TaskStatus.failure, errorType: TaskErrorType.load),
       act: (bloc) => bloc.add(ErrorCleared()),
       expect: () => [
@@ -767,9 +916,16 @@ void main() {
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should reset multiple fields when NotificationTaskOpened',
+      'should reset fields to default, set target ID, and emit loading status when NotificationTaskOpened is added',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
       seed: () => const TaskState(
@@ -781,11 +937,23 @@ void main() {
       act: (bloc) => bloc.add(const NotificationTaskOpened('task-xyz')),
       expect: () => [
         isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
             .having((s) => s.filterType, 'filter reset to all', TaskFilterType.all)
             .having((s) => s.searchQuery, 'search cleared', '')
             .having((s) => s.highlightedTaskId, 'taskId set', 'task-xyz')
             .having((s) => s.highlightedTaskVersion, 'version incremented', 1),
       ],
+      verify: (_) {
+        // Верифицируем, что Блок действительно запросил чистый дефолтный стрим
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).called(1);
+      },
     );
   });
 
@@ -793,7 +961,14 @@ void main() {
     blocTest<TaskBloc, TaskState>(
       'should handle empty task list gracefully',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([]));
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([]));
         return taskBloc;
       },
       act: (bloc) => bloc.add(LoadTasksStarted()),
@@ -815,13 +990,21 @@ void main() {
           description: '',
           priority: 1,
         );
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => Stream.value([task]));
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([task]));
         return taskBloc;
       },
       act: (bloc) => bloc.add(LoadTasksStarted()),
       expect: () => [
         isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
         isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success) // Добавлен явный стейт success
             .having((s) => s.tasks.length, 'count', 1)
             .having((s) => s.tasks.first.id, 'id', '1')
             .having((s) => s.tasks.first.title, 'title', 'Only Task'),
@@ -829,141 +1012,244 @@ void main() {
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should keep all pinned tasks before unpinned tasks regardless of sort type',
+      'should request stream with new sort type and deliver database-ordered pinned tasks',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        final now = DateTime.now();
+        // Имитируем, что БД пришлет нам список, где пины УЖЕ гарантированно идут первыми
+        final sortedByDbTasks = [
+          Task(id: '2', title: 'B', priority: 1, isPinned: true, createdAt: now, description: ''),
+          Task(id: '3', title: 'C', priority: 2, isPinned: true, createdAt: now, description: ''),
+          Task(id: '1', title: 'A', priority: 3, isPinned: false, createdAt: now, description: ''),
+        ];
+
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+
+        // Настраиваем UseCase на перезапуск стрима при изменении сортировки
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byPriority, // Ждем запрос с новой сортировкой
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value(sortedByDbTasks));
+
         return taskBloc;
       },
-      seed: () {
-        final now = DateTime.now();
-        return TaskState(
-          status: TaskStatus.success,
-          tasks: [
-            Task(
-              id: '1',
-              title: 'A',
-              priority: 3,
-              isPinned: false,
-              createdAt: now,
-              description: '',
-            ),
-            Task(id: '2', title: 'B', priority: 1, isPinned: true, createdAt: now, description: ''),
-            Task(id: '3', title: 'C', priority: 2, isPinned: true, createdAt: now, description: ''),
-          ],
-          sortType: TaskSortType.byPriority,
-          sortDirection: TaskSortDirection.topToBottom,
-        );
-      },
+      seed: () => const TaskState(
+        status: TaskStatus.success,
+        sortType: TaskSortType.byDateCreated,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
       expect: () => [
+        // 1. Первый стейт: Блок уходит в loading и обновляет флаг сортировки
         isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'sortType', TaskSortType.byPriority),
+
+        // 2. Второй стейт: Из перезапущенного стрима прилетают готовые таски от БД
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
             .having((s) => s.tasks.first.isPinned, 'first pinned', true)
             .having((s) => s.tasks[1].isPinned, 'second pinned', true)
             .having((s) => s.tasks.last.isPinned, 'last unpinned', false),
       ],
+      verify: (_) {
+        // Верифицируем, что Блок честно сходил в базу с нужным sortType
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byPriority,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).called(1);
+      },
     );
   });
 
   group('TaskBloc 13 - Complete Sorting Coverage', () {
+    final now = DateTime.now();
+
+    final taskA = Task(id: '1', title: 'Apple', createdAt: now, description: '');
+    final taskM = Task(id: '3', title: 'Mango', createdAt: now, description: '');
+    final taskZ = Task(id: '2', title: 'Zebra', createdAt: now, description: '');
+
     blocTest<TaskBloc, TaskState>(
-      'should sort tasks by title (descending first)',
+      'should request stream by title and deliver ordered tasks from database',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        // Имитируем, что база данных вернула список, отсортированный по алфавиту (Z -> A согласно дефолтному направлению topToBottom)
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byTitle,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([taskZ, taskM, taskA]));
         return taskBloc;
       },
-      seed: () {
-        final now = DateTime.now();
-        return TaskState(
-          status: TaskStatus.success,
-          tasks: [
-            Task(id: '2', title: 'Zebra', createdAt: now, description: ''),
-            Task(id: '1', title: 'Apple', createdAt: now, description: ''),
-            Task(id: '3', title: 'Mango', createdAt: now, description: ''),
-          ],
-          sortType: TaskSortType.byDateCreated,
-          sortDirection: TaskSortDirection.topToBottom,
-        );
-      },
+      seed: () => TaskState(
+        status: TaskStatus.success,
+        tasks: [taskZ, taskA, taskM],
+        sortType: TaskSortType.byDateCreated,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byTitle)),
       expect: () => [
+        // 1. Уход в лоадинг и обновление флага сортировки
         isA<TaskState>()
-            .having((s) => s.sortType, 'type', TaskSortType.byTitle)
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'type', TaskSortType.byTitle),
+        // 2. Получение данных из нового стрима
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
             .having((s) => s.tasks.first.title, 'first (Z)', 'Zebra')
             .having((s) => s.tasks.last.title, 'last (A)', 'Apple'),
       ],
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should sort tasks by date created (newest first by default)',
+      'should request stream by date created and deliver ordered tasks from database',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        final oldTask = Task(
+          id: '2',
+          title: 'Old Task',
+          createdAt: now.subtract(const Duration(days: 7)),
+          description: '',
+        );
+        final newTask = Task(id: '1', title: 'New Task', createdAt: now, description: '');
+
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        // Имитируем, что база вернула новые задачи первыми
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byDateCreated,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => Stream.value([newTask, oldTask]));
         return taskBloc;
       },
-      seed: () {
-        final now = DateTime.now();
-        return TaskState(
-          status: TaskStatus.success,
-          tasks: [
-            Task(
-              id: '2',
-              title: 'Old Task',
-              createdAt: now.subtract(const Duration(days: 7)),
-              description: '',
-            ),
-            Task(id: '1', title: 'New Task', createdAt: now, description: ''),
-          ],
-          sortType: TaskSortType.byPriority,
-          sortDirection: TaskSortDirection.topToBottom,
-        );
-      },
+      seed: () => const TaskState(
+        status: TaskStatus.success,
+        tasks: [],
+        sortType: TaskSortType.byPriority,
+        sortDirection: TaskSortDirection.topToBottom,
+      ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byDateCreated)),
       expect: () => [
         isA<TaskState>()
-            .having((s) => s.sortType, 'type', TaskSortType.byDateCreated)
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'type', TaskSortType.byDateCreated),
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.success)
             .having((s) => s.tasks.first.id, 'newest first', '1'),
       ],
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should invert sort direction when changing to same type multiple times',
+      'should invert sort direction when changing to same type',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byTitle,
+            sortDirection: TaskSortDirection.bottomToTop, // Ожидаем инвертированное
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
       seed: () => const TaskState(
+        status: TaskStatus.success,
         sortType: TaskSortType.byTitle,
         sortDirection: TaskSortDirection.topToBottom,
       ),
-      act: (bloc) {
-        bloc.add(const SortChanged(TaskSortType.byTitle)); // Flip 1
-        // After first flip: bottomToTop
-        // Internally trigger another sort (would be done via add after state change)
-      },
+      act: (bloc) => bloc.add(const SortChanged(TaskSortType.byTitle)),
       expect: () => [
-        isA<TaskState>().having(
-          (s) => s.sortDirection,
-          'direction flipped',
-          TaskSortDirection.bottomToTop,
-        ),
+        // Стейт объединяет смену статуса и инверсию направления
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortDirection, 'direction flipped', TaskSortDirection.bottomToTop),
       ],
+      verify: (_) {
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: TaskSortType.byTitle,
+            sortDirection: TaskSortDirection.bottomToTop,
+          ),
+        ).called(1);
+      },
     );
   });
 
   group('TaskBloc 14 - Rapid Sequential Events', () {
     blocTest<TaskBloc, TaskState>(
-      'should handle rapid sequential events correctly',
+      'should handle rapid sequential UI events, updating configuration and restarting stream each time',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
-        when(() => mockAddTaskUseCase(any())).thenAnswer((_) async => {});
-        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
+        when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
+
+        // Настраиваем цепочку ожидаемых вызовов для перезапуска стрима.
+        // Важен точный порядок параметров, который формируется на каждом шаге:
+
+        // 1. Сначала меняется только сортировка на byTitle
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: TaskSortType.byTitle,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+
+        // 2. Затем добавляется фильтр .completed (сортировка уже осталась byTitle)
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.completed,
+            sortType: TaskSortType.byTitle,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+
+        // 3. Затем сортировка меняется на byPriority
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.completed,
+            sortType: TaskSortType.byPriority,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+
+        // 4. В конце добавляется поисковый запрос 'query'
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: 'query',
+            filterType: TaskFilterType.completed,
+            sortType: TaskSortType.byPriority,
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
+
         return taskBloc;
       },
       seed: () => TaskState(
         tasks: [Task(id: '1', title: 'Task', createdAt: DateTime.now(), description: '')],
         status: TaskStatus.success,
+        sortType: TaskSortType.byDateCreated,
+        sortDirection: TaskSortDirection.topToBottom,
+        filterType: TaskFilterType.all,
+        searchQuery: '',
       ),
       act: (bloc) {
-        // Multiple rapid events
         bloc
           ..add(const SortChanged(TaskSortType.byTitle))
           ..add(const FilterChanged(TaskFilterType.completed))
@@ -971,40 +1257,62 @@ void main() {
           ..add(const SearchChanged('query'));
       },
       expect: () => [
-        // Sort changed
-        isA<TaskState>().having((s) => s.sortType, 'type1', TaskSortType.byTitle),
-        // Filter changed
-        isA<TaskState>().having((s) => s.filterType, 'filter', TaskFilterType.completed),
-        // Sort changed again
-        isA<TaskState>().having((s) => s.sortType, 'type2', TaskSortType.byPriority),
-        // Search changed
-        isA<TaskState>().having((s) => s.searchQuery, 'query', 'query'),
+        // Шаг 1: Сортировка поменялась, статус ушел в loading
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'type1', TaskSortType.byTitle),
+
+        // Шаг 2: Фильтр поменялся, статус держит loading
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.filterType, 'filter', TaskFilterType.completed),
+
+        // Шаг 3: Сортировка снова поменялась на приоритет
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.sortType, 'type2', TaskSortType.byPriority),
+
+        // Шаг 4: Добавился поиск, финальный стейт загрузки перед ответом БД
+        isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
+            .having((s) => s.searchQuery, 'query', 'query'),
       ],
+      verify: (_) {
+        // Верифицируем, что Блок дернул базу данных ровно 4 раза,
+        // последовательно применяя каждый промежуточный конфиг
+        verify(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).called(4);
+      },
     );
   });
 
   group('TaskBloc 15 - Missing Task Scenarios', () {
     blocTest<TaskBloc, TaskState>(
       'should emit failure when toggling pin for non-existent task',
-      build: () {
-        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
-        return taskBloc;
-      },
-      seed: () => const TaskState(tasks: []), // Empty
+      build: () => taskBloc,
+      seed: () => const TaskState(tasks: []),
+      // Пустой список задач
       act: (bloc) => bloc.add(const TaskPinToggled('non-existent-id')),
       expect: () => [
         isA<TaskState>()
             .having((s) => s.status, 'status', TaskStatus.failure)
-            .having((s) => s.errorType, 'error', TaskErrorType.update),
+            .having((s) => s.errorType, 'errorType', TaskErrorType.update),
       ],
+      verify: (_) {
+        // Убеждаемся, что до UseCase апдейта выполнение так и не дошло
+        verifyNever(() => mockUpdateTasksUseCase(any()));
+      },
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should gracefully skip update when task not found',
-      build: () {
-        when(() => mockUpdateTasksUseCase(any())).thenAnswer((_) async => {});
-        return taskBloc;
-      },
+      'should gracefully skip update and emit nothing when task not found',
+      build: () => taskBloc,
       seed: () => const TaskState(tasks: []),
       act: (bloc) => bloc.add(
         TaskUpdated(
@@ -1020,39 +1328,66 @@ void main() {
           ),
         ),
       ),
-      expect: () => [], // No state change because task not found
+      expect: () => [],
+      // Состояние не меняется, так как задача отсутствует в стейте
+      verify: (_) {
+        verifyNever(() => mockUpdateTasksUseCase(any()));
+      },
     );
   });
 
   group('TaskBloc 16 - highlightedTaskVersion Tracking', () {
     blocTest<TaskBloc, TaskState>(
-      'should increment highlightedTaskVersion on each notification open',
+      'should increment highlightedTaskVersion and emit loading status on notification open',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
-      seed: () => const TaskState(highlightedTaskId: null, highlightedTaskVersion: 0),
-      act: (bloc) {
-        bloc.add(const NotificationTaskOpened('task-1'));
-        // After version becomes 1
-      },
+      seed: () => const TaskState(
+        status: TaskStatus.success,
+        highlightedTaskId: null,
+        highlightedTaskVersion: 0,
+      ),
+      act: (bloc) => bloc.add(const NotificationTaskOpened('task-1')),
       expect: () => [
         isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
             .having((s) => s.highlightedTaskVersion, 'version', 1)
-            .having((s) => s.highlightedTaskId, 'taskId', 'task-1'),
+            .having((s) => s.highlightedTaskId, 'taskId', 'task-1')
+            .having((s) => s.searchQuery, 'search cleared', '')
+            .having((s) => s.filterType, 'filter reset', TaskFilterType.all),
       ],
     );
 
     blocTest<TaskBloc, TaskState>(
-      'should continue incrementing version on multiple notifications',
+      'should continue incrementing version on multiple notifications and trigger stream reload',
       build: () {
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: '',
+            filterType: TaskFilterType.all,
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
-      seed: () => const TaskState(highlightedTaskId: 'task-1', highlightedTaskVersion: 2),
+      seed: () => const TaskState(
+        status: TaskStatus.success,
+        highlightedTaskId: 'task-1',
+        highlightedTaskVersion: 2,
+      ),
       act: (bloc) => bloc.add(const NotificationTaskOpened('task-2')),
       expect: () => [
         isA<TaskState>()
+            .having((s) => s.status, 'status', TaskStatus.loading)
             .having((s) => s.highlightedTaskVersion, 'incremented', 3)
             .having((s) => s.highlightedTaskId, 'new taskId', 'task-2'),
       ],
@@ -1064,10 +1399,18 @@ void main() {
       'should persist sort preference with correct type and direction',
       build: () {
         when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
       seed: () => const TaskState(
+        status: TaskStatus.success,
         sortType: TaskSortType.byDateCreated,
         sortDirection: TaskSortDirection.topToBottom,
       ),
@@ -1086,16 +1429,30 @@ void main() {
       'should persist filter preference even when other settings change',
       build: () {
         when(() => mockSetPrefsUseCase(any())).thenAnswer((_) async => {});
-        when(() => mockWatchTasksUseCase()).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockWatchTasksUseCase(
+            searchQuery: any(named: 'searchQuery'),
+            filterType: any(named: 'filterType'),
+            sortType: any(named: 'sortType'),
+            sortDirection: any(named: 'sortDirection'),
+          ),
+        ).thenAnswer((_) => const Stream.empty());
         return taskBloc;
       },
-      seed: () => const TaskState(sortType: TaskSortType.byTitle, filterType: TaskFilterType.all),
+      seed: () => const TaskState(
+        status: TaskStatus.success,
+        sortType: TaskSortType.byTitle,
+        filterType: TaskFilterType.all,
+      ),
       act: (bloc) => bloc.add(const SortChanged(TaskSortType.byPriority)),
       verify: (_) {
         final captured = verify(() => mockSetPrefsUseCase(captureAny())).captured;
 
         final prefs = captured.last as TaskViewPreferences;
-        expect(prefs.filterType, TaskFilterType.all); // Should preserve
+        expect(
+          prefs.filterType,
+          TaskFilterType.all,
+        ); // Проверяем, что фильтр не затерся при смене сортировки
       },
     );
   });

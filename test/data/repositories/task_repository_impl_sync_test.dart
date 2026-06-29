@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:collab_tasks/core/enums/task_filter_type.dart';
+import 'package:collab_tasks/core/enums/task_sort_direction.dart';
+import 'package:collab_tasks/core/enums/task_sort_type.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
@@ -190,7 +193,13 @@ class FakeTasksLocalDataSource implements TasksLocalDataSource {
   }
 
   @override
-  Stream<List<Task>> watchTasks({required String ownerId}) {
+  Stream<List<Task>> watchTasks({
+    required String ownerId,
+    required String searchQuery,
+    required TaskFilterType filterType,
+    required TaskSortType sortType,
+    required TaskSortDirection sortDirection,
+  }) {
     return Stream.value(_tasksByOwner[ownerId]?.values.toList(growable: false) ?? const []);
   }
 }

@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:collab_tasks/core/attachment_files/attachment_file_service_io.dart';
+import 'package:collab_tasks/core/enums/task_filter_type.dart';
+import 'package:collab_tasks/core/enums/task_sort_direction.dart';
+import 'package:collab_tasks/core/enums/task_sort_type.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
@@ -172,7 +175,12 @@ class FakeTaskRepository implements TaskRepository {
   }
 
   @override
-  Stream<List<Task>> watchTasks() {
+  Stream<List<Task>> watchTasks({
+    required String searchQuery,
+    required TaskFilterType filterType,
+    required TaskSortType sortType,
+    required TaskSortDirection sortDirection,
+  }) {
     throw UnimplementedError();
   }
 }
