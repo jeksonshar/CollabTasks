@@ -5,6 +5,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.d
 import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/filter_and_sort_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/sync_tasks_use_case.dart';
@@ -37,3 +38,5 @@ class MockConsumeInitialNotificationPayloadUseCase extends Mock
     implements ConsumeInitialNotificationPayloadUseCase {}
 
 class MockSyncTasksUseCase extends Mock implements SyncTasksUseCase {}
+
+class MockFilterAndSortTasksUseCase extends Mock implements FilterAndSortTasksUseCase {}

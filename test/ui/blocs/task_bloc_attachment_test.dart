@@ -9,6 +9,7 @@ import 'package:collab_tasks/features/tasks/data/notifications/notification_tap_
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/filter_and_sort_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_state.dart';
@@ -30,6 +31,7 @@ void main() {
   late MockGetNotificationTapStreamUseCase getNotificationStreamUseCase;
   late MockConsumeInitialNotificationPayloadUseCase consumePayloadUseCase;
   late MockSyncTasksUseCase syncTasksUseCase;
+  late MockFilterAndSortTasksUseCase filterAndSortTasksUseCase;
   late StreamController<NotificationTapPayload> notificationController;
 
   setUpAll(registerTestFallbackValues);
@@ -46,6 +48,7 @@ void main() {
     getNotificationStreamUseCase = MockGetNotificationTapStreamUseCase();
     consumePayloadUseCase = MockConsumeInitialNotificationPayloadUseCase();
     syncTasksUseCase = MockSyncTasksUseCase();
+    filterAndSortTasksUseCase = MockFilterAndSortTasksUseCase();
     notificationController = StreamController<NotificationTapPayload>.broadcast();
 
     when(() => getPrefsUseCase()).thenAnswer(
@@ -61,6 +64,23 @@ void main() {
     when(() => syncTasksUseCase()).thenAnswer((_) async {});
     when(() => getNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
     when(() => consumePayloadUseCase()).thenReturn(null);
+    when(
+      () => filterAndSortTasksUseCase(
+        tasks: any(named: 'tasks'),
+        filterType: any(named: 'filterType'),
+        sortType: any(named: 'sortType'),
+        sortDirection: any(named: 'sortDirection'),
+        searchQuery: any(named: 'searchQuery'),
+      ),
+    ).thenAnswer((invocation) {
+      return const FilterAndSortTasksUseCase().call(
+        tasks: invocation.namedArguments[#tasks] as List<Task>,
+        filterType: invocation.namedArguments[#filterType] as TaskFilterType,
+        sortType: invocation.namedArguments[#sortType] as TaskSortType,
+        sortDirection: invocation.namedArguments[#sortDirection] as TaskSortDirection,
+        searchQuery: invocation.namedArguments[#searchQuery] as String,
+      );
+    });
   });
 
   tearDown(() async {
@@ -80,6 +100,7 @@ void main() {
       getNotificationTapStreamUseCase: getNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: consumePayloadUseCase,
       syncTasksUseCase: syncTasksUseCase,
+      filterAndSortTasksUseCase: filterAndSortTasksUseCase,
     );
   }
 
@@ -181,27 +202,83 @@ void main() {
       },
     );
 
-    test('filters tasks with and without attachments', () {
-      final withFile = Task(
-        id: 'with-file',
-        createdAt: DateTime.utc(2026),
-        title: 'With file',
-        description: '',
-        attachments: const [
-          TaskAttachment(id: 'file-1', name: 'notes.txt', extension: 'txt', sizeBytes: 1),
-        ],
-      );
-      final withoutFile = Task(
-        id: 'without-file',
-        createdAt: DateTime.utc(2026),
-        title: 'Without file',
-        description: '',
-      );
+    blocTest<TaskBloc, TaskState>(
+      'filters tasks with files when FilterChanged(TaskFilterType.withFiles) is added',
+      build: () {
+        final withFile = Task(
+          id: 'with-file',
+          createdAt: DateTime.utc(2026),
+          title: 'With file',
+          description: '',
+          attachments: const [
+            TaskAttachment(id: 'file-1', name: '1.txt', extension: 'txt', sizeBytes: 1),
+          ],
+        );
+        final withoutFile = Task(
+          id: 'without-file',
+          createdAt: DateTime.utc(2026),
+          title: 'Without file',
+          description: '',
+        );
 
-      final state = TaskState(tasks: [withFile, withoutFile]);
+        // Настраиваем стрим для LoadTasksStarted
+        when(() => watchTasksUseCase()).thenAnswer((_) => Stream.value([withFile, withoutFile]));
+        return buildBloc();
+      },
+      act: (bloc) async {
+        bloc.add(LoadTasksStarted());
+        // Ждем, пока отработает подписка и загрузит данные в кэш Блока
+        await pumpEventQueue();
+        bloc.add(const FilterChanged(TaskFilterType.withFiles));
+      },
+      expect: () => [
+        // 1. Стейт от LoadTasksStarted (загрузка)
+        isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
+        // 2. Стейт с полным списком задач из стрима
+        isA<TaskState>().having((s) => s.tasks, 'tasks', hasLength(2)),
+        // 3. Стейт от FilterChanged, где UseCase отфильтровал список
+        isA<TaskState>()
+            .having((s) => s.filterType, 'filterType', TaskFilterType.withFiles)
+            .having((s) => s.tasks, 'tasks', hasLength(1))
+            .having((s) => s.tasks.first.id, 'task id', 'with-file'),
+      ],
+    );
 
-      expect(state.copyWith(filterType: TaskFilterType.withFiles).filteredTasks, [withFile]);
-      expect(state.copyWith(filterType: TaskFilterType.withoutFiles).filteredTasks, [withoutFile]);
-    });
+    blocTest<TaskBloc, TaskState>(
+      'filters tasks without files when FilterChanged(TaskFilterType.withoutFiles) is added',
+      build: () {
+        final withFile = Task(
+          id: 'with-file',
+          createdAt: DateTime.utc(2026),
+          title: 'With file',
+          description: '',
+          attachments: const [
+            TaskAttachment(id: 'file-1', name: '1.txt', extension: 'txt', sizeBytes: 1),
+          ],
+        );
+        final withoutFile = Task(
+          id: 'without-file',
+          createdAt: DateTime.utc(2026),
+          title: 'Without file',
+          description: '',
+        );
+
+        when(() => watchTasksUseCase()).thenAnswer((_) => Stream.value([withFile, withoutFile]));
+        return buildBloc();
+      },
+      act: (bloc) async {
+        bloc.add(LoadTasksStarted());
+        await pumpEventQueue();
+        bloc.add(const FilterChanged(TaskFilterType.withoutFiles));
+      },
+      expect: () => [
+        isA<TaskState>().having((s) => s.status, 'status', TaskStatus.loading),
+        isA<TaskState>().having((s) => s.tasks, 'tasks', hasLength(2)),
+        isA<TaskState>()
+            .having((s) => s.filterType, 'filterType', TaskFilterType.withoutFiles)
+            .having((s) => s.tasks, 'tasks', hasLength(1))
+            .having((s) => s.tasks.first.id, 'task id', 'without-file'),
+      ],
+    );
   });
 }

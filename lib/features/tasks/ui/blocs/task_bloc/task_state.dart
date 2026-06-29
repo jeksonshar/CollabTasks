@@ -11,6 +11,8 @@ enum TaskAction { add, update, delete, none }
 
 class TaskState extends Equatable {
   final TaskStatus status;
+
+  // ВАЖНО: теперь здесь всегда хранится уже отфильтрованный и отсортированный список для UI
   final List<Task> tasks;
   final TaskErrorType? errorType;
   final TaskSortType sortType;
@@ -36,42 +38,6 @@ class TaskState extends Equatable {
     this.highlightedTaskVersion = 0,
   });
 
-  List<Task> get filteredTasks {
-    List<Task> result = tasks;
-
-    // Apply Filter
-    switch (filterType) {
-      case TaskFilterType.all:
-        break;
-      case TaskFilterType.completed:
-        result = result.where((t) => t.isCompleted).toList();
-        break;
-      case TaskFilterType.incomplete:
-        result = result.where((t) => !t.isCompleted).toList();
-        break;
-      case TaskFilterType.withFiles:
-        result = result.where((t) => t.attachments.isNotEmpty).toList();
-        break;
-      case TaskFilterType.withoutFiles:
-        result = result.where((t) => t.attachments.isEmpty).toList();
-        break;
-      case TaskFilterType.withDeadline:
-        result = result.where((t) => t.deadline != null).toList();
-        break;
-      case TaskFilterType.withoutDeadline:
-        result = result.where((t) => t.deadline == null).toList();
-        break;
-    }
-
-    // Apply Search (only if 3 or more characters)
-    if (searchQuery.length >= 3) {
-      final query = searchQuery.toLowerCase();
-      result = result.where((t) => t.title.toLowerCase().contains(query)).toList();
-    }
-
-    return result;
-  }
-
   TaskState copyWith({
     TaskStatus? status,
     List<Task>? tasks,
@@ -95,7 +61,6 @@ class TaskState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       lastAction: lastAction ?? this.lastAction,
       lastActionTaskTitle: lastActionTaskTitle,
-      // ?? this. Removed, need for TaskBloc 10 - Coverage Push
       highlightedTaskId: highlightedTaskId ?? this.highlightedTaskId,
       highlightedTaskVersion: highlightedTaskVersion ?? this.highlightedTaskVersion,
     );

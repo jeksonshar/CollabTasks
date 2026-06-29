@@ -33,6 +33,7 @@ void main() {
   late MockGetNotificationTapStreamUseCase mockGetNotificationStreamUseCase;
   late MockConsumeInitialNotificationPayloadUseCase mockConsumePayloadUseCase;
   late MockSyncTasksUseCase mockSyncTasksUseCase;
+  late MockFilterAndSortTasksUseCase mockFilterAndSortTasksUseCase;
   late StreamController<NotificationTapPayload> notificationController;
 
   setUpAll(() {
@@ -52,6 +53,7 @@ void main() {
     mockGetNotificationStreamUseCase = MockGetNotificationTapStreamUseCase();
     mockConsumePayloadUseCase = MockConsumeInitialNotificationPayloadUseCase();
     mockSyncTasksUseCase = MockSyncTasksUseCase();
+    mockFilterAndSortTasksUseCase = MockFilterAndSortTasksUseCase();
     // Initialize the controller BEFORE creating the BLoC
     notificationController = StreamController<NotificationTapPayload>.broadcast();
   }
@@ -77,6 +79,20 @@ void main() {
     // 3. Rest
     when(() => mockCancelNotificationsUseCase(any())).thenAnswer((_) async => {});
     when(() => mockSyncTasksUseCase()).thenAnswer((_) async => {});
+    // Filter and sort (identity: just return input as is)
+    when(
+      () => mockFilterAndSortTasksUseCase(
+        tasks: any(named: 'tasks'),
+        filterType: any(named: 'filterType'),
+        sortType: any(named: 'sortType'),
+        sortDirection: any(named: 'sortDirection'),
+        searchQuery: any(named: 'searchQuery'),
+      ),
+    ).thenAnswer((invocation) {
+      // Extract tasks from named arguments
+      final tasks = invocation.namedArguments.values.first as List<Task>? ?? <Task>[];
+      return tasks;
+    });
     // Overriding behavior for notification tests
     when(() => mockGetNotificationStreamUseCase()).thenAnswer((_) => notificationController.stream);
   }
@@ -97,6 +113,7 @@ void main() {
       getNotificationTapStreamUseCase: mockGetNotificationStreamUseCase,
       consumeInitialNotificationPayloadUseCase: mockConsumePayloadUseCase,
       syncTasksUseCase: mockSyncTasksUseCase,
+      filterAndSortTasksUseCase: mockFilterAndSortTasksUseCase, // ??
     );
   });
 
@@ -628,6 +645,7 @@ void main() {
           getTaskViewPreferencesUseCase: mockGetPrefsUseCase,
           setTaskViewPreferencesUseCase: mockSetPrefsUseCase,
           syncTasksUseCase: mockSyncTasksUseCase,
+          filterAndSortTasksUseCase: mockFilterAndSortTasksUseCase,
         );
       },
       act: (bloc) => notificationController.add(

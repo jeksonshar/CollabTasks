@@ -12,6 +12,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/add_task_use_case.d
 import 'package:collab_tasks/features/tasks/domain/use_cases/cancel_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/consume_initial_notification_payload_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/delete_task_use_case.dart';
+import 'package:collab_tasks/features/tasks/domain/use_cases/filter_and_sort_tasks_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/get_notification_tap_stream_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/schedule_task_notifications_use_case.dart';
 import 'package:collab_tasks/features/tasks/domain/use_cases/sync_tasks_use_case.dart';
@@ -36,7 +37,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final ConsumeInitialNotificationPayloadUseCase consumeInitialNotificationPayloadUseCase;
   final SyncTasksUseCase syncTasksUseCase;
 
+  final FilterAndSortTasksUseCase filterAndSortTasksUseCase;
+
   StreamSubscription? _notificationTapSubscription;
+
+  // Кэш для исходного списка из БД, чтобы фильтровать/сортировать его на лету
+  List<Task> _rawTasks = [];
 
   TaskBloc({
     required this.watchTasksUseCase,
@@ -50,19 +56,17 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required this.getNotificationTapStreamUseCase,
     required this.consumeInitialNotificationPayloadUseCase,
     required this.syncTasksUseCase,
+    required this.filterAndSortTasksUseCase,
   }) : super(const TaskState()) {
-    // 1. Main Event: Base Surveillance Launch
     on<LoadTasksStarted>(_onLoadTasks);
     on<TasksRefreshRequested>(_onTasksRefreshRequested);
-    // 2. The remaining events now only perform an Action.
     on<TaskAdded>(_onAddTask);
     on<TaskUpdated>(_onUpdateTask);
     on<TaskDeleted>(_onDeleteTask);
     on<TaskPinToggled>(_onToggleTaskPin);
-    // UI events
     on<SortChanged>(_onSortChanged);
     on<FilterChanged>(_onFilterChanged);
-    on<SearchChanged>((event, emit) => emit(state.copyWith(searchQuery: event.query)));
+    on<SearchChanged>(_onSearchChanged);
     on<ErrorCleared>((event, emit) => emit(state.copyWith(errorType: null)));
     on<ActionCleared>(
       (event, emit) => emit(state.copyWith(lastAction: TaskAction.none, lastActionTaskTitle: null)),
@@ -91,7 +95,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     emit(state.copyWith(status: TaskStatus.loading));
     try {
       final preferences = await getTaskViewPreferencesUseCase();
-      // We set the initial settings
       emit(
         state.copyWith(
           sortType: preferences.sortType,
@@ -100,18 +103,22 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         ),
       );
 
-      // SUBSCRIBE TO STREAM
-      // This block will work forever as long as Bloc is alive.
-      // Every change in the database will call this code.
       await emit.forEach<List<Task>>(
         watchTasksUseCase(),
         onData: (tasks) {
-          debugPrint('TaskBloc.loadTasks SUCCESS: ${state.tasks}');
+          // Сохраняем актуальный сырой список из БД в кэш класса
+          _rawTasks = tasks;
 
-          return state.copyWith(
-            status: TaskStatus.success,
-            tasks: _sortTasks(tasks, state.sortType, state.sortDirection),
+          // Пропускаем сырые данные через UseCase
+          final processedTasks = filterAndSortTasksUseCase(
+            tasks: _rawTasks,
+            filterType: state.filterType,
+            sortType: state.sortType,
+            sortDirection: state.sortDirection,
+            searchQuery: state.searchQuery,
           );
+
+          return state.copyWith(status: TaskStatus.success, tasks: processedTasks);
         },
         onError: (e, s) {
           _logError('watchTasks', e, s);
@@ -144,8 +151,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       } catch (e, s) {
         _logError('scheduleNotifications', e, s);
       }
-
-      // With the watcher we only notify about the fact of the action
       emit(state.copyWith(lastAction: TaskAction.add, lastActionTaskTitle: task.title));
     } catch (e, s) {
       _logError('_onAddTask', e, s);
@@ -155,15 +160,14 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onUpdateTask(TaskUpdated event, Emitter<TaskState> emit) async {
     try {
-      // 1. Find the old task to save the 'isPinned' status (if it's not in the Draft)
-      // Do this BEFORE updating to avoid a StateError if the stream updates too quickly
-      final taskToUpdate = state.tasks.cast<Task?>().firstWhere(
+      // Ищем в _rawTasks (кэше), чтобы гарантировать точность данных до отправки в БД
+      final taskToUpdate = _rawTasks.cast<Task?>().firstWhere(
         (t) => t?.id == event.id,
         orElse: () => null,
       );
 
       if (taskToUpdate == null) return;
-      // 2. We are creating an updated model
+
       final updatedTask = Task(
         id: event.id,
         createdAt: event.createdAt,
@@ -177,13 +181,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         isPinned: taskToUpdate.isPinned,
       );
 
-      // 3. Sending to the database via UseCase
       await updateTaskUseCase(updatedTask);
-      // 4. Rescheduling notifications only for the changed task.
       await scheduleTaskNotificationsUseCase(updatedTask);
 
-      // 5. We only notify about the fact of the action for the UI (for example, to show the Snack bar)
-      // The tasks list will be updated automatically via WatchTasksUseCase
       emit(state.copyWith(lastAction: TaskAction.update, lastActionTaskTitle: updatedTask.title));
     } catch (e, s) {
       _logError('updateTask', e, s);
@@ -193,7 +193,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onDeleteTask(TaskDeleted event, Emitter<TaskState> emit) async {
     try {
-      final taskToDelete = state.tasks.cast<Task?>().firstWhere(
+      final taskToDelete = _rawTasks.cast<Task?>().firstWhere(
         (t) => t?.id == event.id,
         orElse: () => null,
       );
@@ -213,10 +213,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onToggleTaskPin(TaskPinToggled event, Emitter<TaskState> emit) async {
     try {
-      final task = state.tasks.firstWhere((t) => t.id == event.id);
+      final task = _rawTasks.firstWhere((t) => t.id == event.id);
       final updatedTask = task.copyWith(isPinned: !task.isPinned);
 
-      // just update BD
       await updateTaskUseCase(updatedTask);
     } catch (e, s) {
       _logError('toggleTaskPin', e, s);
@@ -227,18 +226,26 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   Future<void> _onSortChanged(SortChanged event, Emitter<TaskState> emit) async {
     TaskSortDirection newDirection = state.sortDirection;
     if (state.sortType == event.sortType) {
-      newDirection = state.sortDirection.isAscending
+      newDirection = state.sortDirection == TaskSortDirection.topToBottom
           ? TaskSortDirection.bottomToTop
           : TaskSortDirection.topToBottom;
     } else {
       newDirection = TaskSortDirection.topToBottom;
     }
 
+    final processedTasks = filterAndSortTasksUseCase(
+      tasks: _rawTasks,
+      filterType: state.filterType,
+      sortType: event.sortType,
+      sortDirection: newDirection,
+      searchQuery: state.searchQuery,
+    );
+
     emit(
       state.copyWith(
         sortType: event.sortType,
         sortDirection: newDirection,
-        tasks: _sortTasks(state.tasks, event.sortType, newDirection),
+        tasks: processedTasks,
         lastAction: TaskAction.none,
         lastActionTaskTitle: null,
       ),
@@ -252,7 +259,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onFilterChanged(FilterChanged event, Emitter<TaskState> emit) async {
-    emit(state.copyWith(filterType: event.filterType));
+    final processedTasks = filterAndSortTasksUseCase(
+      tasks: _rawTasks,
+      filterType: event.filterType,
+      sortType: state.sortType,
+      sortDirection: state.sortDirection,
+      searchQuery: state.searchQuery,
+    );
+
+    emit(state.copyWith(filterType: event.filterType, tasks: processedTasks));
+
     await _saveTaskViewPreferences(
       sortType: state.sortType,
       sortDirection: state.sortDirection,
@@ -260,14 +276,36 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     );
   }
 
+  Future<void> _onSearchChanged(SearchChanged event, Emitter<TaskState> emit) async {
+    final processedTasks = filterAndSortTasksUseCase(
+      tasks: _rawTasks,
+      filterType: state.filterType,
+      sortType: state.sortType,
+      sortDirection: state.sortDirection,
+      searchQuery: event.query,
+    );
+
+    emit(state.copyWith(searchQuery: event.query, tasks: processedTasks));
+  }
+
   Future<void> _onNotificationTaskOpened(
     NotificationTaskOpened event,
     Emitter<TaskState> emit,
   ) async {
+    // При открытии уведомления сбрасываем фильтры и поиск
+    final processedTasks = filterAndSortTasksUseCase(
+      tasks: _rawTasks,
+      filterType: TaskFilterType.all,
+      sortType: state.sortType,
+      sortDirection: state.sortDirection,
+      searchQuery: '',
+    );
+
     emit(
       state.copyWith(
         filterType: TaskFilterType.all,
         searchQuery: '',
+        tasks: processedTasks,
         highlightedTaskId: event.taskId,
         highlightedTaskVersion: state.highlightedTaskVersion + 1,
       ),
@@ -290,31 +328,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     } catch (e, s) {
       _logError('saveTaskViewPreferences', e, s);
     }
-  }
-
-  List<Task> _sortTasks(List<Task> tasks, TaskSortType type, TaskSortDirection dir) {
-    final pinned = tasks.where((t) => t.isPinned).toList();
-    final others = tasks.where((t) => !t.isPinned).toList();
-
-    int compare<T extends Comparable>(T a, T b) {
-      return dir.isAscending ? b.compareTo(a) : a.compareTo(b);
-    }
-
-    void sortList(List<Task> list) {
-      switch (type) {
-        case TaskSortType.byDateCreated:
-          list.sort((a, b) => compare(a.createdAt, b.createdAt));
-        case TaskSortType.byPriority:
-          list.sort((a, b) => compare(a.priority, b.priority));
-        case TaskSortType.byTitle:
-          list.sort((a, b) => compare(a.title, b.title));
-      }
-    }
-
-    sortList(pinned);
-    sortList(others);
-
-    return [...pinned, ...others];
   }
 
   Future<void> _onTasksRefreshRequested(

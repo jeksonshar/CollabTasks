@@ -76,12 +76,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
           },
         ),
         BlocListener<TaskBloc, TaskState>(
-          listenWhen: (prev, curr) =>
-              prev.tasks != curr.tasks ||
-              prev.sortType != curr.sortType ||
-              prev.sortDirection != curr.sortDirection ||
-              prev.filterType != curr.filterType ||
-              prev.searchQuery != curr.searchQuery,
+          listenWhen: (prev, curr) => prev.tasks != curr.tasks,
           listener: (context, state) {
             setState(() {
               _expansionResetVersion++;
@@ -107,9 +102,9 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final filteredTasks = state.filteredTasks;
+            final tasks = state.tasks;
 
-            if (filteredTasks.isEmpty) {
+            if (tasks.isEmpty) {
               return LayoutBuilder(
                 builder: (context, constraints) {
                   return RefreshIndicator(
@@ -135,7 +130,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
                 context.read<TaskBloc>().add(TasksRefreshRequested(completer));
                 await completer.future;
               },
-              child: _tasksListView(filteredTasks),
+              child: _tasksListView(tasks),
             );
           },
         ),
@@ -173,7 +168,6 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: tasks.length,
-      // separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final item = tasks[index];
         return TaskListTile(
@@ -196,7 +190,6 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
     final result = await showDialog<TaskDraft>(
       context: context,
       builder: (context) => TaskDialog(
-        // flutter_quill dialog
         initialTitle: taskToEdit?.title,
         initialDeltaJson: taskToEdit?.description,
         initialPriority: taskToEdit?.priority ?? 0,
