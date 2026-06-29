@@ -138,7 +138,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SyncTasksUseCase(getIt()))
     ..registerLazySingleton(() => UpdateTaskUseCase(getIt()))
     ..registerLazySingleton(() => DeleteTaskUseCase(getIt()))
-    ..registerLazySingleton(() => FilterAndSortTasksUseCase())
+    ..registerLazySingleton(() => const FilterAndSortTasksUseCase())
     ..registerLazySingleton(() => GetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
@@ -262,7 +262,6 @@ void setupLocator(SharedPreferences sharedPreferences) {
         getNotificationTapStreamUseCase: getIt(),
         consumeInitialNotificationPayloadUseCase: getIt(),
         syncTasksUseCase: getIt(),
-        filterAndSortTasksUseCase: getIt(),
       ),
     );
 }

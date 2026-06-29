@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:collab_tasks/core/enums/task_filter_type.dart';
+import 'package:collab_tasks/core/enums/task_sort_direction.dart';
+import 'package:collab_tasks/core/enums/task_sort_type.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/tasks/data/local/tasks_local_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/remote/tasks_remote_data_source.dart';
@@ -55,19 +58,33 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   @override
-  Stream<List<Task>> watchTasks() {
+  Stream<List<Task>> watchTasks({
+    required String searchQuery,
+    required TaskFilterType filterType,
+    required TaskSortType sortType,
+    required TaskSortDirection sortDirection,
+  }) {
     return _authRepository.watchAuthState().asyncExpand((user) async* {
       if (user == null) {
         yield const <Task>[];
         return;
       }
 
+      // Фоновая синхронизация остается без изменений
       unawaited(
         _syncTasksForOwner(user.id).catchError((error, stackTrace) {
           debugPrint('Background sync failed: $error\n$stackTrace');
         }),
       );
-      yield* _localDataSource.watchTasks(ownerId: user.id);
+
+      // Просто пробрасываем все параметры из Блока/UseCase напрямую в DataSource
+      yield* _localDataSource.watchTasks(
+        ownerId: user.id,
+        searchQuery: searchQuery,
+        filterType: filterType,
+        sortType: sortType,
+        sortDirection: sortDirection,
+      );
     });
   }
 
