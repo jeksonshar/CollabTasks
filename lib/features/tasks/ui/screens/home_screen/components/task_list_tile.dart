@@ -84,7 +84,7 @@ class _TaskListTileState extends State<TaskListTile> {
 
     if (widget.task.isPinned) {
       if (statusWidgets.isNotEmpty) statusWidgets.add(const SizedBox(width: 4));
-      statusWidgets.add(const Icon(Icons.push_pin, size: 16, color: Colors.black87));
+      statusWidgets.add(Icon(Icons.push_pin, size: 16, color: Theme.of(context).iconTheme.color));
     }
 
     if (widget.task.subtasks.isNotEmpty) {

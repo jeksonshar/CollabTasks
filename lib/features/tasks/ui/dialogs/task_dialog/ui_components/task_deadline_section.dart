@@ -123,7 +123,7 @@ class _TaskDeadlineSectionState extends State<TaskDeadlineSection> with L10nMixi
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(localization.deadlineTitle, style: AppTextStyles.bold16Black87Roboto),
+        Text(localization.deadlineTitle, style: AppTextStyles.bold16Roboto(context)),
         const SizedBox(width: 16),
         Expanded(
           child: Align(

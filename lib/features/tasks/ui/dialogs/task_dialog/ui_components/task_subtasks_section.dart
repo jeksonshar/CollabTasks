@@ -77,7 +77,7 @@ class TaskSubtasksSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(localization.subtasksTitle, style: AppTextStyles.bold16Black87Roboto),
+            Text(localization.subtasksTitle, style: AppTextStyles.bold16Roboto(context)),
             const Spacer(),
             TextButton.icon(
               onPressed: _addSubtask,

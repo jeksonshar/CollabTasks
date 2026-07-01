@@ -4,13 +4,17 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+import 'package:collab_tasks/core/theme/app_theme.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
 import 'package:collab_tasks/features/auth/ui/auth_screen/auth_screen.dart';
+import 'package:collab_tasks/features/settings/domain/models/theme_preference.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
+import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.dart';
+import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_state.dart';
 import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/main_screen/main_screen.dart';
 import 'package:collab_tasks/firebase_options.dart';
@@ -61,6 +65,14 @@ Future<void> _configureSelectedAuthBackend() async {
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
+ThemeMode _mapThemeModeToFlutterThemeMode(AppThemeMode themeModeEnum) {
+  return switch (themeModeEnum) {
+    AppThemeMode.light => ThemeMode.light,
+    AppThemeMode.dark => ThemeMode.dark,
+    AppThemeMode.system => ThemeMode.system,
+  };
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -69,30 +81,37 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<LocaleCubit>(create: (_) => getIt<LocaleCubit>()),
+        BlocProvider<ThemeBloc>(create: (_) => getIt<ThemeBloc>()),
         BlocProvider<AuthBloc>(
           create: (_) => getIt<AuthBloc>()..add(const AuthSubscriptionStarted()),
         ),
       ],
-      // Listen to the locale above MaterialApp to change the application configuration
+      // Listen to the locale and theme above MaterialApp to change the application configuration
       child: BlocBuilder<LocaleCubit, Locale?>(
         builder: (context, locale) {
-          return MaterialApp(
-            navigatorKey: globalNavigatorKey,
-            title: 'CollabTasks',
-            locale: locale,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              FlutterQuillLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            ),
-            home: const AppAuthGate(),
+          return BlocBuilder<ThemeBloc, ThemeState>(
+            builder: (context, themeState) {
+              final themeModeValue = _mapThemeModeToFlutterThemeMode(
+                themeState.themePreference.mode,
+              );
+              return MaterialApp(
+                navigatorKey: globalNavigatorKey,
+                title: 'CollabTasks',
+                locale: locale,
+                themeMode: themeModeValue,
+                theme: AppTheme.lightTheme(),
+                darkTheme: AppTheme.darkTheme(),
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  FlutterQuillLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: const AppAuthGate(),
+              );
+            },
           );
         },
       ),

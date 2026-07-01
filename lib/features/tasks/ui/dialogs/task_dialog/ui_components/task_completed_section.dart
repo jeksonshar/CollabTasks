@@ -18,7 +18,7 @@ class TaskCompletedSection extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: AppTextStyles.bold16Black87Roboto),
+        Text(title, style: AppTextStyles.bold16Roboto(context)),
         Checkbox(value: isCompleted, onChanged: (value) => onChanged(value ?? false)),
       ],
     );

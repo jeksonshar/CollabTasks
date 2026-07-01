@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -261,12 +262,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deadlineReachedTitle => 'Deadline reached';
 
   @override
-  String get confirmDeleteSubtask =>
-      'Are you sure you want to delete the subtask?';
+  String get confirmDeleteSubtask => 'Are you sure you want to delete the subtask?';
 
   @override
-  String get confirmDeleteDeadline =>
-      'Are you sure you want to delete the deadline?';
+  String get confirmDeleteDeadline => 'Are you sure you want to delete the deadline?';
 
   @override
   String confirmDeleteFile(Object file) {
@@ -321,8 +320,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'If an account exists for this email, a reset link has been sent.';
 
   @override
-  String get authEnterValidEmailToReset =>
-      'Enter a valid email to reset password.';
+  String get authEnterValidEmailToReset => 'Enter a valid email to reset password.';
 
   @override
   String get authLogOut => 'Log out';
@@ -346,12 +344,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orTitle => 'or';
 
   @override
-  String get authPasswordUpdated =>
-      'Password updated. Sign in with new password.';
+  String get authPasswordUpdated => 'Password updated. Sign in with new password.';
 
   @override
-  String get authVerificationCodeResent =>
-      'Verification code sent again. Check your email.';
+  String get authVerificationCodeResent => 'Verification code sent again. Check your email.';
 
   @override
   String get authAccountConfirmed => 'Account confirmed. You can sign in now.';
@@ -394,8 +390,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupScreenAddGroupFunctionality => 'Add group functionality';
 
   @override
-  String get profileScreenEditProfileFunctionality =>
-      'Edit profile functionality';
+  String get profileScreenEditProfileFunctionality => 'Edit profile functionality';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -405,6 +400,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLanguageUkrainian => 'Ukrainian';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeDark => 'Dark';
+
+  @override
+  String get settingsThemeSystem => 'System';
 
   @override
   String get bytesSuffixB => 'B';
@@ -460,27 +467,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrorOperationNotAllowed => 'Operation is not allowed.';
 
   @override
-  String get authErrorResetNotAvailable =>
-      'Reset password flow is not available for this account.';
+  String get authErrorResetNotAvailable => 'Reset password flow is not available for this account.';
 
   @override
   String get authErrorGoogleSignInNotSupported =>
       'Google Sign-in is not supported on this platform.';
 
   @override
-  String get authErrorNoPasswordProvider =>
-      'This account does not support password reset.';
+  String get authErrorNoPasswordProvider => 'This account does not support password reset.';
 
   @override
-  String get authErrorPasswordResetRequired =>
-      'Password reset is required before sign-in.';
+  String get authErrorPasswordResetRequired => 'Password reset is required before sign-in.';
 
   @override
   String get authErrorCanceledByUser => 'Operation was canceled by user.';
 
   @override
-  String get authErrorConfirmationNotComplete =>
-      'Confirmation is not complete.';
+  String get authErrorConfirmationNotComplete => 'Confirmation is not complete.';
 
   @override
   String get authErrorUnknown => 'Unknown authentication error.';

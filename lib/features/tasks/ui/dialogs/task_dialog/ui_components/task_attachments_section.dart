@@ -153,7 +153,7 @@ class _TaskAttachmentsSectionState extends State<TaskAttachmentsSection> with L1
             // It is necessary that the Text takes up only the available space and does not
             // push the IconButton beyond the Row.
             Expanded(
-              child: Text(localization.attachFileTitle, style: AppTextStyles.bold16Black87Roboto),
+              child: Text(localization.attachFileTitle, style: AppTextStyles.bold16Roboto(context)),
             ),
             IconButton(onPressed: _pickAttachments, icon: const Icon(Icons.attach_file)),
           ],

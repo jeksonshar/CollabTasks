@@ -20,9 +20,12 @@ import 'package:collab_tasks/features/settings/data/repositories/app_settings_re
 import 'package:collab_tasks/features/settings/domain/repositories/app_settings_repository.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/get_saved_language_use_case.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/get_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/get_theme_preference_use_case.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/set_saved_language_use_case.dart';
 import 'package:collab_tasks/features/settings/domain/use_cases/set_task_view_preferences_use_case.dart';
+import 'package:collab_tasks/features/settings/domain/use_cases/set_theme_preference_use_case.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
+import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.dart';
 import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
 import 'package:collab_tasks/features/tasks/data/local/tasks_local_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
@@ -141,6 +144,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => const FilterAndSortTasksUseCase())
     ..registerLazySingleton(() => GetSavedLanguageUseCase(getIt()))
     ..registerLazySingleton(() => SetSavedLanguageUseCase(getIt()))
+    ..registerLazySingleton(() => GetThemePreferenceUseCase(getIt()))
+    ..registerLazySingleton(() => SetThemePreferenceUseCase(getIt()))
     ..registerLazySingleton(() => GetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => SetTaskViewPreferencesUseCase(getIt()))
     ..registerLazySingleton(() => ScheduleTaskNotificationsUseCase(getIt()))
@@ -206,6 +211,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => WatchAuthStateUseCase(getIt()))
     ..registerFactory(
       () => LocaleCubit(getSavedLanguageUseCase: getIt(), setSavedLanguageUseCase: getIt()),
+    )
+    ..registerFactory(
+      () => ThemeBloc(getThemePreferenceUseCase: getIt(), setThemePreferenceUseCase: getIt()),
     )
     ..registerFactory(
       () => AuthBloc(

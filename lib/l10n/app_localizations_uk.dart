@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -159,8 +160,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get emptyGroupsTitle => 'Поки немає груп';
 
   @override
-  String get emptyTaskDescription =>
-      'Натисніть \"Додати задачу\", щоб створити її';
+  String get emptyTaskDescription => 'Натисніть \"Додати задачу\", щоб створити її';
 
   @override
   String taskAdded(Object task) {
@@ -262,12 +262,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get deadlineReachedTitle => 'Дедлайн настав';
 
   @override
-  String get confirmDeleteSubtask =>
-      'Ви впевнені, що хочете видалити підзадачу?';
+  String get confirmDeleteSubtask => 'Ви впевнені, що хочете видалити підзадачу?';
 
   @override
-  String get confirmDeleteDeadline =>
-      'Ви впевнені, що хочете видалити deadline?';
+  String get confirmDeleteDeadline => 'Ви впевнені, що хочете видалити deadline?';
 
   @override
   String confirmDeleteFile(Object file) {
@@ -322,8 +320,7 @@ class AppLocalizationsUk extends AppLocalizations {
       'Якщо акаунт із таким email існує, посилання для скидання вже надіслано.';
 
   @override
-  String get authEnterValidEmailToReset =>
-      'Введіть коректний email для скидання пароля.';
+  String get authEnterValidEmailToReset => 'Введіть коректний email для скидання пароля.';
 
   @override
   String get authLogOut => 'Вийти';
@@ -347,16 +344,13 @@ class AppLocalizationsUk extends AppLocalizations {
   String get orTitle => 'або';
 
   @override
-  String get authPasswordUpdated =>
-      'Пароль оновлено. Увійдіть з новим паролем.';
+  String get authPasswordUpdated => 'Пароль оновлено. Увійдіть з новим паролем.';
 
   @override
-  String get authVerificationCodeResent =>
-      'Код підтвердження надіслано знову. Перевірте пошту.';
+  String get authVerificationCodeResent => 'Код підтвердження надіслано знову. Перевірте пошту.';
 
   @override
-  String get authAccountConfirmed =>
-      'Акаунт підтверджено. Тепер ви можете увійти.';
+  String get authAccountConfirmed => 'Акаунт підтверджено. Тепер ви можете увійти.';
 
   @override
   String authVerificationCodeLabel(Object email) {
@@ -396,8 +390,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get groupScreenAddGroupFunctionality => 'Функціонал додавання груп';
 
   @override
-  String get profileScreenEditProfileFunctionality =>
-      'Функціонал редагування профілю';
+  String get profileScreenEditProfileFunctionality => 'Функціонал редагування профілю';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -407,6 +400,18 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get settingsLanguageUkrainian => 'Українська';
+
+  @override
+  String get settingsTheme => 'Тема оформлення';
+
+  @override
+  String get settingsThemeLight => 'Світла';
+
+  @override
+  String get settingsThemeDark => 'Темна';
+
+  @override
+  String get settingsThemeSystem => 'Системна';
 
   @override
   String get bytesSuffixB => 'Б';
@@ -462,20 +467,17 @@ class AppLocalizationsUk extends AppLocalizations {
   String get authErrorOperationNotAllowed => 'Операція не дозволена.';
 
   @override
-  String get authErrorResetNotAvailable =>
-      'Скидання пароля недоступне для цього акаунту.';
+  String get authErrorResetNotAvailable => 'Скидання пароля недоступне для цього акаунту.';
 
   @override
   String get authErrorGoogleSignInNotSupported =>
       'Вхід через Google не підтримується на цій платформі.';
 
   @override
-  String get authErrorNoPasswordProvider =>
-      'Цей акаунт не підтримує скидання пароля.';
+  String get authErrorNoPasswordProvider => 'Цей акаунт не підтримує скидання пароля.';
 
   @override
-  String get authErrorPasswordResetRequired =>
-      'Перед входом необхідно скинути пароль.';
+  String get authErrorPasswordResetRequired => 'Перед входом необхідно скинути пароль.';
 
   @override
   String get authErrorCanceledByUser => 'Операція скасована користувачем.';

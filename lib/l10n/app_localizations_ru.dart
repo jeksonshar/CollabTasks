@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -264,8 +265,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get confirmDeleteSubtask => 'Вы уверены, что хотите удалить подтаск?';
 
   @override
-  String get confirmDeleteDeadline =>
-      'Вы уверены, что хотите удалить deadline?';
+  String get confirmDeleteDeadline => 'Вы уверены, что хотите удалить deadline?';
 
   @override
   String confirmDeleteFile(Object file) {
@@ -320,8 +320,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Если аккаунт с таким email существует, ссылка для сброса уже отправлена.';
 
   @override
-  String get authEnterValidEmailToReset =>
-      'Введите корректный email для сброса пароля.';
+  String get authEnterValidEmailToReset => 'Введите корректный email для сброса пароля.';
 
   @override
   String get authLogOut => 'Выйти';
@@ -348,12 +347,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authPasswordUpdated => 'Пароль обновлен. Войдите с новым паролем.';
 
   @override
-  String get authVerificationCodeResent =>
-      'Код подтверждения отправлен повторно. Проверьте почту.';
+  String get authVerificationCodeResent => 'Код подтверждения отправлен повторно. Проверьте почту.';
 
   @override
-  String get authAccountConfirmed =>
-      'Аккаунт подтвержден. Теперь вы можете войти.';
+  String get authAccountConfirmed => 'Аккаунт подтвержден. Теперь вы можете войти.';
 
   @override
   String authVerificationCodeLabel(Object email) {
@@ -390,12 +387,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authErrorNewPasswordTooShort => 'Новый пароль слишком короткий.';
 
   @override
-  String get groupScreenAddGroupFunctionality =>
-      'Функционал добавления проектов';
+  String get groupScreenAddGroupFunctionality => 'Функционал добавления проектов';
 
   @override
-  String get profileScreenEditProfileFunctionality =>
-      'Функционал редактирования профиля';
+  String get profileScreenEditProfileFunctionality => 'Функционал редактирования профиля';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -405,6 +400,18 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsLanguageUkrainian => 'Українська';
+
+  @override
+  String get settingsTheme => 'Тема оформления';
+
+  @override
+  String get settingsThemeLight => 'Светлая';
+
+  @override
+  String get settingsThemeDark => 'Тёмная';
+
+  @override
+  String get settingsThemeSystem => 'Системная';
 
   @override
   String get bytesSuffixB => 'Б';
@@ -460,20 +467,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authErrorOperationNotAllowed => 'Операция не разрешена.';
 
   @override
-  String get authErrorResetNotAvailable =>
-      'Сброс пароля недоступен для этого аккаунта.';
+  String get authErrorResetNotAvailable => 'Сброс пароля недоступен для этого аккаунта.';
 
   @override
   String get authErrorGoogleSignInNotSupported =>
       'Вход через Google не поддерживается на этой платформе.';
 
   @override
-  String get authErrorNoPasswordProvider =>
-      'Этот аккаунт не поддерживает сброс пароля.';
+  String get authErrorNoPasswordProvider => 'Этот аккаунт не поддерживает сброс пароля.';
 
   @override
-  String get authErrorPasswordResetRequired =>
-      'Перед входом требуется сбросить пароль.';
+  String get authErrorPasswordResetRequired => 'Перед входом требуется сбросить пароль.';
 
   @override
   String get authErrorCanceledByUser => 'Операция отменена пользователем.';
