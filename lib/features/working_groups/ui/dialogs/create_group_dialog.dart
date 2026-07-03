@@ -1,3 +1,4 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 /// Record для типизированного и безопасного возврата данных из диалога
@@ -32,8 +33,9 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('Новая рабочая группа'),
+      title: Text(localization.create_group_dialog_title),
       content: Form(
         key: _formKey,
         child: Column(
@@ -41,11 +43,13 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Название'),
+              decoration: InputDecoration(
+                labelText: localization.create_group_dialog_textFieldDecorationName,
+              ),
               autofocus: true,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Название не может быть пустым';
+                  return localization.create_group_dialog_textFieldValidatorName;
                 }
                 return null;
               },
@@ -53,14 +57,19 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Описание'),
+              decoration: InputDecoration(
+                labelText: localization.create_group_dialog_textFieldDecorationDescription,
+              ),
               maxLines: 3,
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(localization.create_group_dialog_cancelBtn),
+        ),
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState?.validate() ?? false) {
@@ -70,7 +79,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
               ));
             }
           },
-          child: const Text('Создать'),
+          child: Text(localization.create_group_dialog_createBtn),
         ),
       ],
     );

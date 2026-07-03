@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -262,10 +261,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deadlineReachedTitle => 'Deadline reached';
 
   @override
-  String get confirmDeleteSubtask => 'Are you sure you want to delete the subtask?';
+  String get confirmDeleteSubtask =>
+      'Are you sure you want to delete the subtask?';
 
   @override
-  String get confirmDeleteDeadline => 'Are you sure you want to delete the deadline?';
+  String get confirmDeleteDeadline =>
+      'Are you sure you want to delete the deadline?';
 
   @override
   String confirmDeleteFile(Object file) {
@@ -320,7 +321,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'If an account exists for this email, a reset link has been sent.';
 
   @override
-  String get authEnterValidEmailToReset => 'Enter a valid email to reset password.';
+  String get authEnterValidEmailToReset =>
+      'Enter a valid email to reset password.';
 
   @override
   String get authLogOut => 'Log out';
@@ -344,10 +346,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orTitle => 'or';
 
   @override
-  String get authPasswordUpdated => 'Password updated. Sign in with new password.';
+  String get authPasswordUpdated =>
+      'Password updated. Sign in with new password.';
 
   @override
-  String get authVerificationCodeResent => 'Verification code sent again. Check your email.';
+  String get authVerificationCodeResent =>
+      'Verification code sent again. Check your email.';
 
   @override
   String get authAccountConfirmed => 'Account confirmed. You can sign in now.';
@@ -390,7 +394,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupScreenAddGroupFunctionality => 'Add group functionality';
 
   @override
-  String get profileScreenEditProfileFunctionality => 'Edit profile functionality';
+  String get profileScreenEditProfileFunctionality =>
+      'Edit profile functionality';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -467,24 +472,191 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrorOperationNotAllowed => 'Operation is not allowed.';
 
   @override
-  String get authErrorResetNotAvailable => 'Reset password flow is not available for this account.';
+  String get authErrorResetNotAvailable =>
+      'Reset password flow is not available for this account.';
 
   @override
   String get authErrorGoogleSignInNotSupported =>
       'Google Sign-in is not supported on this platform.';
 
   @override
-  String get authErrorNoPasswordProvider => 'This account does not support password reset.';
+  String get authErrorNoPasswordProvider =>
+      'This account does not support password reset.';
 
   @override
-  String get authErrorPasswordResetRequired => 'Password reset is required before sign-in.';
+  String get authErrorPasswordResetRequired =>
+      'Password reset is required before sign-in.';
 
   @override
   String get authErrorCanceledByUser => 'Operation was canceled by user.';
 
   @override
-  String get authErrorConfirmationNotComplete => 'Confirmation is not complete.';
+  String get authErrorConfirmationNotComplete =>
+      'Confirmation is not complete.';
 
   @override
   String get authErrorUnknown => 'Unknown authentication error.';
+
+  @override
+  String get create_group_dialog_title => 'New Working Group';
+
+  @override
+  String get create_group_dialog_textFieldDecorationName => 'Name';
+
+  @override
+  String get create_group_dialog_textFieldValidatorName =>
+      'Name cannot be empty';
+
+  @override
+  String get create_group_dialog_textFieldDecorationDescription =>
+      'Description';
+
+  @override
+  String get create_group_dialog_cancelBtn => 'Cancel';
+
+  @override
+  String get create_group_dialog_createBtn => 'Create';
+
+  @override
+  String get edit_group_dialog_title => 'Edit Group';
+
+  @override
+  String get edit_group_dialog_changeAvatarBtn => 'Change Avatar';
+
+  @override
+  String get edit_group_dialog_textFieldName => 'Name';
+
+  @override
+  String get edit_group_dialog_textFieldDesctiption => 'Description';
+
+  @override
+  String get edit_group_dialog_cancelBtn => 'Cancel';
+
+  @override
+  String get edit_group_dialog_saveBtn => 'Save';
+
+  @override
+  String get invite_participant_dialog_title => 'Invite Participant';
+
+  @override
+  String get invite_participant_dialog_textFieldDecorationEmail => 'Email';
+
+  @override
+  String get invite_participant_dialog_textFieldValidator =>
+      'Please enter an email';
+
+  @override
+  String get invite_participant_dialog_cancelBtn => 'Cancel';
+
+  @override
+  String get invite_participant_dialog_inviteBtn => 'Invite';
+
+  @override
+  String get group_details_defaultErrorMessage => 'Error loading group';
+
+  @override
+  String get group_details_popupItemEditGroup => 'Edit group';
+
+  @override
+  String get group_details_popupItemInviteParticipant => 'Invite participant';
+
+  @override
+  String get group_details_popupItemLeaveGroup => 'Leave group';
+
+  @override
+  String get group_details_popupItemDeleteGroup => 'Delete group';
+
+  @override
+  String get group_details_bottomNavItemParticipants => 'Participants';
+
+  @override
+  String get group_details_bottomNavItemTasks => 'Tasks';
+
+  @override
+  String get group_details_leaveGroupTitle => 'Leave group?';
+
+  @override
+  String get group_details_leaveGroupBtn => 'Leave';
+
+  @override
+  String get group_details_cancelBtn => 'Cancel';
+
+  @override
+  String get group_details_deleteGroupTitle => 'Delete group?';
+
+  @override
+  String get group_details_deleteGroupContent =>
+      'Group, participants and tasks will be deleted.';
+
+  @override
+  String get group_details_deleteGroupBtn => 'Delete';
+
+  @override
+  String get group_details_emptyParticipantsTitle =>
+      'Participants not yet synchronized';
+
+  @override
+  String get group_details_titleWhenNoPartisipant => 'Participants';
+
+  @override
+  String get group_details_ifParticipantYou => 'You';
+
+  @override
+  String get group_details_taskBtnSegmentAll => 'All';
+
+  @override
+  String get group_details_taskBtnSegmentAccessible => 'Accessible';
+
+  @override
+  String get group_details_taskBtnSegmentMy => 'My';
+
+  @override
+  String get group_details_taskListEmptyTitle => 'No tasks';
+
+  @override
+  String get group_details_taskFree => 'Free';
+
+  @override
+  String group_details_taskInWork(Object participant) {
+    return 'In work by \"$participant\"';
+  }
+
+  @override
+  String get group_task_details_defaultErrorMessage => 'Error updating task';
+
+  @override
+  String get group_task_details_descriptionTitle => 'Description';
+
+  @override
+  String get group_task_details_deadlineTitle => 'Deadline:';
+
+  @override
+  String get group_task_details_subtasksTitle => 'Subtasks';
+
+  @override
+  String get group_task_details_takeTaskBtn => 'Take the task';
+
+  @override
+  String get group_task_details_releaseTask => 'Release the task';
+
+  @override
+  String group_task_details_taskInWork(Object participant) {
+    return 'In work by \"$participant\"';
+  }
+
+  @override
+  String get group_task_details_taskFree => 'Free';
+
+  @override
+  String get groups_toolbarTitle => 'Working Groups';
+
+  @override
+  String get groups_defaultErrorMessage => 'Error loading groups';
+
+  @override
+  String get groups_emptyGroupListTitle => 'No working groups yet';
+
+  @override
+  String get groups_emptyGroupListDescription =>
+      'Create a group to start collaborating on tasks.';
 }

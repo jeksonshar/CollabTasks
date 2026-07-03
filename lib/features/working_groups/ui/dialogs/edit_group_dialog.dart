@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -58,8 +59,9 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('Редактировать группу'),
+      title: Text(localization.edit_group_dialog_title),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -78,22 +80,27 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
             TextButton.icon(
               onPressed: _pickAvatar,
               icon: const Icon(Icons.image),
-              label: const Text('Сменить аватарку'),
+              label: Text(localization.edit_group_dialog_changeAvatarBtn),
             ),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Название'),
+              decoration: InputDecoration(labelText: localization.edit_group_dialog_textFieldName),
             ),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Описание'),
+              decoration: InputDecoration(
+                labelText: localization.edit_group_dialog_textFieldDesctiption,
+              ),
               maxLines: 3,
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(localization.edit_group_dialog_cancelBtn),
+        ),
         ElevatedButton(
           onPressed: () {
             final title = _titleController.text.trim();
@@ -104,7 +111,7 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
               avatarUrl: _avatarUrl,
             ));
           },
-          child: const Text('Сохранить'),
+          child: Text(localization.edit_group_dialog_saveBtn),
         ),
       ],
     );

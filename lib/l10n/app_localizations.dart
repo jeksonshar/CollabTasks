@@ -63,7 +63,8 @@ import 'app_localizations_uk.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,7 +72,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -92,7 +94,11 @@ abstract class AppLocalizations {
       ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru'), Locale('uk')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+    Locale('uk'),
+  ];
 
   /// No description provided for @addTaskTitle.
   ///
@@ -987,9 +993,316 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown authentication error.'**
   String get authErrorUnknown;
+
+  /// No description provided for @create_group_dialog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Working Group'**
+  String get create_group_dialog_title;
+
+  /// No description provided for @create_group_dialog_textFieldDecorationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get create_group_dialog_textFieldDecorationName;
+
+  /// No description provided for @create_group_dialog_textFieldValidatorName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name cannot be empty'**
+  String get create_group_dialog_textFieldValidatorName;
+
+  /// No description provided for @create_group_dialog_textFieldDecorationDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get create_group_dialog_textFieldDecorationDescription;
+
+  /// No description provided for @create_group_dialog_cancelBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get create_group_dialog_cancelBtn;
+
+  /// No description provided for @create_group_dialog_createBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create_group_dialog_createBtn;
+
+  /// No description provided for @edit_group_dialog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Group'**
+  String get edit_group_dialog_title;
+
+  /// No description provided for @edit_group_dialog_changeAvatarBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Avatar'**
+  String get edit_group_dialog_changeAvatarBtn;
+
+  /// No description provided for @edit_group_dialog_textFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get edit_group_dialog_textFieldName;
+
+  /// No description provided for @edit_group_dialog_textFieldDesctiption.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get edit_group_dialog_textFieldDesctiption;
+
+  /// No description provided for @edit_group_dialog_cancelBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get edit_group_dialog_cancelBtn;
+
+  /// No description provided for @edit_group_dialog_saveBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get edit_group_dialog_saveBtn;
+
+  /// No description provided for @invite_participant_dialog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Participant'**
+  String get invite_participant_dialog_title;
+
+  /// No description provided for @invite_participant_dialog_textFieldDecorationEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get invite_participant_dialog_textFieldDecorationEmail;
+
+  /// No description provided for @invite_participant_dialog_textFieldValidator.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an email'**
+  String get invite_participant_dialog_textFieldValidator;
+
+  /// No description provided for @invite_participant_dialog_cancelBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get invite_participant_dialog_cancelBtn;
+
+  /// No description provided for @invite_participant_dialog_inviteBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get invite_participant_dialog_inviteBtn;
+
+  /// No description provided for @group_details_defaultErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading group'**
+  String get group_details_defaultErrorMessage;
+
+  /// No description provided for @group_details_popupItemEditGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get group_details_popupItemEditGroup;
+
+  /// No description provided for @group_details_popupItemInviteParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite participant'**
+  String get group_details_popupItemInviteParticipant;
+
+  /// No description provided for @group_details_popupItemLeaveGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group'**
+  String get group_details_popupItemLeaveGroup;
+
+  /// No description provided for @group_details_popupItemDeleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get group_details_popupItemDeleteGroup;
+
+  /// No description provided for @group_details_bottomNavItemParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get group_details_bottomNavItemParticipants;
+
+  /// No description provided for @group_details_bottomNavItemTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get group_details_bottomNavItemTasks;
+
+  /// No description provided for @group_details_leaveGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave group?'**
+  String get group_details_leaveGroupTitle;
+
+  /// No description provided for @group_details_leaveGroupBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get group_details_leaveGroupBtn;
+
+  /// No description provided for @group_details_cancelBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get group_details_cancelBtn;
+
+  /// No description provided for @group_details_deleteGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group?'**
+  String get group_details_deleteGroupTitle;
+
+  /// No description provided for @group_details_deleteGroupContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Group, participants and tasks will be deleted.'**
+  String get group_details_deleteGroupContent;
+
+  /// No description provided for @group_details_deleteGroupBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get group_details_deleteGroupBtn;
+
+  /// No description provided for @group_details_emptyParticipantsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants not yet synchronized'**
+  String get group_details_emptyParticipantsTitle;
+
+  /// No description provided for @group_details_titleWhenNoPartisipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get group_details_titleWhenNoPartisipant;
+
+  /// No description provided for @group_details_ifParticipantYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get group_details_ifParticipantYou;
+
+  /// No description provided for @group_details_taskBtnSegmentAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get group_details_taskBtnSegmentAll;
+
+  /// No description provided for @group_details_taskBtnSegmentAccessible.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessible'**
+  String get group_details_taskBtnSegmentAccessible;
+
+  /// No description provided for @group_details_taskBtnSegmentMy.
+  ///
+  /// In en, this message translates to:
+  /// **'My'**
+  String get group_details_taskBtnSegmentMy;
+
+  /// No description provided for @group_details_taskListEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks'**
+  String get group_details_taskListEmptyTitle;
+
+  /// No description provided for @group_details_taskFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get group_details_taskFree;
+
+  /// No description provided for @group_details_taskInWork.
+  ///
+  /// In en, this message translates to:
+  /// **'In work by \"{participant}\"'**
+  String group_details_taskInWork(Object participant);
+
+  /// No description provided for @group_task_details_defaultErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error updating task'**
+  String get group_task_details_defaultErrorMessage;
+
+  /// No description provided for @group_task_details_descriptionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get group_task_details_descriptionTitle;
+
+  /// No description provided for @group_task_details_deadlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline:'**
+  String get group_task_details_deadlineTitle;
+
+  /// No description provided for @group_task_details_subtasksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtasks'**
+  String get group_task_details_subtasksTitle;
+
+  /// No description provided for @group_task_details_takeTaskBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Take the task'**
+  String get group_task_details_takeTaskBtn;
+
+  /// No description provided for @group_task_details_releaseTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Release the task'**
+  String get group_task_details_releaseTask;
+
+  /// No description provided for @group_task_details_taskInWork.
+  ///
+  /// In en, this message translates to:
+  /// **'In work by \"{participant}\"'**
+  String group_task_details_taskInWork(Object participant);
+
+  /// No description provided for @group_task_details_taskFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get group_task_details_taskFree;
+
+  /// No description provided for @groups_toolbarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Working Groups'**
+  String get groups_toolbarTitle;
+
+  /// No description provided for @groups_defaultErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading groups'**
+  String get groups_defaultErrorMessage;
+
+  /// No description provided for @groups_emptyGroupListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No working groups yet'**
+  String get groups_emptyGroupListTitle;
+
+  /// No description provided for @groups_emptyGroupListDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a group to start collaborating on tasks.'**
+  String get groups_emptyGroupListDescription;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -998,7 +1311,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru', 'uk'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru', 'uk'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

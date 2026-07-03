@@ -10,6 +10,7 @@ import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_deta
 import 'package:collab_tasks/features/working_groups/ui/dialogs/edit_group_dialog.dart';
 import 'package:collab_tasks/features/working_groups/ui/dialogs/invite_participant_dialog.dart';
 import 'package:collab_tasks/features/working_groups/ui/screens/working_group_task_details_screen.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -49,6 +50,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
           final isParticipant = state.isCurrentUserParticipant;
           final group = state.group ?? widget.group;
           final activeTab = isParticipant ? _tabIndex : 0;
+          final localization = AppLocalizations.of(context)!;
 
           // Обработка состояний загрузки/ошибки на уровне всего экрана
           if (state.status == GroupDetailsStatus.loading ||
@@ -59,7 +61,9 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
           if (state.status == GroupDetailsStatus.error && state.group == null) {
             return Scaffold(
               appBar: AppBar(title: Text(widget.group.title)),
-              body: Center(child: Text(state.errorMessage ?? 'Ошибка загрузки группы')),
+              body: Center(
+                child: Text(state.errorMessage ?? localization.group_details_defaultErrorMessage),
+              ),
             );
           }
 
@@ -85,14 +89,23 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   PopupMenuButton<_GroupAction>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (action) => _handleGroupAction(context, action, group),
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: _GroupAction.edit, child: Text('Редактировать группу')),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _GroupAction.edit,
+                        child: Text(localization.group_details_popupItemEditGroup),
+                      ),
                       PopupMenuItem(
                         value: _GroupAction.invite,
-                        child: Text('Пригласить участника'),
+                        child: Text(localization.group_details_popupItemInviteParticipant),
                       ),
-                      PopupMenuItem(value: _GroupAction.leave, child: Text('Покинуть группу')),
-                      PopupMenuItem(value: _GroupAction.delete, child: Text('Удалить группу')),
+                      PopupMenuItem(
+                        value: _GroupAction.leave,
+                        child: Text(localization.group_details_popupItemLeaveGroup),
+                      ),
+                      PopupMenuItem(
+                        value: _GroupAction.delete,
+                        child: Text(localization.group_details_popupItemDeleteGroup),
+                      ),
                     ],
                   ),
               ],
@@ -110,9 +123,15 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                 ? BottomNavigationBar(
                     currentIndex: activeTab,
                     onTap: (index) => setState(() => _tabIndex = index),
-                    items: const [
-                      BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Участники'),
-                      BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Задачи'),
+                    items: [
+                      BottomNavigationBarItem(
+                        icon: const Icon(Icons.people),
+                        label: localization.group_details_bottomNavItemParticipants,
+                      ),
+                      BottomNavigationBarItem(
+                        icon: const Icon(Icons.task_alt),
+                        label: localization.group_details_bottomNavItemTasks,
+                      ),
                     ],
                   )
                 : null,
@@ -180,19 +199,20 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
   }
 
   Future<void> _confirmLeaveGroup(BuildContext context) async {
+    final localization = AppLocalizations.of(context)!;
     final bloc = context.read<GroupDetailsBloc>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Покинуть группу?'),
+        title: Text(localization.group_details_leaveGroupTitle),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(localization.group_details_cancelBtn),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Покинуть'),
+            child: Text(localization.group_details_leaveGroupBtn),
           ),
         ],
       ),
@@ -203,20 +223,21 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
   }
 
   Future<void> _confirmDeleteGroup(BuildContext context) async {
+    final localization = AppLocalizations.of(context)!;
     final bloc = context.read<GroupDetailsBloc>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Удалить группу?'),
-        content: const Text('Группа, участники и задачи будут удалены.'),
+        title: Text(localization.group_details_deleteGroupTitle),
+        content: Text(localization.group_details_deleteGroupContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(localization.group_details_cancelBtn),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Удалить'),
+            child: Text(localization.group_details_deleteGroupBtn),
           ),
         ],
       ),
@@ -238,9 +259,10 @@ class _ParticipantsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     final participants = state.displayParticipants;
     if (participants.isEmpty) {
-      return const Center(child: Text('Участники еще не синхронизированы'));
+      return Center(child: Text(localization.group_details_emptyParticipantsTitle));
     }
 
     return CustomScrollView(
@@ -254,7 +276,7 @@ class _ParticipantsTab extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 24, right: 16),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Участники',
+                  localization.group_details_titleWhenNoPartisipant,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.indigo.shade500,
                     fontWeight: FontWeight.bold,
@@ -270,7 +292,9 @@ class _ParticipantsTab extends StatelessWidget {
             return ListTile(
               leading: _ParticipantAvatar(participant: participant),
               title: Text(participant.name),
-              subtitle: state.isCurrentUser(participant) ? const Text('Вы') : null,
+              subtitle: state.isCurrentUser(participant)
+                  ? Text(localization.group_details_ifParticipantYou)
+                  : null,
             );
           }, childCount: participants.length),
         ),
@@ -304,15 +328,25 @@ class _TasksTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: SegmentedButton<GroupTaskFilter>(
-            segments: const [
-              ButtonSegment(value: GroupTaskFilter.all, label: Text('Все')),
-              ButtonSegment(value: GroupTaskFilter.available, label: Text('Доступные')),
-              ButtonSegment(value: GroupTaskFilter.mine, label: Text('Мои')),
+            segments: [
+              ButtonSegment(
+                value: GroupTaskFilter.all,
+                label: Text(localization.group_details_taskBtnSegmentAll),
+              ),
+              ButtonSegment(
+                value: GroupTaskFilter.available,
+                label: Text(localization.group_details_taskBtnSegmentAccessible),
+              ),
+              ButtonSegment(
+                value: GroupTaskFilter.mine,
+                label: Text(localization.group_details_taskBtnSegmentMy),
+              ),
             ],
             selected: {state.filter},
             onSelectionChanged: (selected) {
@@ -322,7 +356,7 @@ class _TasksTab extends StatelessWidget {
         ),
         Expanded(
           child: state.visibleTasks.isEmpty
-              ? const Center(child: Text('Задач нет'))
+              ? Center(child: Text(localization.group_details_taskListEmptyTitle))
               : ListView.builder(
                   itemCount: state.visibleTasks.length,
                   itemBuilder: (context, index) {
@@ -357,6 +391,7 @@ class _GroupTaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
@@ -364,7 +399,11 @@ class _GroupTaskTile extends StatelessWidget {
             ? const CircleAvatar(child: Icon(Icons.lock_open))
             : _ParticipantAvatar(participant: assignee!),
         title: Text(task.title),
-        subtitle: Text(assignee == null ? 'Свободно' : 'В работе у ${assignee!.name}'),
+        subtitle: Text(
+          assignee == null
+              ? localization.group_details_taskFree
+              : localization.group_details_taskInWork(assignee!.name),
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.of(context).push(

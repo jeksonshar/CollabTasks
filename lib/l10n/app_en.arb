@@ -206,5 +206,72 @@
   "authErrorPasswordResetRequired": "Password reset is required before sign-in.",
   "authErrorCanceledByUser": "Operation was canceled by user.",
   "authErrorConfirmationNotComplete": "Confirmation is not complete.",
-  "authErrorUnknown": "Unknown authentication error."
+  "authErrorUnknown": "Unknown authentication error.",
+
+  "create_group_dialog_title": "New Working Group",
+  "create_group_dialog_textFieldDecorationName": "Name",
+  "create_group_dialog_textFieldValidatorName": "Name cannot be empty",
+  "create_group_dialog_textFieldDecorationDescription": "Description",
+  "create_group_dialog_cancelBtn": "Cancel",
+  "create_group_dialog_createBtn": "Create",
+
+  "edit_group_dialog_title": "Edit Group",
+  "edit_group_dialog_changeAvatarBtn": "Change Avatar",
+  "edit_group_dialog_textFieldName": "Name",
+  "edit_group_dialog_textFieldDesctiption": "Description",
+  "edit_group_dialog_cancelBtn": "Cancel",
+  "edit_group_dialog_saveBtn": "Save",
+
+  "invite_participant_dialog_title": "Invite Participant",
+  "invite_participant_dialog_textFieldDecorationEmail": "Email",
+  "invite_participant_dialog_textFieldValidator": "Please enter an email",
+  "invite_participant_dialog_cancelBtn": "Cancel",
+  "invite_participant_dialog_inviteBtn": "Invite",
+
+  "group_details_defaultErrorMessage": "Error loading group",
+  "group_details_popupItemEditGroup": "Edit group",
+  "group_details_popupItemInviteParticipant": "Invite participant",
+  "group_details_popupItemLeaveGroup": "Leave group",
+  "group_details_popupItemDeleteGroup": "Delete group",
+  "group_details_bottomNavItemParticipants": "Participants",
+  "group_details_bottomNavItemTasks": "Tasks",
+  "group_details_leaveGroupTitle": "Leave group?",
+  "group_details_leaveGroupBtn": "Leave",
+  "group_details_cancelBtn": "Cancel",
+  "group_details_deleteGroupTitle": "Delete group?",
+  "group_details_deleteGroupContent": "Group, participants and tasks will be deleted.",
+  "group_details_deleteGroupBtn": "Delete",
+  "group_details_emptyParticipantsTitle": "Participants not yet synchronized",
+  "group_details_titleWhenNoPartisipant": "Participants",
+  "group_details_ifParticipantYou": "You",
+  "group_details_taskBtnSegmentAll": "All",
+  "group_details_taskBtnSegmentAccessible": "Accessible",
+  "group_details_taskBtnSegmentMy": "My",
+  "group_details_taskListEmptyTitle": "No tasks",
+  "group_details_taskFree": "Free",
+  "group_details_taskInWork": "In work by \"{participant}\"",
+  "@group_details_taskInWork": {
+    "placeholders": {
+      "participant": {}
+    }
+  },
+
+  "group_task_details_defaultErrorMessage": "Error updating task",
+  "group_task_details_descriptionTitle": "Description",
+  "group_task_details_deadlineTitle": "Deadline:",
+  "group_task_details_subtasksTitle": "Subtasks",
+  "group_task_details_takeTaskBtn": "Take the task",
+  "group_task_details_releaseTask": "Release the task",
+  "group_task_details_taskInWork": "In work by \"{participant}\"",
+  "@group_task_details_taskInWork": {
+    "placeholders": {
+      "participant": {}
+    }
+  },
+  "group_task_details_taskFree": "Free",
+
+  "groups_toolbarTitle": "Working Groups",
+  "groups_defaultErrorMessage": "Error loading groups",
+  "groups_emptyGroupListTitle": "No working groups yet",
+  "groups_emptyGroupListDescription": "Create a group to start collaborating on tasks."
 }

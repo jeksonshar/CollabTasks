@@ -5,6 +5,7 @@ import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/wor
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_state.dart';
 import 'package:collab_tasks/features/working_groups/ui/dialogs/create_group_dialog.dart';
 import 'package:collab_tasks/features/working_groups/ui/screens/working_group_details_screen.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,14 +26,15 @@ class _WorkingGroupsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Рабочие группы'), centerTitle: false),
+      appBar: AppBar(title: Text(localization.groups_toolbarTitle), centerTitle: false),
       body: BlocBuilder<WorkingGroupsBloc, WorkingGroupsState>(
         builder: (context, state) {
           return switch (state.status) {
             WorkingGroupsStatus.loading => const Center(child: CircularProgressIndicator()),
             WorkingGroupsStatus.error => Center(
-              child: Text(state.errorMessage ?? 'Ошибка загрузки групп'),
+              child: Text(state.errorMessage ?? localization.groups_defaultErrorMessage),
             ),
             WorkingGroupsStatus.loaded =>
               state.groups.isEmpty
@@ -112,18 +114,19 @@ class _EmptyGroups extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final localization = AppLocalizations.of(context)!;
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.groups, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
+          const Icon(Icons.groups, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
           Text(
-            'Рабочих групп пока нет',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            localization.groups_emptyGroupListTitle,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
-          Text('Создайте группу, чтобы вести совместные задачи.'),
+          const SizedBox(height: 8),
+          Text(localization.groups_emptyGroupListDescription),
         ],
       ),
     );

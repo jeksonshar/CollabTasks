@@ -6,9 +6,12 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task.da
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_state.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+
+// TODO need to fix screen, смотри в документе пункт 9
 
 class WorkingGroupTaskDetailsScreen extends StatelessWidget {
   const WorkingGroupTaskDetailsScreen({super.key, required this.task, required this.participants});
@@ -18,6 +21,7 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return BlocProvider(
       create: (_) => getIt<GroupTaskDetailsBloc>(param1: task),
       child: BlocConsumer<GroupTaskDetailsBloc, GroupTaskDetailsState>(
@@ -25,7 +29,11 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
         listener: (context, state) {
           if (state.status == GroupTaskDetailsStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage ?? 'Ошибка обновления задачи')),
+              SnackBar(
+                content: Text(
+                  state.errorMessage ?? localization.group_task_details_defaultErrorMessage,
+                ),
+              ),
             );
           }
         },
@@ -58,7 +66,10 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
                 children: [
                   _AssignmentPanel(assignee: currentAssignee),
                   const SizedBox(height: 16),
-                  Text('Описание', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    localization.group_task_details_descriptionTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   Card(
                     child: Padding(
@@ -68,11 +79,16 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
                   ),
                   if (currentTask.deadline != null) ...[
                     const SizedBox(height: 16),
-                    Text('Срок: ${DateFormat.yMMMd().add_jm().format(currentTask.deadline!)}'),
+                    Text(
+                      '${localization.group_task_details_deadlineTitle} ${DateFormat.yMMMd().add_jm().format(currentTask.deadline!)}',
+                    ),
                   ],
                   if (currentTask.subtasks.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text('Подзадачи', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      localization.group_task_details_subtasksTitle,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     ...currentTask.subtasks.map(
                       (subtask) => CheckboxListTile(
                         value: subtask.isCompleted,
@@ -100,6 +116,7 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
     GroupParticipant? assignee,
   ) {
     final isSaving = state.status == GroupTaskDetailsStatus.saving;
+    final localization = AppLocalizations.of(context)!;
 
     // 1. Если задача ни на кого не назначена — показываем кнопку «Взять задачу»
     if (assignee == null) {
@@ -108,7 +125,7 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
             ? null
             : () => context.read<GroupTaskDetailsBloc>().add(const GroupTaskClaimRequested()),
         icon: const Icon(Icons.play_arrow),
-        label: const Text('Взять задачу'),
+        label: Text(localization.group_task_details_takeTaskBtn),
       );
     }
 
@@ -119,12 +136,15 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
             ? null
             : () => context.read<GroupTaskDetailsBloc>().add(const GroupTaskReleaseRequested()),
         icon: const Icon(Icons.stop),
-        label: const Text('Освободить задачу'),
+        label: Text(localization.group_task_details_releaseTask),
       );
     }
 
     // 3. Если задача назначена на КОГО-ТО ДРУГОГО (state.isAssignedToOther)
-    return FilledButton.tonal(onPressed: null, child: Text('В работе у ${assignee.name}'));
+    return FilledButton.tonal(
+      onPressed: null,
+      child: Text(localization.group_task_details_taskInWork(assignee.name)),
+    );
   }
 
   Future<void> _showEditDialog(BuildContext context, GroupTask currentTask) async {
@@ -158,6 +178,7 @@ class _AssignmentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       color: assignee == null ? colorScheme.secondaryContainer : colorScheme.primaryContainer,
@@ -169,7 +190,9 @@ class _AssignmentPanel extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                assignee == null ? 'Свободно' : 'В работе у ${assignee!.name}',
+                assignee == null
+                    ? localization.group_task_details_taskFree
+                    : localization.group_task_details_taskInWork(assignee!.name),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),

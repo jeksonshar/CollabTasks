@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -265,7 +264,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get confirmDeleteSubtask => 'Вы уверены, что хотите удалить подтаск?';
 
   @override
-  String get confirmDeleteDeadline => 'Вы уверены, что хотите удалить deadline?';
+  String get confirmDeleteDeadline =>
+      'Вы уверены, что хотите удалить deadline?';
 
   @override
   String confirmDeleteFile(Object file) {
@@ -320,7 +320,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'Если аккаунт с таким email существует, ссылка для сброса уже отправлена.';
 
   @override
-  String get authEnterValidEmailToReset => 'Введите корректный email для сброса пароля.';
+  String get authEnterValidEmailToReset =>
+      'Введите корректный email для сброса пароля.';
 
   @override
   String get authLogOut => 'Выйти';
@@ -347,10 +348,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authPasswordUpdated => 'Пароль обновлен. Войдите с новым паролем.';
 
   @override
-  String get authVerificationCodeResent => 'Код подтверждения отправлен повторно. Проверьте почту.';
+  String get authVerificationCodeResent =>
+      'Код подтверждения отправлен повторно. Проверьте почту.';
 
   @override
-  String get authAccountConfirmed => 'Аккаунт подтвержден. Теперь вы можете войти.';
+  String get authAccountConfirmed =>
+      'Аккаунт подтвержден. Теперь вы можете войти.';
 
   @override
   String authVerificationCodeLabel(Object email) {
@@ -387,10 +390,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authErrorNewPasswordTooShort => 'Новый пароль слишком короткий.';
 
   @override
-  String get groupScreenAddGroupFunctionality => 'Функционал добавления проектов';
+  String get groupScreenAddGroupFunctionality =>
+      'Функционал добавления проектов';
 
   @override
-  String get profileScreenEditProfileFunctionality => 'Функционал редактирования профиля';
+  String get profileScreenEditProfileFunctionality =>
+      'Функционал редактирования профиля';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -467,17 +472,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get authErrorOperationNotAllowed => 'Операция не разрешена.';
 
   @override
-  String get authErrorResetNotAvailable => 'Сброс пароля недоступен для этого аккаунта.';
+  String get authErrorResetNotAvailable =>
+      'Сброс пароля недоступен для этого аккаунта.';
 
   @override
   String get authErrorGoogleSignInNotSupported =>
       'Вход через Google не поддерживается на этой платформе.';
 
   @override
-  String get authErrorNoPasswordProvider => 'Этот аккаунт не поддерживает сброс пароля.';
+  String get authErrorNoPasswordProvider =>
+      'Этот аккаунт не поддерживает сброс пароля.';
 
   @override
-  String get authErrorPasswordResetRequired => 'Перед входом требуется сбросить пароль.';
+  String get authErrorPasswordResetRequired =>
+      'Перед входом требуется сбросить пароль.';
 
   @override
   String get authErrorCanceledByUser => 'Операция отменена пользователем.';
@@ -487,4 +495,166 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get authErrorUnknown => 'Неизвестная ошибка авторизации.';
+
+  @override
+  String get create_group_dialog_title => 'Новая рабочая группа';
+
+  @override
+  String get create_group_dialog_textFieldDecorationName => 'Название';
+
+  @override
+  String get create_group_dialog_textFieldValidatorName =>
+      'Название не может быть пустым';
+
+  @override
+  String get create_group_dialog_textFieldDecorationDescription => 'Описание';
+
+  @override
+  String get create_group_dialog_cancelBtn => 'Отмена';
+
+  @override
+  String get create_group_dialog_createBtn => 'Создать';
+
+  @override
+  String get edit_group_dialog_title => 'Редактировать группу';
+
+  @override
+  String get edit_group_dialog_changeAvatarBtn => 'Сменить аватарку';
+
+  @override
+  String get edit_group_dialog_textFieldName => 'Название';
+
+  @override
+  String get edit_group_dialog_textFieldDesctiption => 'Описание';
+
+  @override
+  String get edit_group_dialog_cancelBtn => 'Отмена';
+
+  @override
+  String get edit_group_dialog_saveBtn => 'Сохранить';
+
+  @override
+  String get invite_participant_dialog_title => 'Пригласить участника';
+
+  @override
+  String get invite_participant_dialog_textFieldDecorationEmail => 'Email';
+
+  @override
+  String get invite_participant_dialog_textFieldValidator => 'Введите email';
+
+  @override
+  String get invite_participant_dialog_cancelBtn => 'Отмена';
+
+  @override
+  String get invite_participant_dialog_inviteBtn => 'Пригласить';
+
+  @override
+  String get group_details_defaultErrorMessage => 'Ошибка загрузки группы';
+
+  @override
+  String get group_details_popupItemEditGroup => 'Редактировать группу';
+
+  @override
+  String get group_details_popupItemInviteParticipant => 'Пригласить участника';
+
+  @override
+  String get group_details_popupItemLeaveGroup => 'Покинуть группу';
+
+  @override
+  String get group_details_popupItemDeleteGroup => 'Удалить группу';
+
+  @override
+  String get group_details_bottomNavItemParticipants => 'Участники';
+
+  @override
+  String get group_details_bottomNavItemTasks => 'Задачи';
+
+  @override
+  String get group_details_leaveGroupTitle => 'Покинуть группу?';
+
+  @override
+  String get group_details_leaveGroupBtn => 'Покинуть';
+
+  @override
+  String get group_details_cancelBtn => 'Отмена';
+
+  @override
+  String get group_details_deleteGroupTitle => 'Удалить группу?';
+
+  @override
+  String get group_details_deleteGroupContent =>
+      'Группа, участники и задачи будут удалены.';
+
+  @override
+  String get group_details_deleteGroupBtn => 'Удалить';
+
+  @override
+  String get group_details_emptyParticipantsTitle =>
+      'Участники еще не синхронизированы';
+
+  @override
+  String get group_details_titleWhenNoPartisipant => 'Участники';
+
+  @override
+  String get group_details_ifParticipantYou => 'Вы';
+
+  @override
+  String get group_details_taskBtnSegmentAll => 'Все';
+
+  @override
+  String get group_details_taskBtnSegmentAccessible => 'Доступные';
+
+  @override
+  String get group_details_taskBtnSegmentMy => 'Мои';
+
+  @override
+  String get group_details_taskListEmptyTitle => 'Задач нет';
+
+  @override
+  String get group_details_taskFree => 'Свободно';
+
+  @override
+  String group_details_taskInWork(Object participant) {
+    return 'В работе у \"$participant\"';
+  }
+
+  @override
+  String get group_task_details_defaultErrorMessage =>
+      'Ошибка обновления задачи';
+
+  @override
+  String get group_task_details_descriptionTitle => 'Описание';
+
+  @override
+  String get group_task_details_deadlineTitle => 'Срок:';
+
+  @override
+  String get group_task_details_subtasksTitle => 'Подзадачи';
+
+  @override
+  String get group_task_details_takeTaskBtn => 'Взять задачу';
+
+  @override
+  String get group_task_details_releaseTask => 'Освободить задачу';
+
+  @override
+  String group_task_details_taskInWork(Object participant) {
+    return 'В работе у \"$participant\"';
+  }
+
+  @override
+  String get group_task_details_taskFree => 'Свободно';
+
+  @override
+  String get groups_toolbarTitle => 'Рабочие группы';
+
+  @override
+  String get groups_defaultErrorMessage => 'Ошибка загрузки групп';
+
+  @override
+  String get groups_emptyGroupListTitle => 'Рабочих групп пока нет';
+
+  @override
+  String get groups_emptyGroupListDescription =>
+      'Создайте группу, чтобы вести совместные задачи.';
 }

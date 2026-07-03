@@ -1,3 +1,4 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class InviteParticipantDialog extends StatefulWidget {
@@ -25,31 +26,39 @@ class _InviteParticipantDialogState extends State<InviteParticipantDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('Пригласить участника'),
+      title: Text(localization.invite_participant_dialog_title),
       content: Form(
         key: _formKey,
         child: TextFormField(
           controller: _emailController,
-          decoration: const InputDecoration(labelText: 'Email'),
+          decoration: InputDecoration(
+            labelText: localization.invite_participant_dialog_textFieldDecorationEmail,
+          ),
           keyboardType: TextInputType.emailAddress,
           autofocus: true,
           validator: (value) {
-            if (value == null || value.trim().isEmpty) return 'Введите email';
+            if (value == null || value.trim().isEmpty) {
+              return localization.invite_participant_dialog_textFieldValidator;
+            }
             // Сюда можно добавить regex валидацию email
             return null;
           },
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Отмена')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(localization.invite_participant_dialog_cancelBtn),
+        ),
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState?.validate() ?? false) {
               Navigator.of(context).pop(_emailController.text.trim());
             }
           },
-          child: const Text('Пригласить'),
+          child: Text(localization.invite_participant_dialog_inviteBtn),
         ),
       ],
     );

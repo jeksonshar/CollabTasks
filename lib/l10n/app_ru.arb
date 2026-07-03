@@ -206,5 +206,73 @@
   "authErrorPasswordResetRequired": "Перед входом требуется сбросить пароль.",
   "authErrorCanceledByUser": "Операция отменена пользователем.",
   "authErrorConfirmationNotComplete": "Подтверждение не завершено.",
-  "authErrorUnknown": "Неизвестная ошибка авторизации."
+  "authErrorUnknown": "Неизвестная ошибка авторизации.",
+
+  "create_group_dialog_title": "Новая рабочая группа",
+  "create_group_dialog_textFieldDecorationName": "Название",
+  "create_group_dialog_textFieldValidatorName": "Название не может быть пустым",
+  "create_group_dialog_textFieldDecorationDescription": "Описание",
+  "create_group_dialog_cancelBtn": "Отмена",
+  "create_group_dialog_createBtn": "Создать",
+
+  "edit_group_dialog_title": "Редактировать группу",
+  "edit_group_dialog_changeAvatarBtn": "Сменить аватарку",
+  "edit_group_dialog_textFieldName": "Название",
+  "edit_group_dialog_textFieldDesctiption": "Описание",
+  "edit_group_dialog_cancelBtn": "Отмена",
+  "edit_group_dialog_saveBtn": "Сохранить",
+
+  "invite_participant_dialog_title": "Пригласить участника",
+  "invite_participant_dialog_textFieldDecorationEmail": "Email",
+  "invite_participant_dialog_textFieldValidator": "Введите email",
+  "invite_participant_dialog_cancelBtn": "Отмена",
+  "invite_participant_dialog_inviteBtn": "Пригласить",
+
+  "group_details_defaultErrorMessage": "Ошибка загрузки группы",
+  "group_details_popupItemEditGroup": "Редактировать группу",
+  "group_details_popupItemInviteParticipant": "Пригласить участника",
+  "group_details_popupItemLeaveGroup": "Покинуть группу",
+  "group_details_popupItemDeleteGroup": "Удалить группу",
+  "group_details_bottomNavItemParticipants": "Участники",
+  "group_details_bottomNavItemTasks": "Задачи",
+  "group_details_leaveGroupTitle": "Покинуть группу?",
+  "group_details_leaveGroupBtn": "Покинуть",
+  "group_details_cancelBtn": "Отмена",
+  "group_details_deleteGroupTitle": "Удалить группу?",
+  "group_details_deleteGroupContent": "Группа, участники и задачи будут удалены.",
+  "group_details_deleteGroupBtn": "Удалить",
+  "group_details_emptyParticipantsTitle": "Участники еще не синхронизированы",
+  "group_details_titleWhenNoPartisipant": "Участники",
+  "group_details_ifParticipantYou": "Вы",
+  "group_details_taskBtnSegmentAll": "Все",
+  "group_details_taskBtnSegmentAccessible": "Доступные",
+  "group_details_taskBtnSegmentMy": "Мои",
+  "group_details_taskListEmptyTitle": "Задач нет",
+  "group_details_taskFree": "Свободно",
+  "group_details_taskInWork": "В работе у \"{participant}\"",
+  "@group_details_taskInWork": {
+    "placeholders": {
+      "participant": {}
+    }
+  },
+
+  "group_task_details_defaultErrorMessage": "Ошибка обновления задачи",
+  "group_task_details_descriptionTitle": "Описание",
+  "group_task_details_deadlineTitle": "Срок:",
+  "group_task_details_subtasksTitle": "Подзадачи",
+  "group_task_details_takeTaskBtn": "Взять задачу",
+  "group_task_details_releaseTask": "Освободить задачу",
+  "group_task_details_taskInWork": "В работе у \"{participant}\"",
+  "@group_task_details_taskInWork": {
+    "placeholders": {
+      "participant": {}
+    }
+  },
+  "group_task_details_taskFree": "Свободно",
+
+  "groups_toolbarTitle": "Рабочие группы",
+  "groups_defaultErrorMessage": "Ошибка загрузки групп",
+  "groups_emptyGroupListTitle": "Рабочих групп пока нет",
+  "groups_emptyGroupListDescription": "Создайте группу, чтобы вести совместные задачи."
+
 }
