@@ -7,6 +7,7 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/release_gr
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_task_details/group_task_details_state.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsState> {
@@ -60,20 +61,42 @@ class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsS
   }
 
   Future<void> _onClaim(GroupTaskClaimRequested event, Emitter<GroupTaskDetailsState> emit) async {
-    await _run(
-      emit,
-      () => _claimGroupTaskUseCase(groupId: state.task.groupId, taskId: state.task.id),
-    );
+    await _run(emit, () async {
+      final updated = await _claimGroupTaskUseCase(
+        groupId: state.task.groupId,
+        taskId: state.task.id,
+      );
+      debugPrint('claimed task = $updated');
+      emit(
+        state.copyWith(
+          task: updated,
+          isAssignedToMe: updated.assignedUserId == _currentUserId,
+          isAssignedToOther:
+              updated.assignedUserId != null && updated.assignedUserId != _currentUserId,
+        ),
+      );
+    });
   }
 
   Future<void> _onRelease(
     GroupTaskReleaseRequested event,
     Emitter<GroupTaskDetailsState> emit,
   ) async {
-    await _run(
-      emit,
-      () => _releaseGroupTaskUseCase(groupId: state.task.groupId, taskId: state.task.id),
-    );
+    await _run(emit, () async {
+      final updated = await _releaseGroupTaskUseCase(
+        groupId: state.task.groupId,
+        taskId: state.task.id,
+      );
+      debugPrint('released task = $updated');
+      emit(
+        state.copyWith(
+          task: updated,
+          isAssignedToMe: updated.assignedUserId == _currentUserId,
+          isAssignedToOther:
+              updated.assignedUserId != null && updated.assignedUserId != _currentUserId,
+        ),
+      );
+    });
   }
 
   Future<void> _onUpdate(

@@ -191,35 +191,36 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   }
 
   @override
-  Future<void> claimGroupTask({required String groupId, required String taskId}) async {
+  Future<GroupTask> claimGroupTask({required String groupId, required String taskId}) async {
     final user = await _requireCurrentUser();
     final task = await _requireTask(groupId: groupId, taskId: taskId);
     final participant = await _ensureCurrentParticipant(groupId: groupId, user: user);
     if (task.assignedUserId != null &&
         task.assignedUserId!.isNotEmpty &&
-        task.assignedUserId != participant.id) {
+        task.assignedUserId != participant.userId) {
       throw const GroupTaskAssignmentException('Task is already claimed by another participant.');
     }
     final updatedAt = DateTime.now().millisecondsSinceEpoch;
-    final updated = task.copyWith(assignedUserId: participant.id, updatedAt: updatedAt);
+    final updated = task.copyWith(assignedUserId: participant.userId, updatedAt: updatedAt);
     await _localDataSource.upsertTask(updated);
     await _remoteDataSource.claimTask(
       groupId: groupId,
       taskId: taskId,
-      participantId: participant.id,
+      participantId: participant.userId,
       updatedAt: updatedAt,
     );
+    return updated;
   }
 
   @override
-  Future<void> releaseGroupTask({required String groupId, required String taskId}) async {
+  Future<GroupTask> releaseGroupTask({required String groupId, required String taskId}) async {
     final user = await _requireCurrentUser();
     final task = await _requireTask(groupId: groupId, taskId: taskId);
     final participant = await _localDataSource.getParticipantByUserId(
       groupId: groupId,
       userId: user.id,
     );
-    if (participant == null || task.assignedUserId != participant.id) {
+    if (participant == null || task.assignedUserId != participant.userId) {
       throw const GroupTaskAssignmentException('Only current assignee can release this task.');
     }
     final updated = task.copyWith(
@@ -228,6 +229,7 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     );
     await _localDataSource.upsertTask(updated);
     await _tryRemote(() => _remoteDataSource.upsertTask(updated.copyWith(isSynced: true)));
+    return updated;
   }
 
   void _ensureGroupsSubscription(AuthUser user) {

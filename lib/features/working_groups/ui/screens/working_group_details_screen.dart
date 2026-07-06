@@ -123,6 +123,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                 ? BottomNavigationBar(
                     currentIndex: activeTab,
                     onTap: (index) => setState(() => _tabIndex = index),
+                    selectedItemColor: Colors.indigo,
                     items: [
                       BottomNavigationBarItem(
                         icon: const Icon(Icons.people),
@@ -362,6 +363,7 @@ class _TasksTab extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final task = state.visibleTasks[index];
                     final assignee = state.participantById(task.assignedUserId);
+                    debugPrint('Get tasks assignee = $assignee');
                     return _GroupTaskTile(
                       task: task,
                       assignee: assignee,

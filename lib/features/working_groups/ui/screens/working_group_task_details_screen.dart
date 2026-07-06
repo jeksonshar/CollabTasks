@@ -11,8 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-// TODO need to fix screen, смотри в документе пункт 9
-
 class WorkingGroupTaskDetailsScreen extends StatelessWidget {
   const WorkingGroupTaskDetailsScreen({super.key, required this.task, required this.participants});
 
@@ -43,6 +41,10 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
           final currentAssignee = participants.cast<GroupParticipant?>().firstWhere(
             (p) => p?.userId == currentTask.assignedUserId,
             orElse: () => null,
+          );
+
+          debugPrint(
+            'WorkingGroupTaskDetailsScreen build(): state.isAssignedToOther = ${state.isAssignedToOther}, state.isAssignedToMe = ${state.isAssignedToMe}',
           );
 
           return Scaffold(

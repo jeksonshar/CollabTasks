@@ -5,7 +5,8 @@ targets:
       drift_dev:
         generate_for:
           include:
-            - lib/data/local/db/entities/**/*.dart
-            - lib/data/local/db/app_database.dart
+            - lib/features/tasks/data/local/db/entities/task_entity.dart
+            - lib/features/working_groups/data/local/db/entities/working_group_entities.dart
+            - lib/features/tasks/data/local/db/app_database.dart
           exclude:
             - test/**

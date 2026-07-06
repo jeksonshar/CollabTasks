@@ -83,7 +83,7 @@ mutation DeleteWorkingGroup($input: DeleteWorkingGroupInput!) {
 ''';
 
   static const String inviteParticipantByEmail = r'''
-mutation InviteWorkingGroupParticipant($groupId: ID!, $email: String!) {
+mutation InviteWorkingGroupParticipant($groupId: ID!, $email: AWSEmail!) {
   inviteWorkingGroupParticipant(groupId: $groupId, email: $email) { id }
 }
 ''';

@@ -26,9 +26,9 @@ abstract class WorkingGroupsRepository {
 
   Future<void> updateGroupTask(GroupTask task);
 
-  Future<void> claimGroupTask({required String groupId, required String taskId});
+  Future<GroupTask> claimGroupTask({required String groupId, required String taskId});
 
-  Future<void> releaseGroupTask({required String groupId, required String taskId});
+  Future<GroupTask> releaseGroupTask({required String groupId, required String taskId});
 
   void clearSubscriptions();
 }

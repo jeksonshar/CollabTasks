@@ -3,6 +3,7 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task.da
 import 'package:collab_tasks/features/working_groups/domain/models/group_task_filter.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
 
 enum GroupDetailsStatus { loading, loaded, saving, deleted, left, error }
 
@@ -80,8 +81,12 @@ class GroupDetailsState extends Equatable {
 
   GroupParticipant? participantById(String? id) {
     if (id == null || id.isEmpty) return null;
+    debugPrint('participantById() id: $id');
+    for (int i = 0; i < participants.length; i++) {
+      debugPrint('participant#$i: ${participants[i]}');
+    }
     for (final participant in participants) {
-      if (participant.id == id) return participant;
+      if (participant.userId == id || participant.id == id) return participant;
     }
     return null;
   }
