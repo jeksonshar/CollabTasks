@@ -278,7 +278,7 @@ class _ParticipantsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
-    final participants = state.displayParticipants;
+    final participants = _filterInvitedParticipants(state.displayParticipants);
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -326,6 +326,30 @@ class _ParticipantsTab extends StatelessWidget {
       ),
     );
   }
+}
+
+List<GroupParticipant> _filterInvitedParticipants(List<GroupParticipant> participants) {
+  final Map<String, GroupParticipant> uniqueParticipants = {};
+
+  for (final participant in participants) {
+    // В качестве ключа берем userId (или name, если email сохранен там)
+    final key = participant.name;
+    final existing = uniqueParticipants[key];
+
+    if (existing == null) {
+      // Если такого пользователя еще нет в карте, просто добавляем его
+      uniqueParticipants[key] = participant;
+    } else {
+      // Если пользователь уже есть, проверяем: у кого из них id содержит 'invite:'
+      // перезаписываем элемент только если текущий имеет приоритетный 'invite:'
+      // а у уже сохраненного его нет.
+      if (participant.id.contains('invite:') && !existing.id.contains('invite:')) {
+        uniqueParticipants[key] = participant;
+      }
+    }
+  }
+
+  return uniqueParticipants.values.toList();
 }
 
 class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
