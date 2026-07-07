@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task_filter.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
@@ -56,4 +58,13 @@ class GroupParticipantInvited extends GroupDetailsEvent {
 
   @override
   List<Object?> get props => [email];
+}
+
+class GroupDetailsRefreshed extends GroupDetailsEvent {
+  const GroupDetailsRefreshed({this.completer});
+
+  final Completer<void>? completer;
+
+  @override
+  List<Object?> get props => [completer];
 }

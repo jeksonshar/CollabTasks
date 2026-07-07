@@ -69,6 +69,42 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   }
 
   @override
+  Future<void> syncGroup(String groupId) async {
+    final user = await _requireCurrentUser();
+    final remoteGroups = await _remoteDataSource.fetchGroups(
+      userId: user.id,
+      userEmail: user.email,
+    );
+    final group = remoteGroups.cast<WorkingGroup?>().firstWhere(
+      (g) => g?.id == groupId,
+      orElse: () => null,
+    );
+    if (group != null) {
+      await _localDataSource.upsertGroup(group);
+    }
+
+    final results = await Future.wait([
+      _remoteDataSource.watchParticipants(groupId: groupId).first,
+      _remoteDataSource.watchTasks(groupId: groupId).first,
+    ]);
+
+    final participants = results[0] as List<GroupParticipant>;
+    final tasks = results[1] as List<GroupTask>;
+
+    for (final participant in participants) {
+      await _localDataSource.upsertParticipant(participant);
+    }
+
+    for (final task in tasks) {
+      await _localDataSource.upsertTask(task.copyWith(isSynced: true));
+    }
+
+    await _participantSubscriptions.remove(groupId)?.cancel();
+    await _taskSubscriptions.remove(groupId)?.cancel();
+    _ensureGroupSubscriptions(groupId);
+  }
+
+  @override
   Stream<WorkingGroup?> watchGroup(String groupId) {
     unawaited(_ensureCurrentParticipantForGroup(groupId));
     _ensureGroupSubscriptions(groupId);

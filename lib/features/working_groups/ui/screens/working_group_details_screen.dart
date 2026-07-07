@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
@@ -111,8 +113,12 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
               ],
             ),
             body: activeTab == 0
-                ? _ParticipantsTab(state: state, isParticipant: isParticipant)
-                : _TasksTab(state: state),
+                ? _ParticipantsTab(
+                    state: state,
+                    isParticipant: isParticipant,
+                    onRefresh: () => _handleRefresh(context),
+                  )
+                : _TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
             floatingActionButton: (isParticipant && activeTab == 1)
                 ? FloatingActionButton(
                     onPressed: () => _showAddTaskDialog(context),
@@ -247,59 +253,77 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
       bloc.add(const WorkingGroupDeleted());
     }
   }
+
+  Future<void> _handleRefresh(BuildContext context) async {
+    final completer = Completer<void>();
+    context.read<GroupDetailsBloc>().add(GroupDetailsRefreshed(completer: completer));
+    await completer.future;
+  }
 }
 
 // По-хорошему следующие виджеты табов (_ParticipantsTab, _TasksTab) тоже стоит вынести
 // в отдельные файлы, если они продолжат расти, но пока оставлю здесь, очистив от внутреннего мусора.
 
 class _ParticipantsTab extends StatelessWidget {
-  const _ParticipantsTab({required this.state, required this.isParticipant});
+  const _ParticipantsTab({
+    required this.state,
+    required this.isParticipant,
+    required this.onRefresh,
+  });
 
   final GroupDetailsState state;
   final bool isParticipant;
+  final RefreshCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
     final participants = state.displayParticipants;
-    if (participants.isEmpty) {
-      return Center(child: Text(localization.group_details_emptyParticipantsTitle));
-    }
 
-    return CustomScrollView(
-      slivers: [
-        if (!isParticipant)
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyHeaderDelegate(
-              child: Container(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                padding: const EdgeInsets.only(left: 24, right: 16),
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  localization.group_details_titleWhenNoPartisipant,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.indigo.shade500,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (!isParticipant)
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _StickyHeaderDelegate(
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  padding: const EdgeInsets.only(left: 24, right: 16),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    localization.group_details_titleWhenNoPartisipant,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.indigo.shade500,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            final participant = participants[index];
-            return ListTile(
-              leading: _ParticipantAvatar(participant: participant),
-              title: Text(participant.name),
-              subtitle: state.isCurrentUser(participant)
-                  ? Text(localization.group_details_ifParticipantYou)
-                  : null,
-            );
-          }, childCount: participants.length),
-        ),
-      ],
+          if (participants.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text(localization.group_details_emptyParticipantsTitle)),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final participant = participants[index];
+                return ListTile(
+                  leading: _ParticipantAvatar(participant: participant),
+                  title: Text(participant.name),
+                  subtitle: state.isCurrentUser(participant)
+                      ? Text(localization.group_details_ifParticipantYou)
+                      : null,
+                );
+              }, childCount: participants.length),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -323,9 +347,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
 }
 
 class _TasksTab extends StatelessWidget {
-  const _TasksTab({required this.state});
+  const _TasksTab({required this.state, required this.onRefresh});
 
   final GroupDetailsState state;
+  final RefreshCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -356,22 +381,34 @@ class _TasksTab extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: state.visibleTasks.isEmpty
-              ? Center(child: Text(localization.group_details_taskListEmptyTitle))
-              : ListView.builder(
-                  itemCount: state.visibleTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = state.visibleTasks[index];
-                    final assignee = state.participantById(task.assignedUserId);
-                    debugPrint('Get tasks assignee = $assignee');
-                    return _GroupTaskTile(
-                      task: task,
-                      assignee: assignee,
-                      currentUserId: state.currentUserId,
-                      participants: state.participants,
-                    );
-                  },
-                ),
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: state.visibleTasks.isEmpty
+                ? CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: Text(localization.group_details_taskListEmptyTitle)),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: state.visibleTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = state.visibleTasks[index];
+                      final assignee = state.participantById(task.assignedUserId);
+                      debugPrint('Get tasks assignee = $assignee');
+                      return _GroupTaskTile(
+                        task: task,
+                        assignee: assignee,
+                        currentUserId: state.currentUserId,
+                        participants: state.participants,
+                      );
+                    },
+                  ),
+          ),
         ),
       ],
     );

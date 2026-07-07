@@ -11,6 +11,7 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_working_group_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/sync_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_state.dart';
@@ -30,6 +31,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     required InviteGroupParticipantUseCase inviteGroupParticipantUseCase,
     required LeaveWorkingGroupUseCase leaveWorkingGroupUseCase,
     required WatchAuthStateUseCase watchAuthStateUseCase,
+    required SyncWorkingGroupUseCase syncWorkingGroupUseCase,
   }) : _groupId = groupId,
        _getWorkingGroupUseCase = getWorkingGroupUseCase,
        _getGroupTasksUseCase = getGroupTasksUseCase,
@@ -40,6 +42,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
        _inviteGroupParticipantUseCase = inviteGroupParticipantUseCase,
        _leaveWorkingGroupUseCase = leaveWorkingGroupUseCase,
        _watchAuthStateUseCase = watchAuthStateUseCase,
+       _syncWorkingGroupUseCase = syncWorkingGroupUseCase,
        super(const GroupDetailsState()) {
     on<GroupDetailsStarted>(_onStarted);
     on<GroupTaskFilterChanged>((event, emit) => emit(state.copyWith(filter: event.filter)));
@@ -48,6 +51,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     on<WorkingGroupDeleted>(_onGroupDeleted);
     on<WorkingGroupLeft>(_onGroupLeft);
     on<GroupParticipantInvited>(_onParticipantInvited);
+    on<GroupDetailsRefreshed>(_onRefreshed);
   }
 
   final String _groupId;
@@ -60,6 +64,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   final InviteGroupParticipantUseCase _inviteGroupParticipantUseCase;
   final LeaveWorkingGroupUseCase _leaveWorkingGroupUseCase;
   final WatchAuthStateUseCase _watchAuthStateUseCase;
+  final SyncWorkingGroupUseCase _syncWorkingGroupUseCase;
 
   Future<void> _onStarted(GroupDetailsStarted event, Emitter<GroupDetailsState> emit) async {
     emit(state.copyWith(status: GroupDetailsStatus.loading));
@@ -79,6 +84,16 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
       onError: (error, _) =>
           state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()),
     );
+  }
+
+  Future<void> _onRefreshed(GroupDetailsRefreshed event, Emitter<GroupDetailsState> emit) async {
+    try {
+      await _syncWorkingGroupUseCase(_groupId);
+    } catch (error) {
+      emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
+    } finally {
+      event.completer?.complete();
+    }
   }
 
   /// Combines the group, participants and task streams, re-emitting whenever

@@ -9,6 +9,9 @@ abstract class WorkingGroupsRepository {
   /// Принудительно загружает группы с удалённого источника и сохраняет в локальный кэш.
   Future<void> syncGroups();
 
+  /// Принудительно загружает детали конкретной группы (участников и задачи) с удалённого источника и сохраняет в локальный кэш.
+  Future<void> syncGroup(String groupId);
+
   Stream<WorkingGroup?> watchGroup(String groupId);
 
   Stream<List<GroupParticipant>> watchParticipants(String groupId);

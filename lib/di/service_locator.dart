@@ -67,6 +67,7 @@ import 'package:collab_tasks/features/working_groups/domain/use_cases/get_workin
 import 'package:collab_tasks/features/working_groups/domain/use_cases/invite_group_participant_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/leave_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/release_group_task_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/sync_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/sync_working_groups_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/update_working_group_use_case.dart';
@@ -167,6 +168,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => ClaimGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => ReleaseGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => SyncWorkingGroupsUseCase(getIt()))
+    ..registerLazySingleton(() => SyncWorkingGroupUseCase(getIt()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -252,6 +254,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         inviteGroupParticipantUseCase: getIt(),
         leaveWorkingGroupUseCase: getIt(),
         watchAuthStateUseCase: getIt<WatchAuthStateUseCase>(),
+        syncWorkingGroupUseCase: getIt(),
       ),
     )
     ..registerFactoryParam<GroupTaskDetailsBloc, GroupTask, void>(
