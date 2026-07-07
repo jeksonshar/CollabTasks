@@ -5,6 +5,9 @@ import 'package:collab_tasks/features/working_groups/domain/models/working_group
 abstract class WorkingGroupsRemoteDataSource {
   Stream<List<WorkingGroup>> watchGroups({required String userId, required String userEmail});
 
+  /// Однократно получает актуальный список групп с сервера (без создания подписки).
+  Future<List<WorkingGroup>> fetchGroups({required String userId, required String userEmail});
+
   Stream<List<GroupParticipant>> watchParticipants({required String groupId});
 
   Stream<List<GroupTask>> watchTasks({required String groupId});

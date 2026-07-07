@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 sealed class WorkingGroupsEvent extends Equatable {
@@ -9,6 +11,15 @@ sealed class WorkingGroupsEvent extends Equatable {
 
 class WorkingGroupsStarted extends WorkingGroupsEvent {
   const WorkingGroupsStarted();
+}
+
+class WorkingGroupsRefreshed extends WorkingGroupsEvent {
+  const WorkingGroupsRefreshed([this.completer]);
+
+  final Completer<void>? completer;
+
+  @override
+  List<Object?> get props => [completer];
 }
 
 class WorkingGroupCreated extends WorkingGroupsEvent {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/working_groups_bloc.dart';
@@ -38,18 +40,30 @@ class _WorkingGroupsView extends StatelessWidget {
             ),
             WorkingGroupsStatus.loaded =>
               state.groups.isEmpty
-                  ? const _EmptyGroups()
-                  : ListView.builder(
-                      itemCount: state.groups.length,
-                      itemBuilder: (context, index) =>
-                          _WorkingGroupTile(group: state.groups[index]),
-                    ),
+                  ? _EmptyGroupsRefreshable(onRefresh: () => _onRefresh(context))
+                  : _groupsListView(context, state.groups),
           };
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateGroupDialog(context),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Future<void> _onRefresh(BuildContext context) async {
+    final completer = Completer<void>();
+    context.read<WorkingGroupsBloc>().add(WorkingGroupsRefreshed(completer));
+    await completer.future;
+  }
+
+  Widget _groupsListView(BuildContext context, List<WorkingGroup> groups) {
+    return RefreshIndicator(
+      onRefresh: () => _onRefresh(context),
+      child: ListView.builder(
+        itemCount: groups.length,
+        itemBuilder: (_, index) => _WorkingGroupTile(group: groups[index]),
       ),
     );
   }
@@ -129,6 +143,30 @@ class _EmptyGroups extends StatelessWidget {
           Text(localization.groups_emptyGroupListDescription),
         ],
       ),
+    );
+  }
+}
+
+class _EmptyGroupsRefreshable extends StatelessWidget {
+  const _EmptyGroupsRefreshable({required this.onRefresh});
+
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RefreshIndicator(
+          onRefresh: onRefresh,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: const _EmptyGroups(),
+            ),
+          ),
+        );
+      },
     );
   }
 }

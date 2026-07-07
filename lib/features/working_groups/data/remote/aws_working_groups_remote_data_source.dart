@@ -26,6 +26,10 @@ class AWSWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource 
   }
 
   @override
+  Future<List<WorkingGroup>> fetchGroups({required String userId, required String userEmail}) =>
+      _listGroups(userId: userId, userEmail: userEmail);
+
+  @override
   Stream<List<GroupParticipant>> watchParticipants({required String groupId}) async* {
     yield await _listParticipants(groupId);
     yield* _subscribeList<GroupParticipant>(

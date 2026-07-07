@@ -45,6 +45,15 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   }
 
   @override
+  Future<void> syncGroups() async {
+    final user = await _requireCurrentUser();
+    final groups = await _remoteDataSource.fetchGroups(userId: user.id, userEmail: user.email);
+    for (final group in groups) {
+      await _localDataSource.upsertGroup(group);
+    }
+  }
+
+  @override
   Stream<WorkingGroup?> watchGroup(String groupId) {
     unawaited(_ensureCurrentParticipantForGroup(groupId));
     _ensureGroupSubscriptions(groupId);

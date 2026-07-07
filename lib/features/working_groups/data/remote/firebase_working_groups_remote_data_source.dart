@@ -53,6 +53,23 @@ class FirebaseWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSo
     });
   }
 
+  @override
+  Future<List<WorkingGroup>> fetchGroups({
+    required String userId,
+    required String userEmail,
+  }) async {
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final results = await Future.wait([
+      _groupsRef().where('participantUserIds', arrayContains: userId).get(),
+      _groupsRef().where('participantEmails', arrayContains: normalizedEmail).get(),
+    ]);
+    final merged = <String, WorkingGroup>{};
+    for (final snapshot in results) {
+      merged.addAll(_groupsFromSnapshot(snapshot));
+    }
+    return merged.values.toList(growable: false);
+  }
+
   Map<String, WorkingGroup> _groupsFromSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
     return {for (final doc in snapshot.docs) doc.id: WorkingGroup.fromMap(_withId(doc))};
   }

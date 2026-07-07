@@ -6,6 +6,9 @@ import 'package:collab_tasks/features/working_groups/domain/models/working_group
 abstract class WorkingGroupsRepository {
   Stream<List<WorkingGroup>> watchGroups();
 
+  /// Принудительно загружает группы с удалённого источника и сохраняет в локальный кэш.
+  Future<void> syncGroups();
+
   Stream<WorkingGroup?> watchGroup(String groupId);
 
   Stream<List<GroupParticipant>> watchParticipants(String groupId);
