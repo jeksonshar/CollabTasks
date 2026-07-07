@@ -47,9 +47,24 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   @override
   Future<void> syncGroups() async {
     final user = await _requireCurrentUser();
-    final groups = await _remoteDataSource.fetchGroups(userId: user.id, userEmail: user.email);
-    for (final group in groups) {
+    final remoteGroups = await _remoteDataSource.fetchGroups(
+      userId: user.id,
+      userEmail: user.email,
+    );
+
+    // Upsert всех актуальных групп из remote в локальный кэш.
+    for (final group in remoteGroups) {
       await _localDataSource.upsertGroup(group);
+    }
+
+    // Удаляем группы, которые есть локально, но отсутствуют на сервере
+    // (т.е. были удалены с другого устройства).
+    final remoteIds = remoteGroups.map((g) => g.id).toSet();
+    final localGroups = await _localDataSource.getGroups();
+    for (final local in localGroups) {
+      if (!remoteIds.contains(local.id)) {
+        await _localDataSource.deleteGroup(local.id);
+      }
     }
   }
 
