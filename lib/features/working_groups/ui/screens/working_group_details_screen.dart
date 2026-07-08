@@ -42,6 +42,17 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
               state.status == GroupDetailsStatus.left) {
             Navigator.of(context).pop();
           }
+          if (state.status == GroupDetailsStatus.leaveRejectedWithActiveTasks) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.of(context)!.group_details_leaveRejectedWithActiveTasks,
+                  ),
+                ),
+              );
+          }
           if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()

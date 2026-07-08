@@ -34,7 +34,7 @@
   "updateTaskError": "Не удалось обновить задачу",
   "deleteTaskError": "Не удалось удалить задачу",
   "cancel": "Отмена",
-  "home": "Главная",
+  "home": "Задачи",
   "nameTitle": "Имя",
   "emailTitle": "Email",
   "statusTitle": "Статус",
@@ -273,6 +273,6 @@
   "groups_toolbarTitle": "Рабочие группы",
   "groups_defaultErrorMessage": "Ошибка загрузки групп",
   "groups_emptyGroupListTitle": "Рабочих групп пока нет",
-  "groups_emptyGroupListDescription": "Создайте группу, чтобы вести совместные задачи."
-
+  "groups_emptyGroupListDescription": "Создайте группу, чтобы вести совместные задачи.",
+  "group_details_leaveRejectedWithActiveTasks": "Вы не можете покинуть группу, пока у вас есть активные назначенные задачи."
 }

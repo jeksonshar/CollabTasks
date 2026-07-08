@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
@@ -34,7 +34,7 @@
   "updateTaskError": "Failed to update task",
   "deleteTaskError": "Failed to delete task",
   "cancel": "Cancel",
-  "home": "Home",
+  "home": "Tasks",
   "nameTitle": "Name",
   "emailTitle": "Email",
   "statusTitle": "Status",
@@ -273,5 +273,6 @@
   "groups_toolbarTitle": "Working Groups",
   "groups_defaultErrorMessage": "Error loading groups",
   "groups_emptyGroupListTitle": "No working groups yet",
-  "groups_emptyGroupListDescription": "Create a group to start collaborating on tasks."
+  "groups_emptyGroupListDescription": "Create a group to start collaborating on tasks.",
+  "group_details_leaveRejectedWithActiveTasks": "You cannot leave the group while you have active assigned tasks."
 }

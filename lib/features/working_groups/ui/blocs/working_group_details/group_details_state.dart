@@ -5,7 +5,15 @@ import 'package:collab_tasks/features/working_groups/domain/models/working_group
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 
-enum GroupDetailsStatus { loading, loaded, saving, deleted, left, error }
+enum GroupDetailsStatus {
+  loading,
+  loaded,
+  saving,
+  deleted,
+  left,
+  leaveRejectedWithActiveTasks,
+  error,
+}
 
 class GroupDetailsState extends Equatable {
   const GroupDetailsState({

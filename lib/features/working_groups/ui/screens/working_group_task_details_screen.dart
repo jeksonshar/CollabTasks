@@ -74,6 +74,9 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Card(
+                    color: Colors.grey.shade300,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: TaskRichPreview(deltaJson: currentTask.description),

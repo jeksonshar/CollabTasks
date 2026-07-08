@@ -26,6 +26,12 @@ abstract class WorkingGroupsRepository {
 
   Future<void> inviteParticipantByEmail({required String groupId, required String email});
 
+  Future<bool> hasActiveAssignedTasks({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  });
+
   Future<void> leaveGroup(String groupId);
 
   Future<void> addGroupTask({required String groupId, required TaskDraft draft});

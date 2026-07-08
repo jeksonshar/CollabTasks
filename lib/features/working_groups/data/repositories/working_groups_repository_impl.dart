@@ -183,6 +183,35 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   }
 
   @override
+  Future<bool> hasActiveAssignedTasks({
+    required String groupId,
+    required String userId,
+    required String userEmail,
+  }) async {
+    final normalizedEmail = userEmail.trim().toLowerCase();
+    final participants = await _localDataSource.getParticipants(groupId);
+    final participantIds = participants
+        .where(
+          (participant) =>
+              participant.userId == userId ||
+              participant.userId.trim().toLowerCase() == normalizedEmail,
+        )
+        .expand((participant) => [participant.id, participant.userId])
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    if (participantIds.isEmpty) return false;
+
+    final tasks = await _localDataSource.watchTasks(groupId).first;
+    return tasks.any(
+      (task) =>
+          !task.isCompleted &&
+          task.assignedUserId != null &&
+          participantIds.contains(task.assignedUserId),
+    );
+  }
+
+  @override
   Future<void> leaveGroup(String groupId) async {
     final user = await _requireCurrentUser();
     final normalizedEmail = user.email.trim().toLowerCase();

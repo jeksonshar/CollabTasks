@@ -111,7 +111,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get cancel => 'Скасувати';
 
   @override
-  String get home => 'Головна';
+  String get home => 'Задачі';
 
   @override
   String get nameTitle => 'Ім\'я';
@@ -659,4 +659,8 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get groups_emptyGroupListDescription =>
       'Створіть групу, щоб почати спільну роботу над завданнями.';
+
+  @override
+  String get group_details_leaveRejectedWithActiveTasks =>
+      'Ви не можете вийти з групи, поки у вас є активні призначені завдання.';
 }

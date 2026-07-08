@@ -307,7 +307,7 @@ abstract class AppLocalizations {
   /// No description provided for @home.
   ///
   /// In en, this message translates to:
-  /// **'Home'**
+  /// **'Tasks'**
   String get home;
 
   /// No description provided for @nameTitle.
@@ -1299,6 +1299,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create a group to start collaborating on tasks.'**
   String get groups_emptyGroupListDescription;
+
+  /// No description provided for @group_details_leaveRejectedWithActiveTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot leave the group while you have active assigned tasks.'**
+  String get group_details_leaveRejectedWithActiveTasks;
 }
 
 class _AppLocalizationsDelegate

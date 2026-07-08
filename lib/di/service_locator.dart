@@ -162,7 +162,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => UpdateWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => DeleteWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => InviteGroupParticipantUseCase(getIt()))
-    ..registerLazySingleton(() => LeaveWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => LeaveWorkingGroupUseCase(getIt(), getIt()))
     ..registerLazySingleton(() => AddGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => UpdateGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => ClaimGroupTaskUseCase(getIt()))

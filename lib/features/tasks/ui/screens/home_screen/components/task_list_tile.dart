@@ -212,11 +212,11 @@ class _TaskListTileState extends State<TaskListTile> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Card(
-            color: Colors.white,
+            color: Colors.grey.shade300,
             elevation: 1,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(16),
               child: TaskRichPreview(deltaJson: widget.task.description),
             ),
           ),

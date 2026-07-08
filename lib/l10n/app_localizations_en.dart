@@ -111,7 +111,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
-  String get home => 'Home';
+  String get home => 'Tasks';
 
   @override
   String get nameTitle => 'Name';
@@ -659,4 +659,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get groups_emptyGroupListDescription =>
       'Create a group to start collaborating on tasks.';
+
+  @override
+  String get group_details_leaveRejectedWithActiveTasks =>
+      'You cannot leave the group while you have active assigned tasks.';
 }

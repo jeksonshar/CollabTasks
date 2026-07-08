@@ -1,6 +1,9 @@
 import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/has_active_tasks_failure.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/add_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/delete_working_group_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/get_group_participants_use_case.dart';
@@ -17,14 +20,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockGetWorkingGroupUseCase extends Mock implements GetWorkingGroupUseCase {}
+
 class MockGetGroupTasksUseCase extends Mock implements GetGroupTasksUseCase {}
+
 class MockGetGroupParticipantsUseCase extends Mock implements GetGroupParticipantsUseCase {}
+
 class MockAddGroupTaskUseCase extends Mock implements AddGroupTaskUseCase {}
+
 class MockUpdateWorkingGroupUseCase extends Mock implements UpdateWorkingGroupUseCase {}
+
 class MockDeleteWorkingGroupUseCase extends Mock implements DeleteWorkingGroupUseCase {}
+
 class MockInviteGroupParticipantUseCase extends Mock implements InviteGroupParticipantUseCase {}
+
 class MockLeaveWorkingGroupUseCase extends Mock implements LeaveWorkingGroupUseCase {}
+
 class MockWatchAuthStateUseCase extends Mock implements WatchAuthStateUseCase {}
+
 class MockSyncWorkingGroupUseCase extends Mock implements SyncWorkingGroupUseCase {}
 
 void main() {
@@ -87,6 +99,61 @@ void main() {
       },
       verify: (_) {
         verify(() => mockSyncWorkingGroupUseCase(groupId)).called(1);
+      },
+    );
+  });
+
+  group('GroupDetailsBloc - WorkingGroupLeft', () {
+    blocTest<GroupDetailsBloc, GroupDetailsState>(
+      'emits leaveRejectedWithActiveTasks when the domain rejects leaving',
+      build: () {
+        when(() => mockLeaveWorkingGroupUseCase(groupId)).thenThrow(const HasActiveTasksFailure());
+        return bloc;
+      },
+      seed: () => const GroupDetailsState(
+        status: GroupDetailsStatus.loaded,
+        currentUserId: 'user-1',
+        participants: [
+          GroupParticipant(
+            id: 'group-1:user-1',
+            groupId: groupId,
+            userId: 'user-1',
+            name: 'User One',
+            updatedAt: 0,
+          ),
+        ],
+      ),
+      act: (bloc) => bloc.add(const WorkingGroupLeft()),
+      expect: () => const [
+        GroupDetailsState(
+          status: GroupDetailsStatus.saving,
+          currentUserId: 'user-1',
+          participants: [
+            GroupParticipant(
+              id: 'group-1:user-1',
+              groupId: groupId,
+              userId: 'user-1',
+              name: 'User One',
+              updatedAt: 0,
+            ),
+          ],
+        ),
+        GroupDetailsState(
+          status: GroupDetailsStatus.leaveRejectedWithActiveTasks,
+          currentUserId: 'user-1',
+          participants: [
+            GroupParticipant(
+              id: 'group-1:user-1',
+              groupId: groupId,
+              userId: 'user-1',
+              name: 'User One',
+              updatedAt: 0,
+            ),
+          ],
+        ),
+      ],
+      verify: (_) {
+        verify(() => mockLeaveWorkingGroupUseCase(groupId)).called(1);
       },
     );
   });

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
+import 'package:collab_tasks/features/working_groups/domain/models/has_active_tasks_failure.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/add_group_task_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/delete_working_group_use_case.dart';
@@ -189,6 +190,8 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
       emit(state.copyWith(status: GroupDetailsStatus.saving));
       await _leaveWorkingGroupUseCase(_groupId);
       emit(state.copyWith(status: GroupDetailsStatus.left));
+    } on HasActiveTasksFailure {
+      emit(state.copyWith(status: GroupDetailsStatus.leaveRejectedWithActiveTasks));
     } catch (error) {
       emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }

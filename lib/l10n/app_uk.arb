@@ -34,7 +34,7 @@
   "updateTaskError": "Не вдалося оновити задачу",
   "deleteTaskError": "Не вдалося видалити задачу",
   "cancel": "Скасувати",
-  "home": "Головна",
+  "home": "Задачі",
   "nameTitle": "Ім'я",
   "emailTitle": "Email",
   "statusTitle": "Статус",
@@ -271,5 +271,6 @@
   "groups_toolbarTitle": "Робочі групи",
   "groups_defaultErrorMessage": "Помилка завантаження груп",
   "groups_emptyGroupListTitle": "Робочих груп поки що немає",
-  "groups_emptyGroupListDescription": "Створіть групу, щоб почати спільну роботу над завданнями."
+  "groups_emptyGroupListDescription": "Створіть групу, щоб почати спільну роботу над завданнями.",
+  "group_details_leaveRejectedWithActiveTasks": "Ви не можете вийти з групи, поки у вас є активні призначені завдання."
 }
