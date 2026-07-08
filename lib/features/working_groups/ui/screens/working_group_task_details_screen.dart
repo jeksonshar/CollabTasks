@@ -1,4 +1,9 @@
+import 'package:collab_tasks/core/attachment_files/attachment_utils.dart';
+import 'package:collab_tasks/core/task_priority/task_priority_utils.dart';
+import 'package:collab_tasks/core/ui/small_progress_indicator.dart';
 import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
+import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/home_screen/components/task_rich_preview.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
@@ -47,9 +52,22 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
             'WorkingGroupTaskDetailsScreen build(): state.isAssignedToOther = ${state.isAssignedToOther}, state.isAssignedToMe = ${state.isAssignedToMe}',
           );
 
+          final priority = TaskPriority.fromValue(currentTask.priority);
+          final priorityColor = priority.borderColor ?? Theme.of(context).iconTheme.color;
+
           return Scaffold(
             appBar: AppBar(
-              title: Text(currentTask.title),
+              titleSpacing: 0,
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  currentTask.isCompleted
+                      ? Icon(Icons.task_alt, color: priorityColor)
+                      : Icon(Icons.circle_outlined, color: priorityColor),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(currentTask.title, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
               centerTitle: false,
               actions: [
                 IconButton(
@@ -100,6 +118,17 @@ class WorkingGroupTaskDetailsScreen extends StatelessWidget {
                         onChanged: null,
                         title: Text(subtask.title),
                       ),
+                    ),
+                  ],
+                  if (currentTask.attachments.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      localization.attachmentsTitle,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    _AttachmentsList(
+                      attachments: currentTask.attachments,
+                      localization: localization,
                     ),
                   ],
                 ],
@@ -204,6 +233,74 @@ class _AssignmentPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AttachmentsList extends StatefulWidget {
+  const _AttachmentsList({required this.attachments, required this.localization});
+
+  final List<TaskAttachment> attachments;
+  final AppLocalizations localization;
+
+  @override
+  State<_AttachmentsList> createState() => _AttachmentsListState();
+}
+
+class _AttachmentsListState extends State<_AttachmentsList> {
+  final Set<String> _loadingAttachmentIds = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: widget.attachments.map((attachment) {
+        final isLoading = _loadingAttachmentIds.contains(attachment.id);
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(iconForExtension(attachment.extension)),
+          title: Text(attachment.name),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              isLoading
+                  ? const SmallProgressIndicator()
+                  : IconButton(
+                      icon: const Icon(Icons.visibility),
+                      onPressed: () => handleViewAttachment(
+                        context: context,
+                        attachment: attachment,
+                        localization: widget.localization,
+                        repository: getIt<TaskRepository>(),
+                        onStartLoading: () =>
+                            setState(() => _loadingAttachmentIds.add(attachment.id)),
+                        onEndLoading: () =>
+                            setState(() => _loadingAttachmentIds.remove(attachment.id)),
+                        onCacheSynced: (newPath, sizeBytes) async {},
+                      ),
+                      tooltip: widget.localization.viewFileTitle,
+                    ),
+              IconButton(
+                icon: const Icon(Icons.download),
+                onPressed: isLoading
+                    ? null
+                    : () => handleDownloadAttachment(
+                        context: context,
+                        attachment: attachment,
+                        localization: widget.localization,
+                        onStartLoading: () =>
+                            setState(() => _loadingAttachmentIds.add(attachment.id)),
+                        onEndLoading: () =>
+                            setState(() => _loadingAttachmentIds.remove(attachment.id)),
+                        repository: getIt<TaskRepository>(),
+                      ),
+                tooltip: widget.localization.downloadFileTitle,
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }
