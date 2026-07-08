@@ -72,12 +72,18 @@ class _TaskRichPreviewState extends State<TaskRichPreview> {
 
   @override
   Widget build(BuildContext context) {
+    const fixedTextColor = Colors.black87;
+
     if (_hasError || _controller == null || _focusNode == null || _scrollController == null) {
-      return Text(widget.deltaJson, maxLines: 2, overflow: TextOverflow.ellipsis);
+      return Text(
+        widget.deltaJson,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: fixedTextColor),
+      );
     }
 
     return IgnorePointer(
-      // ignoring: true, // 👈 disables interaction completely
       child: quill.QuillEditor(
         controller: _controller!,
         focusNode: _focusNode!,
@@ -85,9 +91,39 @@ class _TaskRichPreviewState extends State<TaskRichPreview> {
         config: const quill.QuillEditorConfig(
           expands: false,
           padding: EdgeInsets.zero,
-          // enableInteractiveSelection: false, // 👈 remove the selection
+          // Явно передаем стили для базового текста в обход темы
+          customStyles: quill.DefaultStyles(
+            paragraph: quill.DefaultTextBlockStyle(
+              TextStyle(color: fixedTextColor, fontSize: 16),
+              quill.HorizontalSpacing(0, 0),
+              quill.VerticalSpacing(0, 0),
+              quill.VerticalSpacing(0, 0),
+              null,
+            ),
+          ),
         ),
       ),
     );
   }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   if (_hasError || _controller == null || _focusNode == null || _scrollController == null) {
+  //     return Text(widget.deltaJson, maxLines: 2, overflow: TextOverflow.ellipsis);
+  //   }
+  //
+  //   return IgnorePointer(
+  //     // ignoring: true, // 👈 disables interaction completely
+  //     child: quill.QuillEditor(
+  //       controller: _controller!,
+  //       focusNode: _focusNode!,
+  //       scrollController: _scrollController!,
+  //       config: const quill.QuillEditorConfig(
+  //         expands: false,
+  //         padding: EdgeInsets.zero,
+  //         // enableInteractiveSelection: false, // 👈 remove the selection
+  //       ),
+  //     ),
+  //   );
+  // }
 }

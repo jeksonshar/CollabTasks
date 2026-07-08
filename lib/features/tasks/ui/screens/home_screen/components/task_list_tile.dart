@@ -239,7 +239,6 @@ class _TaskListTileState extends State<TaskListTile> {
                         subtask.title,
                         style: TextStyle(
                           decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
-                          color: subtask.isCompleted ? Colors.black54 : null,
                         ),
                       ),
                     ),
