@@ -169,6 +169,8 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     }
     final updatedAt = DateTime.now().millisecondsSinceEpoch;
     final participant = GroupParticipant(
+      // TODO id from email (not from id) may lead to consequences. Check it.
+      // It need because at invite participant we know only his email. invite: need to filter in future
       id: '$groupId:invite:$normalizedEmail',
       groupId: groupId,
       userId: normalizedEmail,
@@ -413,7 +415,9 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     required int updatedAt,
   }) {
     return GroupParticipant(
-      id: '$groupId:${user.id}',
+      // TODO id from email (not from id) may lead to consequences. Check it.
+      // It need because at invite participant we know only his email
+      id: '$groupId:${user.email}',
       groupId: groupId,
       userId: user.id,
       name: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : user.email,
