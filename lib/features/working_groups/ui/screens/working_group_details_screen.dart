@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:collab_tasks/core/text/text_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
+import 'package:collab_tasks/features/chats/ui/screens/chat_screen.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
@@ -128,6 +131,18 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                     state: state,
                     isParticipant: isParticipant,
                     onRefresh: () => _handleRefresh(context),
+                    onParticipantTap: (participantId) async {
+                      debugPrint('chat need to open');
+                      final chatId = await getIt<ChatRepository>().getOrCreateDirectChat(
+                        participantId.substringAfterLast(':'),
+                      );
+                      if (context.mounted) {
+                        // Открываем созданный экран
+                        await Navigator.of(
+                          context,
+                        ).push(MaterialPageRoute(builder: (context) => ChatScreen(chatId: chatId)));
+                      }
+                    },
                   )
                 : _TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
             floatingActionButton: (isParticipant && activeTab == 1)
@@ -280,11 +295,13 @@ class _ParticipantsTab extends StatelessWidget {
     required this.state,
     required this.isParticipant,
     required this.onRefresh,
+    required this.onParticipantTap,
   });
 
   final GroupDetailsState state;
   final bool isParticipant;
   final RefreshCallback onRefresh;
+  final Function(String) onParticipantTap;
 
   @override
   Widget build(BuildContext context) {
@@ -324,12 +341,14 @@ class _ParticipantsTab extends StatelessWidget {
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final participant = participants[index];
+                final isMe = state.isCurrentUser(participant);
+
                 return ListTile(
                   leading: _ParticipantAvatar(participant: participant),
                   title: Text(participant.name),
-                  subtitle: state.isCurrentUser(participant)
-                      ? Text(localization.group_details_ifParticipantYou)
-                      : null,
+                  subtitle: isMe ? Text(localization.group_details_ifParticipantYou) : null,
+                  // Передаем id наверх при тапе:
+                  onTap: isMe ? null : () => onParticipantTap(participant.id),
                 );
               }, childCount: participants.length),
             ),

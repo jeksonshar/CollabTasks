@@ -15,6 +15,13 @@ import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_ca
 import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
+import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
+import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
+import 'package:collab_tasks/features/chats/data/repositories/chat_repository_impl.dart';
+import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
+import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
 import 'package:collab_tasks/features/settings/data/datastore/app_settings_datastore.dart';
 import 'package:collab_tasks/features/settings/data/repositories/app_settings_repository_impl.dart';
 import 'package:collab_tasks/features/settings/domain/repositories/app_settings_repository.dart';
@@ -115,6 +122,18 @@ void setupLocator(SharedPreferences sharedPreferences) {
         ),
       },
     )
+    ..registerLazySingleton<ChatRemoteDataSource>(
+      () => switch (chatBackend) {
+        // TODO change when WebSocketChatRemoteDataSource will create
+        ChatBackend.webSocket => FirebaseChatRemoteDataSource(
+          firestore: getIt<FirebaseFirestore>(),
+        ),
+        ChatBackend.firebase => FirebaseChatRemoteDataSource(firestore: getIt<FirebaseFirestore>()),
+      },
+    )
+    ..registerLazySingleton<ChatRepository>(
+      () => ChatRepositoryImpl(remoteDataSource: getIt<ChatRemoteDataSource>()),
+    )
     ..registerLazySingleton<WorkingGroupsRemoteDataSource>(
       () => switch (authBackend) {
         AuthBackend.aws => const AWSWorkingGroupsRemoteDataSource(),
@@ -169,6 +188,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => ReleaseGroupTaskUseCase(getIt()))
     ..registerLazySingleton(() => SyncWorkingGroupsUseCase(getIt()))
     ..registerLazySingleton(() => SyncWorkingGroupUseCase(getIt()))
+    ..registerLazySingleton(() => WatchMessagesUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => SendMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -279,6 +300,12 @@ void setupLocator(SharedPreferences sharedPreferences) {
         getNotificationTapStreamUseCase: getIt(),
         consumeInitialNotificationPayloadUseCase: getIt(),
         syncTasksUseCase: getIt(),
+      ),
+    )
+    ..registerFactory<ChatBloc>(
+      () => ChatBloc(
+        watchMessagesUseCase: getIt<WatchMessagesUseCase>(),
+        sendMessageUseCase: getIt<SendMessageUseCase>(),
       ),
     );
 }

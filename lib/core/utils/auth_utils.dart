@@ -3,13 +3,20 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 
 enum AuthBackend { aws, firebase }
 
-const AuthBackend authBackend = AuthBackend.aws;
-
 enum StorageBackend { aws, firebase }
+
+enum ChatBackend { webSocket, firebase }
+
+const AuthBackend authBackend = AuthBackend.firebase;
 
 StorageBackend get storageBackend => switch (authBackend) {
   AuthBackend.aws => StorageBackend.aws,
   AuthBackend.firebase => StorageBackend.firebase,
+};
+
+ChatBackend get chatBackend => switch (authBackend) {
+  AuthBackend.aws => ChatBackend.webSocket,
+  AuthBackend.firebase => ChatBackend.firebase,
 };
 
 String mapProviderLabel(AppLocalizations localization, AuthUser? user) {
