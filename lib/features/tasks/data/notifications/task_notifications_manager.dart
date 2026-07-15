@@ -55,10 +55,11 @@ class TaskNotificationsManager implements TaskNotificationService {
 
     const initializationSettings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
     );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
       onDidReceiveBackgroundNotificationResponse: onDidReceiveBackgroundNotificationResponse,
     );
@@ -73,7 +74,7 @@ class TaskNotificationsManager implements TaskNotificationService {
       _initialTapPayload = parsedPayload;
     }
 
-    // _isInitialized = true; // when app is open notifications doesn't arrive
+    _isInitialized = true; // when app is open notifications doesn't arrive
   }
 
   @override
@@ -143,10 +144,10 @@ class TaskNotificationsManager implements TaskNotificationService {
     }
 
     await _notificationsPlugin.cancel(
-      _buildNotificationId(taskId, TaskNotificationEventType.beforeDeadline),
+      id: _buildNotificationId(taskId, TaskNotificationEventType.beforeDeadline),
     );
     await _notificationsPlugin.cancel(
-      _buildNotificationId(taskId, TaskNotificationEventType.deadlineReached),
+      id: _buildNotificationId(taskId, TaskNotificationEventType.deadlineReached),
     );
   }
 
@@ -175,11 +176,11 @@ class TaskNotificationsManager implements TaskNotificationService {
     );
     try {
       await _notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tzDate,
-        const NotificationDetails(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             _androidChannelId,
             _androidChannelName,
@@ -187,6 +188,7 @@ class TaskNotificationsManager implements TaskNotificationService {
             importance: Importance.max,
             priority: Priority.high,
           ),
+          iOS: DarwinNotificationDetails(), // Добавлено для совместимости с v22+
         ),
         androidScheduleMode: _resolveScheduleMode(),
         payload: payload.toJson(),
@@ -196,11 +198,11 @@ class TaskNotificationsManager implements TaskNotificationService {
         'NotificationsManager: schedule failed in preferred mode, fallback to inexact. error=$error\n$stackTrace',
       );
       await _notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tzDate,
-        const NotificationDetails(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             _androidChannelId,
             _androidChannelName,
@@ -208,6 +210,7 @@ class TaskNotificationsManager implements TaskNotificationService {
             importance: Importance.max,
             priority: Priority.high,
           ),
+          iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexact,
         payload: payload.toJson(),
@@ -219,7 +222,8 @@ class TaskNotificationsManager implements TaskNotificationService {
     tz_data.initializeTimeZones();
 
     try {
-      var timezoneName = await FlutterTimezone.getLocalTimezone();
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      var timezoneName = timezoneInfo.identifier;
 
       // Мягкий хак для Украины: если система отдает старый формат,
       // но в базе лежит новый (или наоборот), подменяем строку.
