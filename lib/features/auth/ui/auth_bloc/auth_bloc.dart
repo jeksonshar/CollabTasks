@@ -1,5 +1,7 @@
 import 'dart:async';
 
+// Импортируем наш сервис уведомлений чата
+import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
@@ -36,6 +38,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required WatchAuthStateUseCase watchAuthStateUseCase,
     required TaskNotificationService notificationService,
     required WorkingGroupsRepository workingGroupsRepository,
+    ChatNotificationService? chatNotificationService,
   }) : _registerWithEmailUseCase = registerWithEmailUseCase,
        _loginWithEmailUseCase = loginWithEmailUseCase,
        _signInWithGoogleUseCase = signInWithGoogleUseCase,
@@ -47,6 +50,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _watchAuthStateUseCase = watchAuthStateUseCase,
        _notificationService = notificationService,
        _workingGroupsRepository = workingGroupsRepository,
+       _chatNotificationService = chatNotificationService,
        super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
     on<AuthRegisterRequested>(_onRegisterRequested);
@@ -70,6 +74,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogOutUseCase _logOutUseCase;
   final WatchAuthStateUseCase _watchAuthStateUseCase;
   final TaskNotificationService _notificationService;
+  final ChatNotificationService? _chatNotificationService;
 
   Future<void> _onSubscriptionStarted(
     AuthSubscriptionStarted event,
@@ -98,6 +103,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             requiresResetPasswordConfirmation: false,
             clearPendingResetPasswordEmail: true,
             passwordResetConfirmed: false,
+          );
+        }
+
+        // ПОЛЬЗОВАТЕЛЬ УСПЕШНО АВТОРИЗОВАН (или зашел прямо сейчас)
+        // Запускаем асинхронную синхронизацию токена без блокировки UI-потока
+        if (_chatNotificationService != null) {
+          unawaited(
+            _chatNotificationService
+                .syncDeviceToken(userId: user.id, userEmail: user.email)
+                .catchError((error, stackTrace) {
+                  debugPrint('Failed to sync device token: $error\n$stackTrace');
+                }),
           );
         }
 
@@ -331,6 +348,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) async {
     // Show loading
     emit(state.copyWith(status: AuthStatus.loadingFormSubmit, clearFailure: true));
+
+    // УДАЛЯЕМ ТОКЕН УСТРОЙСТВА ПЕРЕД ВЫХОДОМ ИЗ АККАУНТА
+    // Это критично, чтобы токен стерся из БД до того, как Firebase аннулирует права сессии (Permission Denied в Firestore)
+    final currentUserId = state.user?.id;
+    if (currentUserId != null && _chatNotificationService != null) {
+      try {
+        await _chatNotificationService.removeDeviceToken(currentUserId);
+      } catch (e) {
+        debugPrint('Failed to remove device token on logout: $e');
+      }
+    }
 
     _workingGroupsRepository.clearSubscriptions();
 

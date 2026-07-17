@@ -1,0 +1,15 @@
+# TypeScript v1 declaration files (if any are generated outside of lib)
+typings/
+
+# Node.js dependency directory
+# Игнорируем установленные зависимости Node.js
+node_modules/
+
+# Local Firebase config or environment files
+*.local
+
+# Игнорируем скомпилированный JavaScript-код функций
+lib/
+
+# Логи ошибок npm
+npm-debug.log

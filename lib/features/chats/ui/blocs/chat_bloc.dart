@@ -48,7 +48,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-      final senderId = currentUser?.uid ?? '';
+      final senderId = currentUser?.email ?? '';
       final senderName = currentUser?.displayName ?? currentUser?.email ?? 'Unknown User';
 
       final message = MessageEntity(

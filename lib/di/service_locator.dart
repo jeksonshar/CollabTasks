@@ -88,6 +88,8 @@ import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/notifications/chat_notification_service.dart';
+
 final getIt = GetIt.instance;
 
 void setupLocator(SharedPreferences sharedPreferences) {
@@ -203,13 +205,17 @@ void setupLocator(SharedPreferences sharedPreferences) {
       ..registerLazySingleton<AuthRepository>(() => getIt<AwsAuthRepositoryImpl>())
       ..registerLazySingleton<CognitoAuthRepository>(() => getIt<AwsAuthRepositoryImpl>());
   } else {
-    getIt.registerLazySingleton<AuthRepository>(
-      () => FirebaseAuthRepositoryImpl(
-        firebaseAuth: getIt<FirebaseAuth>(),
-        googleSignIn: getIt<GoogleSignIn>(),
-        requireEmailVerifiedForEmailLogin: true,
-      ),
-    );
+    getIt
+      ..registerLazySingleton<AuthRepository>(
+        () => FirebaseAuthRepositoryImpl(
+          firebaseAuth: getIt<FirebaseAuth>(),
+          googleSignIn: getIt<GoogleSignIn>(),
+          requireEmailVerifiedForEmailLogin: true,
+        ),
+      )
+      ..registerLazySingleton<ChatNotificationService>(
+        () => ChatNotificationService(firestore: getIt<FirebaseFirestore>()),
+      );
   }
 
   getIt
@@ -253,6 +259,11 @@ void setupLocator(SharedPreferences sharedPreferences) {
         watchAuthStateUseCase: getIt(),
         notificationService: getIt(),
         workingGroupsRepository: getIt(),
+        // Безопасный проброс: если сервис зарегистрирован в GetIt (при Firebase), он прилетит в Блок.
+        // Если выбран AWS Amplify — передастся null.
+        chatNotificationService: getIt.isRegistered<ChatNotificationService>()
+            ? getIt<ChatNotificationService>()
+            : null,
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:collab_tasks/core/enums/task_error_type.dart';
+import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
+import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task.dart';
 import 'package:collab_tasks/features/tasks/domain/models/task_draft.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
@@ -25,6 +27,19 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
   int _expansionResetVersion = 0;
   int _forcedExpansionVersion = 0;
   String? _forcedExpandedTaskId;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Дожидаемся окончания отрисовки первого кадра
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Достаем сервис из GetIt и проверяем наличие сохраненного chatId
+        getIt<ChatNotificationService>().checkPendingNotification();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -39,7 +39,7 @@ class ChatScreen extends StatelessWidget {
                     );
                   } else if (state is ChatLoaded) {
                     final messages = state.messages;
-                    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                    final currentUserId = FirebaseAuth.instance.currentUser?.email;
 
                     if (messages.isEmpty) {
                       return const Center(child: Text('No messages yet'));

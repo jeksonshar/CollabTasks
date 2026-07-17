@@ -20,6 +20,7 @@ import 'package:collab_tasks/features/tasks/ui/screens/main_screen/main_screen.d
 import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,12 +28,31 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/notifications/chat_notification_service.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Инициализируем Firebase с конфигурацией платформы
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint("=== [FCM] Обработан пуш в состоянии Terminated: ${message.messageId} ===");
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureSelectedAuthBackend();
   final sharedPreferences = await SharedPreferences.getInstance();
   setupLocator(sharedPreferences);
   await getIt<TaskNotificationsManager>().initialize();
+
+  // Инициализируем FCM ТОЛЬКО если выбран бэкенд Firebase
+  if (authBackend == AuthBackend.firebase) {
+    // Регистрируем фоновый хэндлер
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Достаем зарегистрированный сервис из DI и асинхронно инициализируем его
+    await getIt<ChatNotificationService>().initialize();
+  }
+
   runApp(const MyApp());
 }
 
