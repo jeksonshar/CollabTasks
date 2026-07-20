@@ -76,11 +76,23 @@ class ChatNotificationService {
       }
     });
 
+    // 5. ОБРАБОТКА ХОЛОДНОГО СТАРТА (когда приложение было выгружено из памяти)
+    final RemoteMessage? initialMessage = await _fcm.getInitialMessage();
+    if (initialMessage != null) {
+      debugPrint('=== [FCM] Приложение запущено из убитого состояния по клику на пуш ===');
+      final chatId = initialMessage.data['chatId'];
+      if (chatId != null) {
+        // Запоминаем ID, так как контекст навигации на этом этапе ещё НЕ готов!
+        _pendingChatId = chatId;
+      }
+    }
+
     _isInitialized = true;
   }
 
   /// Метод, который вызовется в главном экране приложения (в HomeScreen) после сборки UI
   void checkPendingNotification() {
+    debugPrint('checkPendingNotification() _pendingChatId = $_pendingChatId');
     if (_pendingChatId != null) {
       _handleNotificationTap(_pendingChatId!);
       _pendingChatId = null;
@@ -176,7 +188,7 @@ class ChatNotificationService {
     final context = globalNavigatorKey.currentContext;
     if (context == null) {
       _pendingChatId = chatId;
-      // debugPrint('=== [FCM] Ошибка навигации: navigatorKey.currentContext is null ===');
+      debugPrint('=== [FCM] Ошибка навигации: navigatorKey.currentContext is null ===');
       return;
     }
 
