@@ -9,6 +9,7 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_partici
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task_filter.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
+import 'package:collab_tasks/features/working_groups/domain/repositories/working_groups_repository.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_bloc.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_event.dart';
 import 'package:collab_tasks/features/working_groups/ui/blocs/working_group_details/group_details_state.dart';
@@ -136,11 +137,18 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                       final chatId = await getIt<ChatRepository>().getOrCreateDirectChat(
                         participantId.substringAfterLast(':'),
                       );
+                      final opponent = await getIt<WorkingGroupsRepository>().getParticipantById(
+                        group.id,
+                        participantId,
+                      );
                       if (context.mounted) {
                         // Открываем созданный экран
-                        await Navigator.of(
-                          context,
-                        ).push(MaterialPageRoute(builder: (context) => ChatScreen(chatId: chatId)));
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ChatScreen(chatId: chatId, opponentName: opponent.name),
+                          ),
+                        );
                       }
                     },
                   )

@@ -477,4 +477,12 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
 
     debugPrint('WorkingGroupsRepository: All remote subscriptions cleared safely.');
   }
+
+  @override
+  Future<GroupParticipant> getParticipantById(String groupId, String opponentId) async {
+    final participants = await _localDataSource.getParticipants(groupId);
+    final opponent = participants.firstWhere((participant) => participant.id == opponentId);
+
+    return opponent;
+  }
 }

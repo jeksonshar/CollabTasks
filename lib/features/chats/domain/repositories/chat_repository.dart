@@ -9,4 +9,6 @@ abstract class ChatRepository {
   Future<List<ChatEntity>> getChats();
 
   Future<String> getOrCreateDirectChat(String targetUserId);
+
+  Future<ChatEntity?> getChatById(String chatId);
 }

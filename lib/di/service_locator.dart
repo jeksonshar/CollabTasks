@@ -19,6 +19,7 @@ import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.
 import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/repositories/chat_repository_impl.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
@@ -192,6 +193,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SyncWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => WatchMessagesUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => SendMessageUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -317,6 +319,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
       () => ChatBloc(
         watchMessagesUseCase: getIt<WatchMessagesUseCase>(),
         sendMessageUseCase: getIt<SendMessageUseCase>(),
+        getChatUseCase: getIt<GetChatUseCase>(),
       ),
     );
 }

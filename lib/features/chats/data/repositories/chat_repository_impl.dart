@@ -44,4 +44,11 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<String> getOrCreateDirectChat(String targetUserId) {
     return _remoteDataSource.getOrCreateDirectChat(targetUserId);
   }
+
+  @override
+  Future<ChatEntity?> getChatById(String chatId) async {
+    // Передаем запрос в RemoteDataSource
+    final dto = await _remoteDataSource.getChatById(chatId);
+    return dto?.toDomain();
+  }
 }

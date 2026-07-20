@@ -43,4 +43,6 @@ abstract class WorkingGroupsRepository {
   Future<GroupTask> releaseGroupTask({required String groupId, required String taskId});
 
   void clearSubscriptions();
+
+  Future<GroupParticipant> getParticipantById(String groupId, String opponentId);
 }

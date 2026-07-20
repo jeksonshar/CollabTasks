@@ -19,11 +19,12 @@ class LoadMessages extends ChatEvent {
 
 class OnMessagesUpdated extends ChatEvent {
   final List<MessageEntity> messages;
+  final String chatTitle;
 
-  const OnMessagesUpdated(this.messages);
+  const OnMessagesUpdated(this.messages, this.chatTitle);
 
   @override
-  List<Object?> get props => [messages];
+  List<Object?> get props => [messages, chatTitle];
 }
 
 class SendMessageEvent extends ChatEvent {

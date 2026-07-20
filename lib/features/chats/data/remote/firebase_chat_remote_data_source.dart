@@ -55,39 +55,6 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
     return snapshot.docs.map((doc) => ChatDto.fromFirestore(doc.data(), doc.id)).toList();
   }
 
-  // @override
-  // Future<String> getOrCreateDirectChat(String targetUserId) async {
-  //   final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-  //   if (currentUserId == null) {
-  //     throw StateError('User not authenticated');
-  //   }
-  //
-  //   final querySnapshot = await _firestore
-  //       .collection('chats')
-  //       .where('type', isEqualTo: 'direct')
-  //       .where('participantIds', arrayContains: currentUserId)
-  //       .get();
-  //
-  //   for (final doc in querySnapshot.docs) {
-  //     final participantIds = List<String>.from(
-  //       doc.data()['participantIds'] as Iterable? ?? const [],
-  //     );
-  //     if (participantIds.contains(targetUserId)) {
-  //       return doc.id;
-  //     }
-  //   }
-  //
-  //   final newDocRef = _firestore.collection('chats').doc();
-  //   await newDocRef.set({
-  //     'type': 'direct',
-  //     'participantIds': [currentUserId, targetUserId],
-  //     'lastMessage': '',
-  //     'updatedAtMillis': DateTime.now().millisecondsSinceEpoch,
-  //   });
-  //
-  //   return newDocRef.id;
-  // }
-
   @override
   Future<String> getOrCreateDirectChat(String targetUserId) async {
     // final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -140,5 +107,21 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
     });
 
     return newDocRef.id;
+  }
+
+  @override
+  Future<ChatDto?> getChatById(String chatId) async {
+    try {
+      final docSnapshot = await _firestore.collection('chats').doc(chatId).get();
+
+      if (!docSnapshot.exists || docSnapshot.data() == null) {
+        return null; // Или бросать кастомный DataException
+      }
+
+      return ChatDto.fromFirestore(docSnapshot.data()!, docSnapshot.id);
+    } catch (e) {
+      // Логируем или прокидываем ошибку дальше в репозиторий
+      throw Exception('Failed to fetch chat by id: $e');
+    }
   }
 }

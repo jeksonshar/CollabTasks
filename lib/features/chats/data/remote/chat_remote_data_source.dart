@@ -9,4 +9,6 @@ abstract class ChatRemoteDataSource {
   Future<List<ChatDto>> getChats(String userId);
 
   Future<String> getOrCreateDirectChat(String targetUserId);
+
+  Future<ChatDto?> getChatById(String chatId);
 }

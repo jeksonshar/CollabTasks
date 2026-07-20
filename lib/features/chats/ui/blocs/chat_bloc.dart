@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
@@ -12,14 +13,17 @@ import 'package:uuid/uuid.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final WatchMessagesUseCase _watchMessagesUseCase;
   final SendMessageUseCase _sendMessageUseCase;
+  final GetChatUseCase _getChatUseCase;
 
   StreamSubscription<List<MessageEntity>>? _messagesSubscription;
 
   ChatBloc({
     required WatchMessagesUseCase watchMessagesUseCase,
     required SendMessageUseCase sendMessageUseCase,
+    required GetChatUseCase getChatUseCase,
   }) : _watchMessagesUseCase = watchMessagesUseCase,
        _sendMessageUseCase = sendMessageUseCase,
+       _getChatUseCase = getChatUseCase,
        super(const ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<OnMessagesUpdated>(_onMessagesUpdated);
@@ -31,14 +35,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(const ChatLoading());
     await _messagesSubscription?.cancel();
 
-    _messagesSubscription = _watchMessagesUseCase(event.chatId).listen(
-      (messages) => add(OnMessagesUpdated(messages)),
-      onError: (Object error) => add(_OnMessagesLoadFailed(error.toString())),
-    );
+    try {
+      final currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+
+      // Запрашиваем сам чат ОДИН раз (или через Stream, если участники могут меняться)
+      final chat = await _getChatUseCase(event.chatId);
+      final participantIds = chat?.participantIds ?? [];
+
+      // 2. Ищем email собеседника
+      final opponentEmail = participantIds.firstWhere(
+        (id) => id != currentUserEmail,
+        orElse: () => 'Chat',
+      );
+
+      final chatTitle = opponentEmail;
+
+      _messagesSubscription = _watchMessagesUseCase(event.chatId).listen(
+        (messages) => add(OnMessagesUpdated(messages, chatTitle)),
+        onError: (Object error) => add(_OnMessagesLoadFailed(error.toString())),
+      );
+    } catch (e) {
+      add(_OnMessagesLoadFailed(e.toString()));
+    }
   }
 
   void _onMessagesUpdated(OnMessagesUpdated event, Emitter<ChatState> emit) {
-    emit(ChatLoaded(event.messages));
+    emit(ChatLoaded(messages: event.messages, chatTitle: event.chatTitle));
   }
 
   void _onMessagesLoadFailed(_OnMessagesLoadFailed event, Emitter<ChatState> emit) {
