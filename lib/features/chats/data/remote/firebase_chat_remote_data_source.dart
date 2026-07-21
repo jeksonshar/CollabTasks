@@ -124,4 +124,9 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
       throw Exception('Failed to fetch chat by id: $e');
     }
   }
+
+  @override
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    await _firestore.collection('chats').doc(chatId).collection('messages').doc(messageId).delete();
+  }
 }

@@ -19,6 +19,7 @@ import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.
 import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/repositories/chat_repository_impl.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
@@ -315,11 +316,13 @@ void setupLocator(SharedPreferences sharedPreferences) {
         syncTasksUseCase: getIt(),
       ),
     )
+    ..registerFactory<DeleteMessageUseCase>(() => DeleteMessageUseCase(getIt<ChatRepository>()))
     ..registerFactory<ChatBloc>(
       () => ChatBloc(
         watchMessagesUseCase: getIt<WatchMessagesUseCase>(),
         sendMessageUseCase: getIt<SendMessageUseCase>(),
         getChatUseCase: getIt<GetChatUseCase>(),
+        deleteMessageUseCase: getIt<DeleteMessageUseCase>(),
       ),
     );
 }

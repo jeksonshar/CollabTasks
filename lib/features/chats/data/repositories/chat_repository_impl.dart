@@ -51,4 +51,9 @@ class ChatRepositoryImpl implements ChatRepository {
     final dto = await _remoteDataSource.getChatById(chatId);
     return dto?.toDomain();
   }
+
+  @override
+  Future<void> deleteMessage(String chatId, String messageId) {
+    return _remoteDataSource.deleteMessage(chatId, messageId);
+  }
 }

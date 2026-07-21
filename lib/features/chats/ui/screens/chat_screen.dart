@@ -69,7 +69,7 @@ class ChatScreen extends StatelessWidget {
             appBar: AppBar(title: Text(appBarTitle)),
             body: Column(
               children: [
-                Expanded(child: _buildBody(context, state)),
+                Expanded(child: _buildBody(context, state, chatId)),
                 SafeArea(
                   top: false,
                   child: MessageInputField(
@@ -87,7 +87,7 @@ class ChatScreen extends StatelessWidget {
   }
 }
 
-Widget _buildBody(BuildContext context, ChatState state) {
+Widget _buildBody(BuildContext context, ChatState state, String chatId) {
   if (state is ChatLoading) {
     return const Center(child: CircularProgressIndicator());
   }
@@ -119,7 +119,33 @@ Widget _buildBody(BuildContext context, ChatState state) {
       itemBuilder: (context, index) {
         final message = messages[index];
         final isMe = message.senderId == currentUserId;
-        return MessageBubble(message: message, isMe: isMe);
+        return MessageBubble(
+          message: message,
+          isMe: isMe,
+          onDelete: isMe
+              ? () {
+                  showDialog(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Delete message?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            context.read<ChatBloc>().add(DeleteMessageEvent(chatId, message.id));
+                            Navigator.pop(dialogContext);
+                          },
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              : null,
+        );
       },
     );
   }

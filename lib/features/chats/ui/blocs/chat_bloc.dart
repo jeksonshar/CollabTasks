@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
@@ -14,6 +15,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final WatchMessagesUseCase _watchMessagesUseCase;
   final SendMessageUseCase _sendMessageUseCase;
   final GetChatUseCase _getChatUseCase;
+  final DeleteMessageUseCase _deleteMessageUseCase;
 
   StreamSubscription<List<MessageEntity>>? _messagesSubscription;
 
@@ -21,13 +23,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     required WatchMessagesUseCase watchMessagesUseCase,
     required SendMessageUseCase sendMessageUseCase,
     required GetChatUseCase getChatUseCase,
+    required DeleteMessageUseCase deleteMessageUseCase,
   }) : _watchMessagesUseCase = watchMessagesUseCase,
        _sendMessageUseCase = sendMessageUseCase,
        _getChatUseCase = getChatUseCase,
+       _deleteMessageUseCase = deleteMessageUseCase,
        super(const ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<OnMessagesUpdated>(_onMessagesUpdated);
     on<SendMessageEvent>(_onSendMessage);
+    on<DeleteMessageEvent>(_onDeleteMessage);
     on<_OnMessagesLoadFailed>(_onMessagesLoadFailed);
   }
 
@@ -82,6 +87,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
 
       await _sendMessageUseCase(event.chatId, message);
+    } catch (e) {
+      emit(ChatError(e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteMessage(DeleteMessageEvent event, Emitter<ChatState> emit) async {
+    try {
+      await _deleteMessageUseCase(event.chatId, event.messageId);
     } catch (e) {
       emit(ChatError(e.toString()));
     }
