@@ -274,5 +274,13 @@
   "groups_defaultErrorMessage": "Ошибка загрузки групп",
   "groups_emptyGroupListTitle": "Рабочих групп пока нет",
   "groups_emptyGroupListDescription": "Создайте группу, чтобы вести совместные задачи.",
-  "group_details_leaveRejectedWithActiveTasks": "Вы не можете покинуть группу, пока у вас есть активные назначенные задачи."
+  "group_details_leaveRejectedWithActiveTasks": "Вы не можете покинуть группу, пока у вас есть активные назначенные задачи.",
+
+  "direct_chat_toolbarTitle": "Чат",
+  "direct_chat_senderNameDefaultTitle": "Неизвестный пользователь",
+  "direct_chat_hintTextInputMessage": "Введи сообщение ...",
+  "direct_chat_emptyMessagesTitle": "Нет сообщений",
+  "direct_chat_deleteMessageConfirmationTitle": "Удалить сообщение?",
+  "direct_chat_deleteMessageConfirmBtn": "Удалить",
+  "direct_chat_deleteMessageCancelBtn": "Отмена"
 }

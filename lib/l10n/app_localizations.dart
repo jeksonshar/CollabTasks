@@ -1305,6 +1305,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You cannot leave the group while you have active assigned tasks.'**
   String get group_details_leaveRejectedWithActiveTasks;
+
+  /// No description provided for @direct_chat_toolbarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get direct_chat_toolbarTitle;
+
+  /// No description provided for @direct_chat_senderNameDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown User'**
+  String get direct_chat_senderNameDefaultTitle;
+
+  /// No description provided for @direct_chat_hintTextInputMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message...'**
+  String get direct_chat_hintTextInputMessage;
+
+  /// No description provided for @direct_chat_emptyMessagesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get direct_chat_emptyMessagesTitle;
+
+  /// No description provided for @direct_chat_deleteMessageConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete message?'**
+  String get direct_chat_deleteMessageConfirmationTitle;
+
+  /// No description provided for @direct_chat_deleteMessageConfirmBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get direct_chat_deleteMessageConfirmBtn;
+
+  /// No description provided for @direct_chat_deleteMessageCancelBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get direct_chat_deleteMessageCancelBtn;
 }
 
 class _AppLocalizationsDelegate

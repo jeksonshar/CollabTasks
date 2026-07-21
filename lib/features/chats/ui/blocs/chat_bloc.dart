@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
@@ -7,6 +8,10 @@ import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_ca
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/l10n/app_localizations_en.dart';
+import 'package:collab_tasks/l10n/app_localizations_ru.dart';
+import 'package:collab_tasks/l10n/app_localizations_uk.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -47,10 +52,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final chat = await _getChatUseCase(event.chatId);
       final participantIds = chat?.participantIds ?? [];
 
+      final localizations = _getAppLocalizations();
+
       // 2. Ищем email собеседника
       final opponentEmail = participantIds.firstWhere(
         (id) => id != currentUserEmail,
-        orElse: () => 'Chat',
+        orElse: () => localizations.direct_chat_toolbarTitle,
       );
 
       final chatTitle = opponentEmail;
@@ -74,9 +81,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     try {
+      final localizations = _getAppLocalizations();
       final currentUser = FirebaseAuth.instance.currentUser;
       final senderId = currentUser?.email ?? '';
-      final senderName = currentUser?.displayName ?? currentUser?.email ?? 'Unknown User';
+      final senderName =
+          currentUser?.displayName ??
+          currentUser?.email ??
+          localizations.direct_chat_senderNameDefaultTitle;
 
       final message = MessageEntity(
         id: const Uuid().v4(),
@@ -97,6 +108,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       await _deleteMessageUseCase(event.chatId, event.messageId);
     } catch (e) {
       emit(ChatError(e.toString()));
+    }
+  }
+
+  AppLocalizations _getAppLocalizations() {
+    final languageCode = PlatformDispatcher.instance.locale.languageCode;
+    switch (languageCode) {
+      case 'ru':
+        return AppLocalizationsRu();
+      case 'uk':
+        return AppLocalizationsUk();
+      case 'en':
+      default:
+        return AppLocalizationsEn();
     }
   }
 

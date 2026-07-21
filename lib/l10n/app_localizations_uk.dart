@@ -663,4 +663,26 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get group_details_leaveRejectedWithActiveTasks =>
       'Ви не можете вийти з групи, поки у вас є активні призначені завдання.';
+
+  @override
+  String get direct_chat_toolbarTitle => 'Чат';
+
+  @override
+  String get direct_chat_senderNameDefaultTitle => 'Невідомий користувач';
+
+  @override
+  String get direct_chat_hintTextInputMessage => 'введи повідомлення...';
+
+  @override
+  String get direct_chat_emptyMessagesTitle => 'Немає повідомлень';
+
+  @override
+  String get direct_chat_deleteMessageConfirmationTitle =>
+      'Видалити повідомлення?';
+
+  @override
+  String get direct_chat_deleteMessageConfirmBtn => 'Видалити';
+
+  @override
+  String get direct_chat_deleteMessageCancelBtn => 'Відміна';
 }

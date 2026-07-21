@@ -274,5 +274,13 @@
   "groups_defaultErrorMessage": "Error loading groups",
   "groups_emptyGroupListTitle": "No working groups yet",
   "groups_emptyGroupListDescription": "Create a group to start collaborating on tasks.",
-  "group_details_leaveRejectedWithActiveTasks": "You cannot leave the group while you have active assigned tasks."
+  "group_details_leaveRejectedWithActiveTasks": "You cannot leave the group while you have active assigned tasks.",
+
+  "direct_chat_toolbarTitle": "Chat",
+  "direct_chat_senderNameDefaultTitle": "Unknown User",
+  "direct_chat_hintTextInputMessage": "Type a message...",
+  "direct_chat_emptyMessagesTitle": "No messages yet",
+  "direct_chat_deleteMessageConfirmationTitle": "Delete message?",
+  "direct_chat_deleteMessageConfirmBtn": "Delete",
+  "direct_chat_deleteMessageCancelBtn": "Cancel"
 }

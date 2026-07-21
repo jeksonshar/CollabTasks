@@ -1,3 +1,4 @@
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class MessageInputField extends StatefulWidget {
@@ -46,6 +47,7 @@ class _MessageInputFieldState extends State<MessageInputField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final localization = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -55,9 +57,9 @@ class _MessageInputFieldState extends State<MessageInputField> {
             child: TextField(
               controller: _controller,
               onSubmitted: (_) => _submit(),
-              decoration: const InputDecoration(
-                hintText: 'Type a message...',
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: InputDecoration(
+                hintText: localization.direct_chat_hintTextInputMessage,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
             ),
           ),

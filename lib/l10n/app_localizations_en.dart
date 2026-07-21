@@ -663,4 +663,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get group_details_leaveRejectedWithActiveTasks =>
       'You cannot leave the group while you have active assigned tasks.';
+
+  @override
+  String get direct_chat_toolbarTitle => 'Chat';
+
+  @override
+  String get direct_chat_senderNameDefaultTitle => 'Unknown User';
+
+  @override
+  String get direct_chat_hintTextInputMessage => 'Type a message...';
+
+  @override
+  String get direct_chat_emptyMessagesTitle => 'No messages yet';
+
+  @override
+  String get direct_chat_deleteMessageConfirmationTitle => 'Delete message?';
+
+  @override
+  String get direct_chat_deleteMessageConfirmBtn => 'Delete';
+
+  @override
+  String get direct_chat_deleteMessageCancelBtn => 'Cancel';
 }

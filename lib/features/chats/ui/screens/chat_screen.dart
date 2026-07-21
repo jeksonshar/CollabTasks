@@ -4,6 +4,7 @@ import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -55,12 +56,13 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return BlocProvider<ChatBloc>(
       create: (_) => getIt<ChatBloc>()..add(LoadMessages(chatId)),
       child: BlocBuilder<ChatBloc, ChatState>(
         builder: (context, state) {
           // 1. Вычисляем заголовок на основе текущего стейта и opponentName
-          String appBarTitle = 'Chat';
+          String appBarTitle = localizations.direct_chat_toolbarTitle;
           if (state is ChatLoaded) {
             appBarTitle = opponentName ?? state.chatTitle;
           }
@@ -108,9 +110,10 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
   if (state is ChatLoaded) {
     final messages = state.messages;
     final currentUserId = FirebaseAuth.instance.currentUser?.email;
+    final localization = AppLocalizations.of(context)!;
 
     if (messages.isEmpty) {
-      return const Center(child: Text('No messages yet'));
+      return Center(child: Text(localization.direct_chat_emptyMessagesTitle));
     }
 
     return ListView.builder(
@@ -127,18 +130,18 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
                   showDialog(
                     context: context,
                     builder: (dialogContext) => AlertDialog(
-                      title: const Text('Delete message?'),
+                      title: Text(localization.direct_chat_deleteMessageConfirmationTitle),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel'),
+                          child: Text(localization.direct_chat_deleteMessageCancelBtn),
                         ),
                         TextButton(
                           onPressed: () {
                             context.read<ChatBloc>().add(DeleteMessageEvent(chatId, message.id));
                             Navigator.pop(dialogContext);
                           },
-                          child: const Text('Delete'),
+                          child: Text(localization.direct_chat_deleteMessageConfirmBtn),
                         ),
                       ],
                     ),

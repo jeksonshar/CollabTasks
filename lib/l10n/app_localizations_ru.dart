@@ -661,4 +661,25 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get group_details_leaveRejectedWithActiveTasks =>
       'Вы не можете покинуть группу, пока у вас есть активные назначенные задачи.';
+
+  @override
+  String get direct_chat_toolbarTitle => 'Чат';
+
+  @override
+  String get direct_chat_senderNameDefaultTitle => 'Неизвестный пользователь';
+
+  @override
+  String get direct_chat_hintTextInputMessage => 'Введи сообщение ...';
+
+  @override
+  String get direct_chat_emptyMessagesTitle => 'Нет сообщений';
+
+  @override
+  String get direct_chat_deleteMessageConfirmationTitle => 'Удалить сообщение?';
+
+  @override
+  String get direct_chat_deleteMessageConfirmBtn => 'Удалить';
+
+  @override
+  String get direct_chat_deleteMessageCancelBtn => 'Отмена';
 }

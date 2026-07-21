@@ -272,5 +272,13 @@
   "groups_defaultErrorMessage": "Помилка завантаження груп",
   "groups_emptyGroupListTitle": "Робочих груп поки що немає",
   "groups_emptyGroupListDescription": "Створіть групу, щоб почати спільну роботу над завданнями.",
-  "group_details_leaveRejectedWithActiveTasks": "Ви не можете вийти з групи, поки у вас є активні призначені завдання."
+  "group_details_leaveRejectedWithActiveTasks": "Ви не можете вийти з групи, поки у вас є активні призначені завдання.",
+
+  "direct_chat_toolbarTitle": "Чат",
+  "direct_chat_senderNameDefaultTitle": "Невідомий користувач",
+  "direct_chat_hintTextInputMessage": "введи повідомлення...",
+  "direct_chat_emptyMessagesTitle": "Немає повідомлень",
+  "direct_chat_deleteMessageConfirmationTitle": "Видалити повідомлення?",
+  "direct_chat_deleteMessageConfirmBtn": "Видалити",
+  "direct_chat_deleteMessageCancelBtn": "Відміна"
 }
