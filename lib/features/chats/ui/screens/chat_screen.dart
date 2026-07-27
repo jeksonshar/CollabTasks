@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
@@ -5,78 +6,98 @@ import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// class ChatScreen extends StatelessWidget {
-//   final String chatId;
-//
-//   const ChatScreen({super.key, required this.chatId});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocProvider<ChatBloc>(
-//       create: (_) => getIt<ChatBloc>()..add(LoadMessages(chatId)),
-//       child: Scaffold(
-//         appBar: AppBar(title: const Text('Chat')),
-//         body: Column(
-//           children: [
-//             Expanded(
-//               child: BlocBuilder<ChatBloc, ChatState>(
-//                 builder: (context, state) {
-//                   return _buildBody(context, state);
-//                 },
-//               ),
-//             ),
-//             SafeArea(
-//               top: false,
-//               child: Builder(
-//                 builder: (context) {
-//                   return MessageInputField(
-//                     onSendMessage: (text) {
-//                       context.read<ChatBloc>().add(SendMessageEvent(chatId, text));
-//                     },
-//                   );
-//                 },
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   final String chatId;
   final String? opponentName;
 
   const ChatScreen({super.key, required this.chatId, this.opponentName});
 
   @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> with RouteAware {
+  late final ChatNotificationService _notificationService;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationService = getIt<ChatNotificationService>();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Подписываемся на отслеживание перехода по экранам
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Отписываемся от роутера и сбрасываем activeChatId
+    routeObserver.unsubscribe(this);
+    if (_notificationService.activeChatId == widget.chatId) {
+      _notificationService.activeChatId = null;
+    }
+    super.dispose();
+  }
+
+  /// --- Реализация подписки RouteAware ---
+
+  @override
+  void didPush() {
+    // Экран открылся впервые -> фиксируем активный chatId
+    _notificationService.activeChatId = widget.chatId;
+  }
+
+  @override
+  void didPopNext() {
+    // Вернулись на этот экран с верхнего (например, закрыли модалку/профиль)
+    _notificationService.activeChatId = widget.chatId;
+  }
+
+  @override
+  void didPushNext() {
+    // Поверх этого экрана открыли другой -> временно сбрасываем
+    _notificationService.activeChatId = null;
+  }
+
+  @override
+  void didPop() {
+    // Экран закрываем совсем -> сбрасываем активный chatId
+    _notificationService.activeChatId = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     return BlocProvider<ChatBloc>(
-      create: (_) => getIt<ChatBloc>()..add(LoadMessages(chatId)),
+      create: (_) => getIt<ChatBloc>()..add(LoadMessages(widget.chatId)),
       child: BlocBuilder<ChatBloc, ChatState>(
         builder: (context, state) {
-          // 1. Вычисляем заголовок на основе текущего стейта и opponentName
           String appBarTitle = localizations.direct_chat_toolbarTitle;
           if (state is ChatLoaded) {
-            appBarTitle = opponentName ?? state.chatTitle;
+            appBarTitle = widget.opponentName ?? state.chatTitle;
           }
 
           return Scaffold(
             appBar: AppBar(title: Text(appBarTitle)),
             body: Column(
               children: [
-                Expanded(child: _buildBody(context, state, chatId)),
+                Expanded(child: _buildBody(context, state, widget.chatId)),
                 SafeArea(
                   top: false,
                   child: MessageInputField(
                     onSendMessage: (text) {
-                      context.read<ChatBloc>().add(SendMessageEvent(chatId, text));
+                      context.read<ChatBloc>().add(SendMessageEvent(widget.chatId, text));
                     },
                   ),
                 ),

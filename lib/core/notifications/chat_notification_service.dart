@@ -19,6 +19,10 @@ class ChatNotificationService {
   String? _pendingDirectChatId;
   String? _pendingGroupChatId;
 
+  // Переменные для отслеживания активного экрана
+  String? activeChatId;
+  String? activeGroupId;
+
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -171,6 +175,21 @@ class ChatNotificationService {
     final groupChatId = message.data['groupId'];
 
     debugPrint('=== [FCM] _showLocalBanner() directChatId = $directChatId, groupId = $groupChatId');
+
+    // ⛔ БЛОКИРОВКА БАННЕРА: Если юзер уже находится в этом личной или групповом чате
+    if (directChatId != null && directChatId == activeChatId) {
+      debugPrint(
+        '=== [FCM] Баннер личного чата пропущен: пользователь уже в чате $directChatId ===',
+      );
+      return;
+    }
+
+    if (groupChatId != null && groupChatId == activeGroupId) {
+      debugPrint(
+        '=== [FCM] Баннер группового чата пропущен: пользователь уже в группе $groupChatId ===',
+      );
+      return;
+    }
 
     if (directChatId != null) {
       _pendingDirectChatId = directChatId;

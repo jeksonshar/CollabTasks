@@ -37,6 +37,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("=== [FCM] Обработан пуш в состоянии Terminated: ${message.messageId} ===");
 }
 
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+
+// Создаём глобальный Observer для отслеживания открытых экранов
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureSelectedAuthBackend();
@@ -54,43 +59,6 @@ Future<void> main() async {
   }
 
   runApp(const MyApp());
-}
-
-Future<void> _configureSelectedAuthBackend() async {
-  if (authBackend == AuthBackend.firebase) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    return;
-  }
-
-  try {
-    // Add plugins
-    await Amplify.addPlugin(AmplifyAuthCognito());
-    await Amplify.addPlugin(AmplifyAPI());
-    await Amplify.addPlugin(AmplifyStorageS3());
-
-    // 1. Read string from assets
-    final configString = await rootBundle.loadString('amplify_outputs.json');
-    await Amplify.configure(configString).timeout(const Duration(seconds: 10));
-
-    safePrint('Amplify successfully configured with Gen 2 outputs!');
-  } on AmplifyAlreadyConfiguredException {
-    safePrint('Amplify was already configured.');
-  } on TimeoutException {
-    safePrint('Amplify configure timed out. Continue app startup without blocking UI.');
-  } catch (error, stackTrace) {
-    safePrint('Amplify configure failed: $error');
-    safePrint('$stackTrace');
-  }
-}
-
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
-
-ThemeMode _mapThemeModeToFlutterThemeMode(AppThemeMode themeModeEnum) {
-  return switch (themeModeEnum) {
-    AppThemeMode.light => ThemeMode.light,
-    AppThemeMode.dark => ThemeMode.dark,
-    AppThemeMode.system => ThemeMode.system,
-  };
 }
 
 class MyApp extends StatelessWidget {
@@ -129,6 +97,7 @@ class MyApp extends StatelessWidget {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 supportedLocales: AppLocalizations.supportedLocales,
+                navigatorObservers: [routeObserver],
                 home: const AppAuthGate(),
               );
             },
@@ -169,4 +138,39 @@ class AppAuthGate extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _configureSelectedAuthBackend() async {
+  if (authBackend == AuthBackend.firebase) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    return;
+  }
+
+  try {
+    // Add plugins
+    await Amplify.addPlugin(AmplifyAuthCognito());
+    await Amplify.addPlugin(AmplifyAPI());
+    await Amplify.addPlugin(AmplifyStorageS3());
+
+    // 1. Read string from assets
+    final configString = await rootBundle.loadString('amplify_outputs.json');
+    await Amplify.configure(configString).timeout(const Duration(seconds: 10));
+
+    safePrint('Amplify successfully configured with Gen 2 outputs!');
+  } on AmplifyAlreadyConfiguredException {
+    safePrint('Amplify was already configured.');
+  } on TimeoutException {
+    safePrint('Amplify configure timed out. Continue app startup without blocking UI.');
+  } catch (error, stackTrace) {
+    safePrint('Amplify configure failed: $error');
+    safePrint('$stackTrace');
+  }
+}
+
+ThemeMode _mapThemeModeToFlutterThemeMode(AppThemeMode themeModeEnum) {
+  return switch (themeModeEnum) {
+    AppThemeMode.light => ThemeMode.light,
+    AppThemeMode.dark => ThemeMode.dark,
+    AppThemeMode.system => ThemeMode.system,
+  };
 }

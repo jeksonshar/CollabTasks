@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
@@ -5,23 +6,83 @@ import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:collab_tasks/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class GroupChatScreen extends StatelessWidget {
+class GroupChatScreen extends StatefulWidget {
   final String groupId;
   final String? groupName;
 
   const GroupChatScreen({required this.groupId, this.groupName, super.key});
 
   @override
+  State<GroupChatScreen> createState() => _GroupChatScreenState();
+}
+
+class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
+  late final ChatNotificationService _notificationService;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationService = getIt<ChatNotificationService>();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Подписываемся на события навигатора
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Отписываемся от роутера и сбрасываем activeGroupId
+    routeObserver.unsubscribe(this);
+    if (_notificationService.activeGroupId == widget.groupId) {
+      _notificationService.activeGroupId = null;
+    }
+    super.dispose();
+  }
+
+  /// --- Управление активным экраном с помощью RouteAware ---
+
+  @override
+  void didPush() {
+    // Экран открылся — регистрируем activeGroupId
+    _notificationService.activeGroupId = widget.groupId;
+  }
+
+  @override
+  void didPopNext() {
+    // Вернулись на этот экран с верхнего — восстанавливаем activeGroupId
+    _notificationService.activeGroupId = widget.groupId;
+  }
+
+  @override
+  void didPushNext() {
+    // Поверх этого экрана открыли другой — сбрасываем активный ID
+    _notificationService.activeGroupId = null;
+  }
+
+  @override
+  void didPop() {
+    // Экран закрываем — сбрасываем activeGroupId
+    _notificationService.activeGroupId = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     // final localizations = AppLocalizations.of(context)!;
-    // final title = groupName ?? localizations.direct_chat_toolbarTitle;
+    // final title = widget.groupName ?? localizations.direct_chat_toolbarTitle;
 
     return BlocProvider<GroupChatBloc>(
-      create: (_) => getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(groupId)),
+      create: (_) => getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(widget.groupId)),
       child: Scaffold(
         // appBar: AppBar(title: Text(title)),
         body: Column(
@@ -39,7 +100,9 @@ class GroupChatScreen extends StatelessWidget {
                 builder: (context) {
                   return MessageInputField(
                     onSendMessage: (content) {
-                      context.read<GroupChatBloc>().add(SendGroupMessageEvent(groupId, content));
+                      context.read<GroupChatBloc>().add(
+                        SendGroupMessageEvent(widget.groupId, content),
+                      );
                     },
                   );
                 },
