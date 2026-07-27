@@ -10,6 +10,10 @@ import 'package:flutter/cupertino.dart';
 class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
   final FirebaseFirestore _firestore;
 
+  /// Должно совпадать с [FirebaseWorkingGroupsRemoteDataSource._groupsCollection]!!!
+  static const _workingGroupsCollection = 'workingGroups';
+  static const _groupMessagesSubcollection = 'messages';
+
   const FirebaseChatRemoteDataSource({required FirebaseFirestore firestore})
     : _firestore = firestore;
 
@@ -43,6 +47,31 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
       ..update(chatRef, {'lastMessage': message.text, 'updatedAtMillis': message.createdAtMillis});
 
     await batch.commit();
+  }
+
+  @override
+  Stream<List<MessageDto>> watchGroupMessages(String groupId) {
+    return _firestore
+        .collection(_workingGroupsCollection)
+        .doc(groupId)
+        .collection(_groupMessagesSubcollection)
+        .orderBy('createdAtMillis', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => MessageDto.fromFirestore(doc.data(), doc.id)).toList();
+        });
+  }
+
+  @override
+  Future<void> sendGroupMessage(String groupId, MessageDto message) async {
+    final messagesRef = _firestore
+        .collection(_workingGroupsCollection)
+        .doc(groupId)
+        .collection(_groupMessagesSubcollection);
+
+    final messageRef = message.id.isNotEmpty ? messagesRef.doc(message.id) : messagesRef.doc();
+
+    await messageRef.set(message.toFirestore());
   }
 
   @override

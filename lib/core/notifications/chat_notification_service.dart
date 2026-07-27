@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/features/chats/ui/screens/chat_screen.dart';
+import 'package:collab_tasks/features/chats/ui/screens/group_chat_screen.dart';
 import 'package:collab_tasks/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -15,7 +16,8 @@ class ChatNotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
-  String? _pendingChatId;
+  String? _pendingDirectChatId;
+  String? _pendingGroupChatId;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -41,7 +43,13 @@ class ChatNotificationService {
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final payload = response.payload;
         if (payload != null) {
-          _handleNotificationTap(payload);
+          if (_pendingGroupChatId != null) {
+            _handleGroupChatNotificationTap(payload);
+            _pendingGroupChatId = null;
+          } else if (_pendingDirectChatId != null) {
+            _handleDirectChatNotificationTap(payload);
+            _pendingDirectChatId = null;
+          }
         }
       },
     );
@@ -70,9 +78,13 @@ class ChatNotificationService {
     // 4. Слушаем клик по пушу, когда приложение было свернуто (в ФОНЕ)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('=== [FCM] Приложение открыто по клику из фона ===');
-      final chatId = message.data['chatId'];
-      if (chatId != null) {
-        _handleNotificationTap(chatId);
+      final directChatId = message.data['chatId'];
+      final groupChatId = message.data['groupId'];
+      debugPrint('=== [FCM] 4. directChatId = $directChatId, groupChatId = $groupChatId');
+      if (directChatId != null) {
+        _handleDirectChatNotificationTap(directChatId);
+      } else if (groupChatId != null) {
+        _handleGroupChatNotificationTap(groupChatId);
       }
     });
 
@@ -80,10 +92,13 @@ class ChatNotificationService {
     final RemoteMessage? initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
       debugPrint('=== [FCM] Приложение запущено из убитого состояния по клику на пуш ===');
-      final chatId = initialMessage.data['chatId'];
-      if (chatId != null) {
+      final directChatId = initialMessage.data['chatId'];
+      final groupChatId = initialMessage.data['groupId'];
+      if (directChatId != null) {
         // Запоминаем ID, так как контекст навигации на этом этапе ещё НЕ готов!
-        _pendingChatId = chatId;
+        _pendingDirectChatId = directChatId;
+      } else if (groupChatId != null) {
+        _pendingGroupChatId = groupChatId;
       }
     }
 
@@ -92,10 +107,14 @@ class ChatNotificationService {
 
   /// Метод, который вызовется в главном экране приложения (в HomeScreen) после сборки UI
   void checkPendingNotification() {
-    debugPrint('checkPendingNotification() _pendingChatId = $_pendingChatId');
-    if (_pendingChatId != null) {
-      _handleNotificationTap(_pendingChatId!);
-      _pendingChatId = null;
+    debugPrint('checkPendingNotification() _pendingChatId = $_pendingDirectChatId');
+    if (_pendingDirectChatId != null) {
+      _handleDirectChatNotificationTap(_pendingDirectChatId!);
+      _pendingDirectChatId = null;
+    }
+    if (_pendingGroupChatId != null) {
+      _handleGroupChatNotificationTap(_pendingGroupChatId!);
+      _pendingGroupChatId = null;
     }
   }
 
@@ -148,7 +167,16 @@ class ChatNotificationService {
   Future<void> _showLocalBanner(RemoteMessage message) async {
     final notification = message.notification;
     final android = message.notification?.android;
-    final chatId = message.data['chatId'];
+    final directChatId = message.data['chatId'];
+    final groupChatId = message.data['groupId'];
+
+    debugPrint('=== [FCM] _showLocalBanner() directChatId = $directChatId, groupId = $groupChatId');
+
+    if (directChatId != null) {
+      _pendingDirectChatId = directChatId;
+    } else if (groupChatId != null) {
+      _pendingGroupChatId = groupChatId;
+    }
 
     if (notification != null) {
       await _localNotifications.show(
@@ -169,30 +197,57 @@ class ChatNotificationService {
             presentSound: true,
           ),
         ),
-        payload: chatId,
+        payload: directChatId ?? groupChatId,
       );
     }
   }
 
   // Навигация или обработка клика по пушу
-  void _handleNotificationTap(String chatId) {
-    debugPrint('=== [FCM] Переход в экран чата: $chatId ===');
+  void _handleDirectChatNotificationTap(String directChatId) {
+    debugPrint('=== [FCM] Переход в экран direct чата: $directChatId ===');
 
     // Проверяем, авторизован ли пользователь во всей системе
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      debugPrint('=== [FCM] Отмена навигации: пользователь не авторизован! ===');
+      debugPrint('=== [FCM] Отмена навигации direct чата: пользователь не авторизован! ===');
       return; // Никуда не переходим, просто игнорируем клик
     }
 
     final context = globalNavigatorKey.currentContext;
     if (context == null) {
-      _pendingChatId = chatId;
-      debugPrint('=== [FCM] Ошибка навигации: navigatorKey.currentContext is null ===');
+      _pendingDirectChatId = directChatId;
+      debugPrint('=== [FCM] Ошибка навигации direct чата: navigatorKey.currentContext is null ===');
       return;
     }
 
-    // Переходим на экран чата
-    Navigator.of(context).push(MaterialPageRoute(builder: (context) => ChatScreen(chatId: chatId)));
+    // Переходим на экран директ чата
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => ChatScreen(chatId: directChatId)));
+  }
+
+  void _handleGroupChatNotificationTap(String groupChatId) {
+    debugPrint('=== [FCM] Переход в экран группового чата: $groupChatId ===');
+
+    // Проверяем, авторизован ли пользователь во всей системе
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      debugPrint('=== [FCM] Отмена навигации группового чата: пользователь не авторизован! ===');
+      return; // Никуда не переходим, просто игнорируем клик
+    }
+
+    final context = globalNavigatorKey.currentContext;
+    if (context == null) {
+      _pendingGroupChatId = groupChatId;
+      debugPrint(
+        '=== [FCM] Ошибка навигации группового чата: navigatorKey.currentContext is null ===',
+      );
+      return;
+    }
+
+    // Переходим на экран группового чата
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => GroupChatScreen(groupId: groupChatId)));
   }
 }

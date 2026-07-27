@@ -570,6 +570,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get group_details_bottomNavItemTasks => 'Задачи';
 
   @override
+  String get group_details_bottomNavItemChat => 'Чат';
+
+  @override
   String get group_details_leaveGroupTitle => 'Покинуть группу?';
 
   @override

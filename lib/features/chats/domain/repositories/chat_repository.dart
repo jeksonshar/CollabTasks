@@ -6,6 +6,14 @@ abstract class ChatRepository {
 
   Future<void> sendMessage(String chatId, MessageEntity message);
 
+  Stream<List<MessageEntity>> watchGroupMessages(String groupId);
+
+  Future<void> sendGroupMessage({
+    required String groupId,
+    required String content,
+    required String senderId,
+  });
+
   Future<List<ChatEntity>> getChats();
 
   Future<String> getOrCreateDirectChat(String targetUserId);

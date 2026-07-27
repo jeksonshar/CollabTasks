@@ -31,5 +31,7 @@ module.exports = {
     "indent": "off",
     "max-len": "off",
     "eol-last": "off",
+    "linebreak-style": "off",
+    "padded-blocks": "off",
   },
 };

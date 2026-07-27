@@ -4,9 +4,16 @@ import 'package:flutter/material.dart';
 class MessageBubble extends StatelessWidget {
   final MessageEntity message;
   final bool isMe;
+  final bool isGroupChat;
   final VoidCallback? onDelete;
 
-  const MessageBubble({super.key, required this.message, required this.isMe, this.onDelete});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.isMe,
+    required this.isGroupChat,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +58,17 @@ class MessageBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!isMe && isGroupChat) ...[
+                Text(
+                  message.senderName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isLight ? Colors.black54 : Colors.white60,
+                  ),
+                ),
+                const SizedBox(height: 2),
+              ],
               Text(message.text, style: TextStyle(color: textColor, fontSize: 15)),
               const SizedBox(height: 4),
               Text(formattedTime, style: TextStyle(fontSize: 10, color: timeColor)),

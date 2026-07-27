@@ -6,6 +6,10 @@ abstract class ChatRemoteDataSource {
 
   Future<void> sendMessage(String chatId, MessageDto message);
 
+  Stream<List<MessageDto>> watchGroupMessages(String groupId);
+
+  Future<void> sendGroupMessage(String groupId, MessageDto message);
+
   Future<List<ChatDto>> getChats(String userId);
 
   Future<String> getOrCreateDirectChat(String targetUserId);

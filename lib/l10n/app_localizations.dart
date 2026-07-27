@@ -1138,6 +1138,12 @@ abstract class AppLocalizations {
   /// **'Tasks'**
   String get group_details_bottomNavItemTasks;
 
+  /// No description provided for @group_details_bottomNavItemChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get group_details_bottomNavItemChat;
+
   /// No description provided for @group_details_leaveGroupTitle.
   ///
   /// In en, this message translates to:

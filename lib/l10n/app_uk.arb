@@ -235,6 +235,7 @@
   "group_details_popupItemDeleteGroup": "Видалити групу",
   "group_details_bottomNavItemParticipants": "Учасники",
   "group_details_bottomNavItemTasks": "Завдання",
+  "group_details_bottomNavItemChat": "Чат",
   "group_details_leaveGroupTitle": "Покинуть групу?",
   "group_details_leaveGroupBtn": "Покинуть",
   "group_details_cancelBtn": "Скасувати",

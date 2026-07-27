@@ -21,9 +21,12 @@ import 'package:collab_tasks/features/chats/data/repositories/chat_repository_im
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
+import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/settings/data/datastore/app_settings_datastore.dart';
 import 'package:collab_tasks/features/settings/data/repositories/app_settings_repository_impl.dart';
 import 'package:collab_tasks/features/settings/domain/repositories/app_settings_repository.dart';
@@ -194,6 +197,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SyncWorkingGroupUseCase(getIt()))
     ..registerLazySingleton(() => WatchMessagesUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => SendMessageUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => WatchGroupMessagesUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => SendGroupMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
@@ -323,6 +328,12 @@ void setupLocator(SharedPreferences sharedPreferences) {
         sendMessageUseCase: getIt<SendMessageUseCase>(),
         getChatUseCase: getIt<GetChatUseCase>(),
         deleteMessageUseCase: getIt<DeleteMessageUseCase>(),
+      ),
+    )
+    ..registerFactory<GroupChatBloc>(
+      () => GroupChatBloc(
+        watchGroupMessagesUseCase: getIt<WatchGroupMessagesUseCase>(),
+        sendGroupMessageUseCase: getIt<SendGroupMessageUseCase>(),
       ),
     );
 }

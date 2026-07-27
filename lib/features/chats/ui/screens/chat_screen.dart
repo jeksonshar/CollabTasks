@@ -125,6 +125,7 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
         return MessageBubble(
           message: message,
           isMe: isMe,
+          isGroupChat: false,
           onDelete: isMe
               ? () {
                   showDialog(

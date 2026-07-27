@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
@@ -235,6 +235,7 @@
   "group_details_popupItemDeleteGroup": "Delete group",
   "group_details_bottomNavItemParticipants": "Participants",
   "group_details_bottomNavItemTasks": "Tasks",
+  "group_details_bottomNavItemChat": "Chat",
   "group_details_leaveGroupTitle": "Leave group?",
   "group_details_leaveGroupBtn": "Leave",
   "group_details_cancelBtn": "Cancel",

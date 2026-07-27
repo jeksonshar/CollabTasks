@@ -1,0 +1,95 @@
+import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
+import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
+import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
+import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble.dart';
+import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class GroupChatScreen extends StatelessWidget {
+  final String groupId;
+  final String? groupName;
+
+  const GroupChatScreen({required this.groupId, this.groupName, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // final localizations = AppLocalizations.of(context)!;
+    // final title = groupName ?? localizations.direct_chat_toolbarTitle;
+
+    return BlocProvider<GroupChatBloc>(
+      create: (_) => getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(groupId)),
+      child: Scaffold(
+        // appBar: AppBar(title: Text(title)),
+        body: Column(
+          children: [
+            Expanded(
+              child: BlocBuilder<GroupChatBloc, GroupChatState>(
+                builder: (context, state) {
+                  return _buildBody(context, state);
+                },
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Builder(
+                builder: (context) {
+                  return MessageInputField(
+                    onSendMessage: (content) {
+                      context.read<GroupChatBloc>().add(SendGroupMessageEvent(groupId, content));
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, GroupChatState state) {
+    if (state is GroupChatLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state is GroupChatError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            state.message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
+
+    if (state is GroupChatSuccess) {
+      final messages = state.messages;
+      final currentUserId =
+          FirebaseAuth.instance.currentUser?.email ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+      final localization = AppLocalizations.of(context)!;
+
+      if (messages.isEmpty) {
+        return Center(child: Text(localization.direct_chat_emptyMessagesTitle));
+      }
+
+      return ListView.builder(
+        reverse: true,
+        itemCount: messages.length,
+        itemBuilder: (context, index) {
+          final message = messages[index];
+          final isMe = message.senderId == currentUserId;
+          return MessageBubble(message: message, isMe: isMe, isGroupChat: true);
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}

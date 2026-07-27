@@ -4,6 +4,7 @@ import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
@@ -28,6 +29,34 @@ class ChatRepositoryImpl implements ChatRepository {
       createdAtMillis: message.createdAtMillis,
     );
     return _remoteDataSource.sendMessage(chatId, messageDto);
+  }
+
+  @override
+  Stream<List<MessageEntity>> watchGroupMessages(String groupId) {
+    return _remoteDataSource
+        .watchGroupMessages(groupId)
+        .map((dtos) => dtos.map((dto) => dto.toDomain()).toList());
+  }
+
+  @override
+  Future<void> sendGroupMessage({
+    required String groupId,
+    required String content,
+    required String senderId,
+  }) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final senderName = currentUser?.displayName?.trim().isNotEmpty == true
+        ? currentUser!.displayName!.trim()
+        : currentUser?.email ?? senderId;
+
+    final messageDto = MessageDto(
+      id: const Uuid().v4(),
+      senderId: senderId,
+      senderName: senderName,
+      text: content,
+      createdAtMillis: DateTime.now().millisecondsSinceEpoch,
+    );
+    return _remoteDataSource.sendGroupMessage(groupId, messageDto);
   }
 
   @override

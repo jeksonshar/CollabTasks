@@ -573,6 +573,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get group_details_bottomNavItemTasks => 'Tasks';
 
   @override
+  String get group_details_bottomNavItemChat => 'Chat';
+
+  @override
   String get group_details_leaveGroupTitle => 'Leave group?';
 
   @override

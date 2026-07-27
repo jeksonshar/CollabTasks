@@ -4,6 +4,7 @@ import 'package:collab_tasks/core/text/text_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:collab_tasks/features/chats/ui/screens/chat_screen.dart';
+import 'package:collab_tasks/features/chats/ui/screens/group_chat_screen.dart';
 import 'package:collab_tasks/features/tasks/ui/dialogs/task_dialog/task_dialog.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
@@ -127,32 +128,36 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   ),
               ],
             ),
-            body: activeTab == 0
-                ? _ParticipantsTab(
-                    state: state,
-                    isParticipant: isParticipant,
-                    onRefresh: () => _handleRefresh(context),
-                    onParticipantTap: (participantId) async {
-                      debugPrint('chat need to open');
-                      final chatId = await getIt<ChatRepository>().getOrCreateDirectChat(
-                        participantId.substringAfterLast(':'),
+            body: IndexedStack(
+              index: activeTab,
+              children: [
+                _ParticipantsTab(
+                  state: state,
+                  isParticipant: isParticipant,
+                  onRefresh: () => _handleRefresh(context),
+                  onParticipantTap: (participantId) async {
+                    debugPrint('chat need to open');
+                    final chatId = await getIt<ChatRepository>().getOrCreateDirectChat(
+                      participantId.substringAfterLast(':'),
+                    );
+                    final opponent = await getIt<WorkingGroupsRepository>().getParticipantById(
+                      group.id,
+                      participantId,
+                    );
+                    if (context.mounted) {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ChatScreen(chatId: chatId, opponentName: opponent.name),
+                        ),
                       );
-                      final opponent = await getIt<WorkingGroupsRepository>().getParticipantById(
-                        group.id,
-                        participantId,
-                      );
-                      if (context.mounted) {
-                        // Открываем созданный экран
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ChatScreen(chatId: chatId, opponentName: opponent.name),
-                          ),
-                        );
-                      }
-                    },
-                  )
-                : _TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
+                    }
+                  },
+                ),
+                _TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
+                GroupChatScreen(groupId: group.id, groupName: group.title),
+              ],
+            ),
             floatingActionButton: (isParticipant && activeTab == 1)
                 ? FloatingActionButton(
                     onPressed: () => _showAddTaskDialog(context),
@@ -172,6 +177,10 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                       BottomNavigationBarItem(
                         icon: const Icon(Icons.task_alt),
                         label: localization.group_details_bottomNavItemTasks,
+                      ),
+                      BottomNavigationBarItem(
+                        icon: const Icon(Icons.chat),
+                        label: localization.group_details_bottomNavItemChat,
                       ),
                     ],
                   )
