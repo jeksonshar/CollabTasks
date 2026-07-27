@@ -1,8 +1,9 @@
+import 'package:collab_tasks/core/enums/chats/chat_type.dart';
 import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
 
 class ChatDto {
   final String id;
-  final String type;
+  final ChatType type;
   final List<String> participantIds;
   final String lastMessage;
   final int updatedAtMillis;
@@ -18,7 +19,7 @@ class ChatDto {
   factory ChatDto.fromFirestore(Map<String, dynamic> json, String id) {
     return ChatDto(
       id: id,
-      type: json['type'] as String? ?? 'direct',
+      type: ChatType.values.byName(json['type']) as ChatType? ?? ChatType.direct,
       participantIds: List<String>.from(json['participantIds'] as Iterable? ?? const []),
       lastMessage: json['lastMessage'] as String? ?? '',
       updatedAtMillis: (json['updatedAtMillis'] as num? ?? 0).toInt(),
@@ -28,7 +29,7 @@ class ChatDto {
   ChatEntity toDomain() {
     return ChatEntity(
       id: id,
-      type: ChatType.values.byName(type),
+      type: type,
       participantIds: participantIds,
       lastMessage: lastMessage,
       updatedAtMillis: updatedAtMillis,

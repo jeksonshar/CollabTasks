@@ -281,5 +281,7 @@
   "direct_chat_emptyMessagesTitle": "Немає повідомлень",
   "direct_chat_deleteMessageConfirmationTitle": "Видалити повідомлення?",
   "direct_chat_deleteMessageConfirmBtn": "Видалити",
-  "direct_chat_deleteMessageCancelBtn": "Відміна"
+  "direct_chat_deleteMessageCancelBtn": "Відміна",
+
+  "group_chat_toolbarSabTitle": "Груповий чат"
 }

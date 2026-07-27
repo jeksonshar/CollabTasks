@@ -21,7 +21,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-enum _GroupAction { edit, invite, leave, delete }
+enum _GroupAction { edit, invite, chat, leave, delete }
 
 class WorkingGroupDetailsScreen extends StatefulWidget {
   const WorkingGroupDetailsScreen({super.key, required this.group});
@@ -87,6 +87,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
 
           return Scaffold(
             appBar: AppBar(
+              titleSpacing: 0,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -115,6 +116,10 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                       PopupMenuItem(
                         value: _GroupAction.invite,
                         child: Text(localization.group_details_popupItemInviteParticipant),
+                      ),
+                      PopupMenuItem(
+                        value: _GroupAction.chat,
+                        child: Text(localization.direct_chat_toolbarTitle),
                       ),
                       PopupMenuItem(
                         value: _GroupAction.leave,
@@ -155,7 +160,6 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   },
                 ),
                 _TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
-                GroupChatScreen(groupId: group.id, groupName: group.title),
               ],
             ),
             floatingActionButton: (isParticipant && activeTab == 1)
@@ -177,10 +181,6 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                       BottomNavigationBarItem(
                         icon: const Icon(Icons.task_alt),
                         label: localization.group_details_bottomNavItemTasks,
-                      ),
-                      BottomNavigationBarItem(
-                        icon: const Icon(Icons.chat),
-                        label: localization.group_details_bottomNavItemChat,
                       ),
                     ],
                   )
@@ -209,10 +209,20 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         await _showEditGroupDialog(context, group);
       case _GroupAction.invite:
         await _showInviteDialog(context);
+      case _GroupAction.chat:
+        await _openChatScreen(context, group.id, group.title);
       case _GroupAction.leave:
         await _confirmLeaveGroup(context);
       case _GroupAction.delete:
         await _confirmDeleteGroup(context);
+    }
+  }
+
+  Future<void> _openChatScreen(BuildContext context, String groupId, String? groupName) async {
+    if (context.mounted) {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => GroupChatScreen(groupId: groupId)));
     }
   }
 

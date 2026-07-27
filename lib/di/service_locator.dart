@@ -21,6 +21,7 @@ import 'package:collab_tasks/features/chats/data/repositories/chat_repository_im
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_group_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
@@ -200,6 +201,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => WatchGroupMessagesUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => SendGroupMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => GetGroupChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -334,6 +336,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
       () => GroupChatBloc(
         watchGroupMessagesUseCase: getIt<WatchGroupMessagesUseCase>(),
         sendGroupMessageUseCase: getIt<SendGroupMessageUseCase>(),
+        getGroupChatUseCase: getIt<GetGroupChatUseCase>(),
       ),
     );
 }

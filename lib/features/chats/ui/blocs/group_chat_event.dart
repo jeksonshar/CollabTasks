@@ -1,3 +1,4 @@
+import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class GroupChatEvent extends Equatable {
@@ -14,6 +15,17 @@ class LoadGroupMessagesEvent extends GroupChatEvent {
 
   @override
   List<Object?> get props => [groupChatId];
+}
+
+class OnGroupMessagesUpdatedEvent extends GroupChatEvent {
+  final List<MessageEntity> messages;
+  final String groupChatTitle;
+  final String groupChatDescription;
+
+  const OnGroupMessagesUpdatedEvent(this.messages, this.groupChatTitle, this.groupChatDescription);
+
+  @override
+  List<Object?> get props => [messages, groupChatTitle, groupChatDescription];
 }
 
 class SendGroupMessageEvent extends GroupChatEvent {

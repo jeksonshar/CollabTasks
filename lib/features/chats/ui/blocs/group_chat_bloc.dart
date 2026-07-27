@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_group_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
@@ -11,18 +12,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
   final WatchGroupMessagesUseCase _watchGroupMessagesUseCase;
   final SendGroupMessageUseCase _sendGroupMessageUseCase;
+  final GetGroupChatUseCase _getGroupChatUseCase;
 
   StreamSubscription<List<MessageEntity>>? _messagesSubscription;
 
   GroupChatBloc({
     required WatchGroupMessagesUseCase watchGroupMessagesUseCase,
     required SendGroupMessageUseCase sendGroupMessageUseCase,
+    required GetGroupChatUseCase getGroupChatUseCase,
   }) : _watchGroupMessagesUseCase = watchGroupMessagesUseCase,
        _sendGroupMessageUseCase = sendGroupMessageUseCase,
+       _getGroupChatUseCase = getGroupChatUseCase,
        super(const GroupChatInitial()) {
     on<LoadGroupMessagesEvent>(_onLoadGroupMessages);
     on<SendGroupMessageEvent>(_onSendGroupMessage);
-    on<_OnGroupMessagesUpdated>(_onGroupMessagesUpdated);
+    on<OnGroupMessagesUpdatedEvent>(_onGroupMessagesUpdated);
     on<_OnGroupMessagesFailed>(_onGroupMessagesFailed);
   }
 
@@ -34,8 +38,11 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
     await _messagesSubscription?.cancel();
 
     try {
+      final chat = await _getGroupChatUseCase(event.groupChatId);
+      final title = chat?.title ?? 'Групповой чат';
+      final description = chat?.description ?? 'Дефолтное описание';
       _messagesSubscription = _watchGroupMessagesUseCase(event.groupChatId).listen(
-        (messages) => add(_OnGroupMessagesUpdated(messages)),
+        (messages) => add(OnGroupMessagesUpdatedEvent(messages, title, description)),
         onError: (Object error) => add(_OnGroupMessagesFailed(error.toString())),
       );
     } catch (e) {
@@ -43,8 +50,8 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
     }
   }
 
-  void _onGroupMessagesUpdated(_OnGroupMessagesUpdated event, Emitter<GroupChatState> emit) {
-    emit(GroupChatSuccess(event.messages));
+  void _onGroupMessagesUpdated(OnGroupMessagesUpdatedEvent event, Emitter<GroupChatState> emit) {
+    emit(GroupChatSuccess(event.messages, event.groupChatTitle, event.groupChatDescription));
   }
 
   void _onGroupMessagesFailed(_OnGroupMessagesFailed event, Emitter<GroupChatState> emit) {
@@ -74,15 +81,6 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
     await _messagesSubscription?.cancel();
     return super.close();
   }
-}
-
-class _OnGroupMessagesUpdated extends GroupChatEvent {
-  final List<MessageEntity> messages;
-
-  const _OnGroupMessagesUpdated(this.messages);
-
-  @override
-  List<Object?> get props => [messages];
 }
 
 class _OnGroupMessagesFailed extends GroupChatEvent {

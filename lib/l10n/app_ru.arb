@@ -283,5 +283,7 @@
   "direct_chat_emptyMessagesTitle": "Нет сообщений",
   "direct_chat_deleteMessageConfirmationTitle": "Удалить сообщение?",
   "direct_chat_deleteMessageConfirmBtn": "Удалить",
-  "direct_chat_deleteMessageCancelBtn": "Отмена"
+  "direct_chat_deleteMessageCancelBtn": "Отмена",
+
+  "group_chat_toolbarSabTitle": "Групповой чат"
 }

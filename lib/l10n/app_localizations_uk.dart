@@ -688,4 +688,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get direct_chat_deleteMessageCancelBtn => 'Відміна';
+
+  @override
+  String get group_chat_toolbarSabTitle => 'Груповий чат';
 }

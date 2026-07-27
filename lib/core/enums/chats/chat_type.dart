@@ -1,0 +1,1 @@
+enum ChatType { direct, group }

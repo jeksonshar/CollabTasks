@@ -1353,6 +1353,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get direct_chat_deleteMessageCancelBtn;
+
+  /// No description provided for @group_chat_toolbarSabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group chat'**
+  String get group_chat_toolbarSabTitle;
 }
 
 class _AppLocalizationsDelegate

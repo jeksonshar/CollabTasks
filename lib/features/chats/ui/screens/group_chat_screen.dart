@@ -13,9 +13,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class GroupChatScreen extends StatefulWidget {
   final String groupId;
-  final String? groupName;
 
-  const GroupChatScreen({required this.groupId, this.groupName, super.key});
+  const GroupChatScreen({required this.groupId, super.key});
 
   @override
   State<GroupChatScreen> createState() => _GroupChatScreenState();
@@ -78,38 +77,62 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    // final localizations = AppLocalizations.of(context)!;
-    // final title = widget.groupName ?? localizations.direct_chat_toolbarTitle;
+    final localizations = AppLocalizations.of(context)!;
 
     return BlocProvider<GroupChatBloc>(
       create: (_) => getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(widget.groupId)),
-      child: Scaffold(
-        // appBar: AppBar(title: Text(title)),
-        body: Column(
-          children: [
-            Expanded(
-              child: BlocBuilder<GroupChatBloc, GroupChatState>(
-                builder: (context, state) {
-                  return _buildBody(context, state);
-                },
+      child: BlocBuilder<GroupChatBloc, GroupChatState>(
+        builder: (context, state) {
+          String title = '';
+          if (state is GroupChatSuccess) {
+            title = state.groupChatTitle;
+          }
+
+          return Scaffold(
+            appBar: AppBar(
+              titleSpacing: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title),
+                  const SizedBox(height: 4),
+                  Text(
+                    localizations.group_chat_toolbarSabTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
             ),
-            SafeArea(
-              top: false,
-              child: Builder(
-                builder: (context) {
-                  return MessageInputField(
-                    onSendMessage: (content) {
-                      context.read<GroupChatBloc>().add(
-                        SendGroupMessageEvent(widget.groupId, content),
+            body: Column(
+              children: [
+                Expanded(
+                  child: BlocBuilder<GroupChatBloc, GroupChatState>(
+                    builder: (context, state) {
+                      return _buildBody(context, state);
+                    },
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Builder(
+                    builder: (context) {
+                      return MessageInputField(
+                        onSendMessage: (content) {
+                          context.read<GroupChatBloc>().add(
+                            SendGroupMessageEvent(widget.groupId, content),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

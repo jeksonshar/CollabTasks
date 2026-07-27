@@ -1,4 +1,5 @@
 import 'package:collab_tasks/features/chats/data/remote/models/chat_dto.dart';
+import 'package:collab_tasks/features/chats/data/remote/models/group_chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
 
 abstract class ChatRemoteDataSource {
@@ -15,6 +16,8 @@ abstract class ChatRemoteDataSource {
   Future<String> getOrCreateDirectChat(String targetUserId);
 
   Future<ChatDto?> getChatById(String chatId);
+
+  Future<GroupChatDto?> getGroupChatById(String chatId);
 
   Future<void> deleteMessage(String chatId, String messageId);
 }

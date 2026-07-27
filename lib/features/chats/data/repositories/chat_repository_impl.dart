@@ -1,6 +1,7 @@
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
 import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/group_chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -78,6 +79,12 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<ChatEntity?> getChatById(String chatId) async {
     // Передаем запрос в RemoteDataSource
     final dto = await _remoteDataSource.getChatById(chatId);
+    return dto?.toDomain();
+  }
+
+  @override
+  Future<GroupChatEntity?> getGroupChatById(String chatId) async {
+    final dto = await _remoteDataSource.getGroupChatById(chatId);
     return dto?.toDomain();
   }
 

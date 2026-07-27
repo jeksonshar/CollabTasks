@@ -89,7 +89,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
           }
 
           return Scaffold(
-            appBar: AppBar(title: Text(appBarTitle)),
+            appBar: AppBar(titleSpacing: 0, title: Text(appBarTitle)),
             body: Column(
               children: [
                 Expanded(child: _buildBody(context, state, widget.chatId)),

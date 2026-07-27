@@ -18,11 +18,13 @@ class GroupChatLoading extends GroupChatState {
 
 class GroupChatSuccess extends GroupChatState {
   final List<MessageEntity> messages;
+  final String groupChatTitle;
+  final String groupChatDescription;
 
-  const GroupChatSuccess(this.messages);
+  const GroupChatSuccess(this.messages, this.groupChatTitle, this.groupChatDescription);
 
   @override
-  List<Object?> get props => [messages];
+  List<Object?> get props => [messages, groupChatTitle, groupChatDescription];
 }
 
 class GroupChatError extends GroupChatState {

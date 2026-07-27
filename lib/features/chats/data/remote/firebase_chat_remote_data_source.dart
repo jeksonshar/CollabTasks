@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/chat_dto.dart';
+import 'package:collab_tasks/features/chats/data/remote/models/group_chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -151,6 +152,20 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
     } catch (e) {
       // Логируем или прокидываем ошибку дальше в репозиторий
       throw Exception('Failed to fetch chat by id: $e');
+    }
+  }
+
+  @override
+  Future<GroupChatDto?> getGroupChatById(String chatId) async {
+    try {
+      final docSnapshot = await _firestore.collection('workingGroups').doc(chatId).get();
+      if (!docSnapshot.exists || docSnapshot.data() == null) {
+        return null; // Или бросать кастомный DataException
+      }
+
+      return GroupChatDto.fromFirestore(docSnapshot.data()!, docSnapshot.id);
+    } catch (e) {
+      throw Exception('Failed to fetch group chat by id: $e');
     }
   }
 

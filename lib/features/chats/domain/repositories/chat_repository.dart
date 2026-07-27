@@ -1,4 +1,5 @@
 import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/group_chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 
 abstract class ChatRepository {
@@ -19,6 +20,8 @@ abstract class ChatRepository {
   Future<String> getOrCreateDirectChat(String targetUserId);
 
   Future<ChatEntity?> getChatById(String chatId);
+
+  Future<GroupChatEntity?> getGroupChatById(String chatId);
 
   Future<void> deleteMessage(String chatId, String messageId);
 }

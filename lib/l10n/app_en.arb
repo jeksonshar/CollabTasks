@@ -1,4 +1,4 @@
-{
+﻿{
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
@@ -283,5 +283,7 @@
   "direct_chat_emptyMessagesTitle": "No messages yet",
   "direct_chat_deleteMessageConfirmationTitle": "Delete message?",
   "direct_chat_deleteMessageConfirmBtn": "Delete",
-  "direct_chat_deleteMessageCancelBtn": "Cancel"
+  "direct_chat_deleteMessageCancelBtn": "Cancel",
+
+  "group_chat_toolbarSabTitle": "Group chat"
 }

@@ -1,8 +1,7 @@
 import 'dart:convert';
 
+import 'package:collab_tasks/core/enums/chats/chat_type.dart';
 import 'package:equatable/equatable.dart';
-
-enum ChatType { direct, group }
 
 class ChatEntity extends Equatable {
   final String id;
