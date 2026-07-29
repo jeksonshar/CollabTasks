@@ -340,6 +340,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         watchGroupMessagesUseCase: getIt<WatchGroupMessagesUseCase>(),
         sendGroupMessageUseCase: getIt<SendGroupMessageUseCase>(),
         getGroupChatUseCase: getIt<GetGroupChatUseCase>(),
+        getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
       ),
     );
 }

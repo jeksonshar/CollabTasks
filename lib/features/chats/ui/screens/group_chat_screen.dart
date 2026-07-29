@@ -7,7 +7,6 @@ import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/main.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -108,13 +107,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
             ),
             body: Column(
               children: [
-                Expanded(
-                  child: BlocBuilder<GroupChatBloc, GroupChatState>(
-                    builder: (context, state) {
-                      return _buildBody(context, state);
-                    },
-                  ),
-                ),
+                Expanded(child: _buildBody(context, state)),
                 SafeArea(
                   top: false,
                   child: Builder(
@@ -157,8 +150,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
 
     if (state is GroupChatSuccess) {
       final messages = state.messages;
-      final currentUserId =
-          FirebaseAuth.instance.currentUser?.email ?? FirebaseAuth.instance.currentUser?.uid ?? '';
       final localization = AppLocalizations.of(context)!;
 
       if (messages.isEmpty) {
@@ -170,7 +161,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
         itemCount: messages.length,
         itemBuilder: (context, index) {
           final message = messages[index];
-          final isMe = message.senderId == currentUserId;
+          final isMe = message.senderId == state.currentUserId;
           return MessageBubble(message: message, isMe: isMe, isGroupChat: true);
         },
       );
