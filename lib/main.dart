@@ -33,7 +33,13 @@ import 'core/notifications/chat_notification_service.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Инициализируем Firebase с конфигурацией платформы
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).timeout(
+    const Duration(seconds: 3),
+    onTimeout: () {
+      debugPrint('Firebase init timed out!');
+      return Firebase.app(); // или обрабатываем фолбэк
+    },
+  );
   debugPrint("=== [FCM] Обработан пуш в состоянии Terminated: ${message.messageId} ===");
 }
 
@@ -142,7 +148,13 @@ class AppAuthGate extends StatelessWidget {
 
 Future<void> _configureSelectedAuthBackend() async {
   if (authBackend == AuthBackend.firebase) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).timeout(
+      const Duration(seconds: 3),
+      onTimeout: () {
+        debugPrint('Firebase init timed out!');
+        return Firebase.app(); // или обрабатываем фолбэк
+      },
+    );
     return;
   }
 
