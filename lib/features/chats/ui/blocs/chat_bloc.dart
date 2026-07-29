@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:ui';
 
+import 'package:collab_tasks/features/auth/domain/usecases/get_current_user_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
@@ -8,11 +8,6 @@ import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_ca
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
-import 'package:collab_tasks/l10n/app_localizations.dart';
-import 'package:collab_tasks/l10n/app_localizations_en.dart';
-import 'package:collab_tasks/l10n/app_localizations_ru.dart';
-import 'package:collab_tasks/l10n/app_localizations_uk.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,73 +16,61 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final SendMessageUseCase _sendMessageUseCase;
   final GetChatUseCase _getChatUseCase;
   final DeleteMessageUseCase _deleteMessageUseCase;
-
-  StreamSubscription<List<MessageEntity>>? _messagesSubscription;
+  final GetCurrentUserUseCase _getCurrentUserUseCase;
 
   ChatBloc({
     required WatchMessagesUseCase watchMessagesUseCase,
     required SendMessageUseCase sendMessageUseCase,
     required GetChatUseCase getChatUseCase,
     required DeleteMessageUseCase deleteMessageUseCase,
+    required GetCurrentUserUseCase getCurrentUserUseCase,
   }) : _watchMessagesUseCase = watchMessagesUseCase,
        _sendMessageUseCase = sendMessageUseCase,
        _getChatUseCase = getChatUseCase,
        _deleteMessageUseCase = deleteMessageUseCase,
+       _getCurrentUserUseCase = getCurrentUserUseCase,
        super(const ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
-    on<OnMessagesUpdated>(_onMessagesUpdated);
     on<SendMessageEvent>(_onSendMessage);
     on<DeleteMessageEvent>(_onDeleteMessage);
-    on<_OnMessagesLoadFailed>(_onMessagesLoadFailed);
   }
 
   Future<void> _onLoadMessages(LoadMessages event, Emitter<ChatState> emit) async {
     emit(const ChatLoading());
-    await _messagesSubscription?.cancel();
 
     try {
-      final currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+      final currentUser = await _getCurrentUserUseCase();
+      final currentUserEmail = currentUser?.email ?? '';
 
-      // Запрашиваем сам чат ОДИН раз (или через Stream, если участники могут меняться)
       final chat = await _getChatUseCase(event.chatId);
       final participantIds = chat?.participantIds ?? [];
-
-      final localizations = _getAppLocalizations();
 
       // 2. Ищем email собеседника
       final opponentEmail = participantIds.firstWhere(
         (id) => id != currentUserEmail,
-        orElse: () => localizations.direct_chat_toolbarTitle,
+        orElse: () => '',
       );
 
-      final chatTitle = opponentEmail;
-
-      _messagesSubscription = _watchMessagesUseCase(event.chatId).listen(
-        (messages) => add(OnMessagesUpdated(messages, chatTitle)),
-        onError: (Object error) => add(_OnMessagesLoadFailed(error.toString())),
+      // Использование emit.forEach автоматически отменяет предыдущий Stream при вызове нового handler
+      await emit.forEach<List<MessageEntity>>(
+        _watchMessagesUseCase(event.chatId),
+        onData: (messages) => ChatLoaded(
+          messages: messages,
+          opponentEmail: opponentEmail,
+          currentUserId: currentUserEmail,
+        ),
+        onError: (error, stackTrace) => ChatError(error.toString()),
       );
     } catch (e) {
-      add(_OnMessagesLoadFailed(e.toString()));
+      emit(ChatError(e.toString()));
     }
-  }
-
-  void _onMessagesUpdated(OnMessagesUpdated event, Emitter<ChatState> emit) {
-    emit(ChatLoaded(messages: event.messages, chatTitle: event.chatTitle));
-  }
-
-  void _onMessagesLoadFailed(_OnMessagesLoadFailed event, Emitter<ChatState> emit) {
-    emit(ChatError(event.error));
   }
 
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     try {
-      final localizations = _getAppLocalizations();
-      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentUser = await _getCurrentUserUseCase();
       final senderId = currentUser?.email ?? '';
-      final senderName =
-          currentUser?.displayName ??
-          currentUser?.email ??
-          localizations.direct_chat_senderNameDefaultTitle;
+      final senderName = currentUser?.displayName ?? currentUser?.email ?? '';
 
       final message = MessageEntity(
         id: const Uuid().v4(),
@@ -110,32 +93,4 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       emit(ChatError(e.toString()));
     }
   }
-
-  AppLocalizations _getAppLocalizations() {
-    final languageCode = PlatformDispatcher.instance.locale.languageCode;
-    switch (languageCode) {
-      case 'ru':
-        return AppLocalizationsRu();
-      case 'uk':
-        return AppLocalizationsUk();
-      case 'en':
-      default:
-        return AppLocalizationsEn();
-    }
-  }
-
-  @override
-  Future<void> close() async {
-    await _messagesSubscription?.cancel();
-    return super.close();
-  }
-}
-
-class _OnMessagesLoadFailed extends ChatEvent {
-  final String error;
-
-  const _OnMessagesLoadFailed(this.error);
-
-  @override
-  List<Object?> get props => [error];
 }

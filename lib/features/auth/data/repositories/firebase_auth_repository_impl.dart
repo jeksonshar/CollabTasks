@@ -247,6 +247,21 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<AuthUser?> getCurrentUser() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return null;
+
+    debugPrint('current user: email = ${user.email}, displayName = ${user.displayName}');
+
+    return AuthUser(
+      id: user.uid,
+      email: user.email ?? '',
+      displayName: user.displayName,
+      isEmailVerified: user.emailVerified,
+    );
+  }
+
   Failure _mapFirebaseException(firebase_auth.FirebaseAuthException exception) {
     switch (exception.code) {
       case 'wrong-password':

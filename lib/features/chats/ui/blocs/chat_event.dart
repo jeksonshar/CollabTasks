@@ -1,4 +1,3 @@
-import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class ChatEvent extends Equatable {
@@ -15,16 +14,6 @@ class LoadMessages extends ChatEvent {
 
   @override
   List<Object?> get props => [chatId];
-}
-
-class OnMessagesUpdated extends ChatEvent {
-  final List<MessageEntity> messages;
-  final String chatTitle;
-
-  const OnMessagesUpdated(this.messages, this.chatTitle);
-
-  @override
-  List<Object?> get props => [messages, chatTitle];
 }
 
 class SendMessageEvent extends ChatEvent {

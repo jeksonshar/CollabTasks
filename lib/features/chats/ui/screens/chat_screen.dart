@@ -7,7 +7,6 @@ import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/main.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -83,9 +82,14 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
       create: (_) => getIt<ChatBloc>()..add(LoadMessages(widget.chatId)),
       child: BlocBuilder<ChatBloc, ChatState>(
         builder: (context, state) {
+          // Локализация заглавия экрана на уровне UI
           String appBarTitle = localizations.direct_chat_toolbarTitle;
           if (state is ChatLoaded) {
-            appBarTitle = widget.opponentName ?? state.chatTitle;
+            appBarTitle =
+                widget.opponentName ??
+                (state.opponentEmail.isNotEmpty
+                    ? state.opponentEmail
+                    : localizations.direct_chat_toolbarTitle);
           }
 
           return Scaffold(
@@ -130,7 +134,6 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
 
   if (state is ChatLoaded) {
     final messages = state.messages;
-    final currentUserId = FirebaseAuth.instance.currentUser?.email;
     final localization = AppLocalizations.of(context)!;
 
     if (messages.isEmpty) {
@@ -142,7 +145,7 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
-        final isMe = message.senderId == currentUserId;
+        final isMe = message.senderId == state.currentUserId;
         return MessageBubble(
           message: message,
           isMe: isMe,

@@ -18,12 +18,17 @@ class ChatLoading extends ChatState {
 
 class ChatLoaded extends ChatState {
   final List<MessageEntity> messages;
-  final String chatTitle;
+  final String opponentEmail;
+  final String currentUserId;
 
-  const ChatLoaded({required this.messages, required this.chatTitle});
+  const ChatLoaded({
+    required this.messages,
+    required this.opponentEmail,
+    required this.currentUserId,
+  });
 
   @override
-  List<Object?> get props => [messages, chatTitle];
+  List<Object?> get props => [messages, opponentEmail, currentUserId];
 }
 
 class ChatError extends ChatState {

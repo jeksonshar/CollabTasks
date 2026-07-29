@@ -295,6 +295,11 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Stream<AuthUser?> watchAuthState() => Stream.value(user);
+
+  @override
+  Future<AuthUser?> getCurrentUser() async {
+    return null;
+  }
 }
 
 class FakeTaskNotificationService implements TaskNotificationService {

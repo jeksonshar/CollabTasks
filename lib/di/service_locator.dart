@@ -7,6 +7,7 @@ import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.d
 import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/get_current_user_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
@@ -202,6 +203,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SendGroupMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetGroupChatUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => GetCurrentUserUseCase(getIt<AuthRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
@@ -330,6 +332,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         sendMessageUseCase: getIt<SendMessageUseCase>(),
         getChatUseCase: getIt<GetChatUseCase>(),
         deleteMessageUseCase: getIt<DeleteMessageUseCase>(),
+        getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
       ),
     )
     ..registerFactory<GroupChatBloc>(

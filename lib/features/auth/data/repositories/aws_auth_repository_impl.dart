@@ -247,6 +247,12 @@ class AwsAuthRepositoryImpl implements AuthRepository, CognitoAuthRepository {
     }
   }
 
+  @override
+  Future<domain.AuthUser?> getCurrentUser() async {
+    final user = await _getCurrentUserOrNull();
+    return user;
+  }
+
   String? _attributeValue(List<AuthUserAttribute> attributes, AuthUserAttributeKey key) {
     for (final attribute in attributes) {
       if (attribute.userAttributeKey == key) {
