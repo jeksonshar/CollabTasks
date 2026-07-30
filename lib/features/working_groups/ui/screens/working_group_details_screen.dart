@@ -390,7 +390,7 @@ List<GroupParticipant> _filterInvitedParticipants(List<GroupParticipant> partici
 
   for (final participant in participants) {
     // В качестве ключа берем userId (или name, если email сохранен там)
-    final key = participant.name;
+    final key = participant.id.substringAfterLast(':');
     final existing = uniqueParticipants[key];
 
     if (existing == null) {
@@ -400,9 +400,9 @@ List<GroupParticipant> _filterInvitedParticipants(List<GroupParticipant> partici
       // Если пользователь уже есть, проверяем: у кого из них id содержит 'invite:'
       // перезаписываем элемент только если текущий имеет приоритетный 'invite:'
       // а у уже сохраненного его нет.
-      if (participant.id.contains('invite:') && !existing.id.contains('invite:')) {
-        uniqueParticipants[key] = participant;
-      }
+      // if (participant.id.contains('invite:') && !existing.id.contains('invite:')) {
+      uniqueParticipants[key] = participant;
+      // }
     }
   }
 
