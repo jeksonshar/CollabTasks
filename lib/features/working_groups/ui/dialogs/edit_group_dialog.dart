@@ -66,7 +66,6 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Используем уже созданный нами умный аватар на основе GroupAvatarSource
             CircleAvatar(
               radius: 36,
               backgroundImage: switch (widget.group.copyWith(avatarUrl: _avatarUrl).avatarSource) {
@@ -86,6 +85,7 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
               controller: _titleController,
               decoration: InputDecoration(labelText: localization.edit_group_dialog_textFieldName),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
               decoration: InputDecoration(
