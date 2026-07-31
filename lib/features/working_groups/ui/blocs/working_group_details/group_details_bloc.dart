@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/has_active_tasks_failure.dart';
@@ -33,6 +34,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     required LeaveWorkingGroupUseCase leaveWorkingGroupUseCase,
     required WatchAuthStateUseCase watchAuthStateUseCase,
     required SyncWorkingGroupUseCase syncWorkingGroupUseCase,
+    required GetOrCreateDirectChatUseCase getOrCreateDirectChatUseCase,
   }) : _groupId = groupId,
        _getWorkingGroupUseCase = getWorkingGroupUseCase,
        _getGroupTasksUseCase = getGroupTasksUseCase,
@@ -44,6 +46,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
        _leaveWorkingGroupUseCase = leaveWorkingGroupUseCase,
        _watchAuthStateUseCase = watchAuthStateUseCase,
        _syncWorkingGroupUseCase = syncWorkingGroupUseCase,
+       _getOrCreateDirectChatUseCase = getOrCreateDirectChatUseCase,
        super(const GroupDetailsState()) {
     on<GroupDetailsStarted>(_onStarted);
     on<GroupTaskFilterChanged>((event, emit) => emit(state.copyWith(filter: event.filter)));
@@ -53,6 +56,8 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     on<WorkingGroupLeft>(_onGroupLeft);
     on<GroupParticipantInvited>(_onParticipantInvited);
     on<GroupDetailsRefreshed>(_onRefreshed);
+    on<GroupParticipantChatOpened>(_onParticipantChatOpened);
+    on<GroupDirectChatConsumed>((_, emit) => emit(state.copyWith(clearPendingDirectChat: true)));
   }
 
   final String _groupId;
@@ -66,6 +71,7 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   final LeaveWorkingGroupUseCase _leaveWorkingGroupUseCase;
   final WatchAuthStateUseCase _watchAuthStateUseCase;
   final SyncWorkingGroupUseCase _syncWorkingGroupUseCase;
+  final GetOrCreateDirectChatUseCase _getOrCreateDirectChatUseCase;
 
   Future<void> _onStarted(GroupDetailsStarted event, Emitter<GroupDetailsState> emit) async {
     emit(state.copyWith(status: GroupDetailsStatus.loading));
@@ -240,6 +246,21 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
       state.copyWith(status: GroupDetailsStatus.error, errorMessage: _participantsOnlyActionError),
     );
     return false;
+  }
+
+  Future<void> _onParticipantChatOpened(
+    GroupParticipantChatOpened event,
+    Emitter<GroupDetailsState> emit,
+  ) async {
+    try {
+      final result = await _getOrCreateDirectChatUseCase(
+        groupId: event.groupId,
+        participantCompositeId: event.participantCompositeId,
+      );
+      emit(state.copyWith(pendingDirectChat: result));
+    } catch (error) {
+      emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
+    }
   }
 }
 

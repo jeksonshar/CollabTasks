@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/has_active_tasks_failure.dart';
 import 'package:collab_tasks/features/working_groups/domain/use_cases/add_group_task_use_case.dart';
@@ -39,6 +40,8 @@ class MockWatchAuthStateUseCase extends Mock implements WatchAuthStateUseCase {}
 
 class MockSyncWorkingGroupUseCase extends Mock implements SyncWorkingGroupUseCase {}
 
+class MockGetOrCreateDirectChatUseCase extends Mock implements GetOrCreateDirectChatUseCase {}
+
 void main() {
   late GroupDetailsBloc bloc;
   late MockGetWorkingGroupUseCase mockGetWorkingGroupUseCase;
@@ -51,6 +54,7 @@ void main() {
   late MockLeaveWorkingGroupUseCase mockLeaveWorkingGroupUseCase;
   late MockWatchAuthStateUseCase mockWatchAuthStateUseCase;
   late MockSyncWorkingGroupUseCase mockSyncWorkingGroupUseCase;
+  late MockGetOrCreateDirectChatUseCase mockGetOrCreateDirectChatUseCase;
 
   const groupId = 'group-1';
 
@@ -65,7 +69,7 @@ void main() {
     mockLeaveWorkingGroupUseCase = MockLeaveWorkingGroupUseCase();
     mockWatchAuthStateUseCase = MockWatchAuthStateUseCase();
     mockSyncWorkingGroupUseCase = MockSyncWorkingGroupUseCase();
-
+    mockGetOrCreateDirectChatUseCase = MockGetOrCreateDirectChatUseCase();
     bloc = GroupDetailsBloc(
       groupId: groupId,
       getWorkingGroupUseCase: mockGetWorkingGroupUseCase,
@@ -78,6 +82,7 @@ void main() {
       leaveWorkingGroupUseCase: mockLeaveWorkingGroupUseCase,
       watchAuthStateUseCase: mockWatchAuthStateUseCase,
       syncWorkingGroupUseCase: mockSyncWorkingGroupUseCase,
+      getOrCreateDirectChatUseCase: mockGetOrCreateDirectChatUseCase,
     );
   });
 

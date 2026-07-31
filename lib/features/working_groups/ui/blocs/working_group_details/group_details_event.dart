@@ -68,3 +68,20 @@ class GroupDetailsRefreshed extends GroupDetailsEvent {
   @override
   List<Object?> get props => [completer];
 }
+
+/// Пользователь нажал на участника группы — нужно открыть личный чат.
+class GroupParticipantChatOpened extends GroupDetailsEvent {
+  const GroupParticipantChatOpened({required this.groupId, required this.participantCompositeId});
+
+  final String groupId;
+  final String participantCompositeId;
+
+  @override
+  List<Object?> get props => [groupId, participantCompositeId];
+}
+
+/// UI уведомляет BLoC, что [GroupDetailsState.pendingDirectChat] был прочитан
+/// и его нужно сбросить в `null`, чтобы избежать повторной навигации.
+class GroupDirectChatConsumed extends GroupDetailsEvent {
+  const GroupDirectChatConsumed();
+}

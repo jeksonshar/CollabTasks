@@ -23,6 +23,7 @@ import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_group_chat_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
@@ -203,6 +204,12 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SendGroupMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetGroupChatUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(
+      () => GetOrCreateDirectChatUseCase(
+        chatRepository: getIt<ChatRepository>(),
+        workingGroupsRepository: getIt<WorkingGroupsRepository>(),
+      ),
+    )
     ..registerLazySingleton(() => GetCurrentUserUseCase(getIt<AuthRepository>()))
     ..registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance)
     ..registerLazySingleton<FirebaseFirestore>(() => FirebaseFirestore.instance)
@@ -299,6 +306,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         leaveWorkingGroupUseCase: getIt(),
         watchAuthStateUseCase: getIt<WatchAuthStateUseCase>(),
         syncWorkingGroupUseCase: getIt(),
+        getOrCreateDirectChatUseCase: getIt(),
       ),
     )
     ..registerFactoryParam<GroupTaskDetailsBloc, GroupTask, void>(

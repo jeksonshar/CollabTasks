@@ -1,3 +1,4 @@
+import 'package:collab_tasks/features/chats/domain/models/direct_chat_result.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_participant.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task.dart';
 import 'package:collab_tasks/features/working_groups/domain/models/group_task_filter.dart';
@@ -25,6 +26,7 @@ class GroupDetailsState extends Equatable {
     this.currentUserEmail,
     this.group,
     this.errorMessage,
+    this.pendingDirectChat,
   });
 
   final GroupDetailsStatus status;
@@ -35,6 +37,10 @@ class GroupDetailsState extends Equatable {
   final String? currentUserEmail;
   final WorkingGroup? group;
   final String? errorMessage;
+
+  /// Данные для навигации к личному чату.
+  /// Сбрасывается в `null` сразу после того, как UI прочитал его.
+  final DirectChatResult? pendingDirectChat;
 
   bool get isCurrentUserParticipant {
     final userId = currentUserId;
@@ -108,6 +114,8 @@ class GroupDetailsState extends Equatable {
     String? currentUserEmail,
     WorkingGroup? group,
     String? errorMessage,
+    DirectChatResult? pendingDirectChat,
+    bool clearPendingDirectChat = false,
   }) {
     return GroupDetailsState(
       status: status ?? this.status,
@@ -118,6 +126,9 @@ class GroupDetailsState extends Equatable {
       currentUserEmail: currentUserEmail ?? this.currentUserEmail,
       group: group ?? this.group,
       errorMessage: errorMessage,
+      pendingDirectChat: clearPendingDirectChat
+          ? null
+          : (pendingDirectChat ?? this.pendingDirectChat),
     );
   }
 
@@ -132,5 +143,6 @@ class GroupDetailsState extends Equatable {
     group,
     errorMessage,
     isCurrentUserParticipant,
+    pendingDirectChat,
   ];
 }
