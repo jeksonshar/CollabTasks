@@ -1,45 +1,51 @@
 // ============================================================
 // src/middleware/authMiddleware.ts
-// Валидация AWS Cognito JWT при WS-handshake
+// Auth-фабрика: выбирает провайдер по AUTH_PROVIDER из .env,
+// инстанциирует нужный IAuthenticator, экспортирует единую точку входа.
+// Валидационная логика полностью вынесена в src/auth/*.ts
 // ============================================================
 
 import { IncomingMessage } from 'http';
-import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { IAuthenticator } from '../auth/IAuthenticator';
+import { CognitoAuthenticator } from '../auth/CognitoAuthenticator';
+import { FirebaseAuthenticator } from '../auth/FirebaseAuthenticator';
 import { AuthenticatedUser } from '../models/types';
 
 // ─────────────────────────────────────────────────────────────
-// Конфигурация верификатора (создаётся один раз при запуске)
+// Фабрика: создаём экземпляр нужного провайдера один раз при старте
 // ─────────────────────────────────────────────────────────────
 
-const userPoolId = process.env.COGNITO_USER_POOL_ID;
-const clientId = process.env.COGNITO_CLIENT_ID;
+const provider = (process.env.AUTH_PROVIDER ?? 'cognito').toLowerCase();
 
-if (!userPoolId || !clientId) {
-  throw new Error(
-    '[AuthMiddleware] Переменные окружения COGNITO_USER_POOL_ID и COGNITO_CLIENT_ID обязательны!'
-  );
+let authenticator: IAuthenticator;
+
+switch (provider) {
+  case 'firebase':
+    authenticator = new FirebaseAuthenticator();
+    console.log('[AuthMiddleware] Провайдер аутентификации: Firebase');
+    break;
+
+  case 'cognito':
+    authenticator = new CognitoAuthenticator();
+    console.log('[AuthMiddleware] Провайдер аутентификации: AWS Cognito');
+    break;
+
+  default:
+    throw new Error(
+      `[AuthMiddleware] Неизвестный AUTH_PROVIDER="${provider}". ` +
+        'Допустимые значения: "cognito", "firebase".'
+    );
 }
 
-/**
- * Верификатор JWT AWS Cognito.
- * Автоматически загружает JWKS по URI пула и кэширует публичные ключи.
- * tokenUse: 'access' — принимаем access-token, выданный Cognito.
- */
-const verifier = CognitoJwtVerifier.create({
-  userPoolId,
-  clientId,
-  tokenUse: 'access',
-});
-
 // ─────────────────────────────────────────────────────────────
-// Вспомогательная функция: извлечь Bearer-токен из запроса
+// Вспомогательная функция: извлечь Bearer-токен из WS handshake
 // ─────────────────────────────────────────────────────────────
 
 /**
  * Извлекает JWT из следующих мест (в порядке приоритета):
- * 1. Query-параметр ?token=<jwt>
- * 2. Заголовок Authorization: Bearer <jwt>
- * 3. Заголовок Sec-WebSocket-Protocol: <jwt>  (совместимость с Flutter web)
+ * 1. Query-параметр  ?token=<jwt>
+ * 2. Заголовок       Authorization: Bearer <jwt>
+ * 3. Заголовок       Sec-WebSocket-Protocol: <jwt>  (совместимость с Flutter web)
  */
 function extractToken(req: IncomingMessage): string | null {
   // 1. Query string
@@ -70,48 +76,37 @@ function extractToken(req: IncomingMessage): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Основная функция аутентификации
+// Основная функция аутентификации (публичный API)
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Верифицирует JWT токен Cognito из HTTP-запроса апгрейда WS.
+ * Извлекает токен из HTTP-запроса апгрейда WS и делегирует проверку
+ * активному IAuthenticator (Cognito или Firebase).
  *
- * @returns AuthenticatedUser — если токен валиден
- * @throws Error — если токен отсутствует или невалиден (соединение должно быть закрыто)
+ * Возвращает: AuthenticatedUser — если токен валиден.
+ * Бросает:    Error            — если токен отсутствует или невалиден.
+ *
+ * @remarks
+ * Поле `name` в AuthenticatedUser заполняется из email как fallback,
+ * так как IAuthenticator.AuthUser намеренно не содержит display-name
+ * (не все провайдеры его гарантируют).
  */
-export async function authenticateRequest(req: IncomingMessage): Promise<AuthenticatedUser> {
+export async function authenticateRequest(
+  req: IncomingMessage
+): Promise<AuthenticatedUser> {
   const token = extractToken(req);
 
   if (!token) {
     throw new Error('Отсутствует JWT токен. Подключение отклонено.');
   }
 
-  try {
-    const payload = await verifier.verify(token);
+  // Делегируем провайдеру — выбрасывает Error при невалидном токене
+  const authUser = await authenticator.validateToken(token);
 
-    // Cognito access-token содержит:
-    //   sub       — UUID пользователя (userId)
-    //   username  — имя пользователя (может быть email или UUID)
-    //   email     — если запрошен в scope (опционально в access token)
-    const userId = payload.sub;
-    // username в Cognito access token — строка
-    const rawUsername = (payload as Record<string, unknown>)['username'] as string | undefined;
-    const email = (payload as Record<string, unknown>)['email'] as string | undefined
-      ?? rawUsername
-      ?? userId;
-
-    // Имя берём из custom атрибута или fallback к email
-    const name = (payload as Record<string, unknown>)['name'] as string | undefined
-      ?? (payload as Record<string, unknown>)['given_name'] as string | undefined
-      ?? email;
-
-    return {
-      userId,
-      email,
-      name: name ?? email,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Невалидный JWT токен: ${message}`);
-  }
+  // Маппинг AuthUser → AuthenticatedUser (добавляем name как fallback к email)
+  return {
+    userId: authUser.userId,
+    email: authUser.email,
+    name: authUser.email, // display-name берётся из профиля на уровне приложения
+  };
 }
