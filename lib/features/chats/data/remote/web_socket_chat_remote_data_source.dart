@@ -12,6 +12,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// Позволяет подменять реальное соединение на заглушку в тестах.
 typedef WebSocketChannelFactory = WebSocketChannel Function(Uri uri);
 
+/// Тип провайдера токена: асинхронно возвращает актуальный токен
+/// (например, Firebase ID-токен) или `null`, если пользователь не авторизован.
+typedef TokenProvider = Future<String?> Function();
+
 /// [ChatRemoteDataSource], работающий поверх кастомного Node.js WebSocket-сервера.
 ///
 /// Соединение устанавливается лениво при первом обращении и переиспользуется
@@ -30,15 +34,19 @@ typedef WebSocketChannelFactory = WebSocketChannel Function(Uri uri);
 /// [_messagesCache] обновляется при получении `new_message` / `message_deleted`.
 class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   final String _baseUrl;
-  final String _authToken;
+
+  /// Вызывается непосредственно перед установкой нового WebSocket-соединения,
+  /// чтобы получить актуальный токен авторизации.
+  final TokenProvider _getTokenProvider;
+
   final WebSocketChannelFactory _channelFactory;
 
   WebSocketChatRemoteDataSource({
     required String baseUrl,
-    required String authToken,
+    required Future<String?> Function() getTokenProvider,
     WebSocketChannelFactory? channelFactory,
   }) : _baseUrl = baseUrl,
-       _authToken = authToken,
+       _getTokenProvider = getTokenProvider,
        _channelFactory = channelFactory ?? _defaultChannelFactory;
 
   // ---------------------------------------------------------------------------
@@ -73,10 +81,15 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   // ---------------------------------------------------------------------------
 
   /// Возвращает существующий или создаёт новый [WebSocketChannel].
-  WebSocketChannel _getOrCreateChannel() {
+  ///
+  /// При создании нового канала получает актуальный токен через [_getTokenProvider]
+  /// и передаёт его в URL в виде query-параметра `token`.
+  Future<WebSocketChannel> _getOrCreateChannel() async {
     if (_channel != null) return _channel!;
 
-    final uri = Uri.parse('$_baseUrl?token=${Uri.encodeComponent(_authToken)}');
+    final token = await _getTokenProvider();
+    final tokenParam = token != null ? '?token=${Uri.encodeComponent(token)}' : '';
+    final uri = Uri.parse('$_baseUrl$tokenParam');
     _channel = _channelFactory(uri);
 
     _channelSubscription = _channel!.stream.listen(
@@ -90,9 +103,10 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   }
 
   /// Отправляет JSON-объект через WebSocket.
-  void _send(Map<String, dynamic> payload) {
+  Future<void> _send(Map<String, dynamic> payload) async {
     try {
-      _getOrCreateChannel().sink.add(jsonEncode(payload));
+      final channel = await _getOrCreateChannel();
+      channel.sink.add(jsonEncode(payload));
     } catch (e, st) {
       debugPrint('[WS] Ошибка отправки: $e\n$st');
     }
@@ -308,6 +322,7 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
           _topicListenerCount.remove(key);
           _topicControllers.remove(key)?.close();
           _messagesCache.remove(key);
+          // unawaited — fire-and-forget при отписке
           _send({'type': 'unsubscribe_topic', 'topicId': topicId});
           debugPrint('[WS] Отписка от топика: $topicId');
         } else {
@@ -328,7 +343,7 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   @override
   Future<void> sendMessage(String chatId, MessageDto message) async {
-    _send({
+    await _send({
       'type': 'send_message',
       'chatId': chatId,
       'message': {'id': message.id, ...message.toFirestore()},
@@ -342,7 +357,7 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   @override
   Future<void> sendGroupMessage(String groupId, MessageDto message) async {
-    _send({
+    await _send({
       'type': 'send_group_message',
       'groupId': groupId,
       'message': {'id': message.id, ...message.toFirestore()},
@@ -350,32 +365,32 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   }
 
   @override
-  Future<List<ChatDto>> getChats(String userId) {
-    _send({'type': 'get_chats', 'userId': userId});
+  Future<List<ChatDto>> getChats(String userId) async {
+    await _send({'type': 'get_chats', 'userId': userId});
     return _enqueue<List<ChatDto>>('chat_list');
   }
 
   @override
-  Future<String> getOrCreateDirectChat(String targetUserId) {
-    _send({'type': 'get_or_create_direct_chat', 'targetUserId': targetUserId});
+  Future<String> getOrCreateDirectChat(String targetUserId) async {
+    await _send({'type': 'get_or_create_direct_chat', 'targetUserId': targetUserId});
     return _enqueue<String>('direct_chat_created');
   }
 
   @override
-  Future<ChatDto?> getChatById(String chatId) {
-    _send({'type': 'get_chat_by_id', 'chatId': chatId});
+  Future<ChatDto?> getChatById(String chatId) async {
+    await _send({'type': 'get_chat_by_id', 'chatId': chatId});
     return _enqueue<ChatDto?>('chat_by_id');
   }
 
   @override
-  Future<GroupChatDto?> getGroupChatById(String chatId) {
-    _send({'type': 'get_group_chat_by_id', 'chatId': chatId});
+  Future<GroupChatDto?> getGroupChatById(String chatId) async {
+    await _send({'type': 'get_group_chat_by_id', 'chatId': chatId});
     return _enqueue<GroupChatDto?>('group_chat_by_id');
   }
 
   @override
   Future<void> deleteMessage(String chatId, String messageId) async {
-    _send({'type': 'delete_message', 'chatId': chatId, 'messageId': messageId});
+    await _send({'type': 'delete_message', 'chatId': chatId, 'messageId': messageId});
   }
 
   // ---------------------------------------------------------------------------
@@ -384,6 +399,7 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   /// Синхронизирует FCM-токен с сервером (fire-and-forget).
   void syncFcmToken(String token) {
+    // unawaited — fire-and-forget
     _send({'type': 'sync_fcm_token', 'token': token});
   }
 
