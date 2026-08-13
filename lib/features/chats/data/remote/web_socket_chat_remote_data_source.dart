@@ -306,14 +306,23 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
         final count = (_topicListenerCount[key] ?? 0) + 1;
         _topicListenerCount[key] = count;
         if (count == 1) {
-          // Первый слушатель — подписываемся на сервере
+          // Первый слушатель — подписываемся на сервере.
+          // После subscribe сервер пришлёт историю через new_message,
+          // но если чат пуст — ничего не придёт и стрим молчал бы вечно.
+          // Поэтому через microtask гарантированно эмитим текущее состояние
+          // кэша (даже пустой список), чтобы Bloc перешёл из Loading → Loaded.
           _send({'type': 'subscribe_topic', 'topicId': topicId});
           debugPrint('[WS] Подписка на топик: $topicId');
-        }
-        // Немедленно эмитируем закешированные данные новому слушателю
-        final cached = _messagesCache[key];
-        if (cached != null && cached.isNotEmpty) {
-          _topicControllers[key]?.add(List.unmodifiable(cached));
+          Future.microtask(() {
+            final cached = _messagesCache[key];
+            _topicControllers[key]?.add(List.unmodifiable(cached ?? []));
+          });
+        } else {
+          // Повторный слушатель — отдаём кэш если не пустой
+          final cached = _messagesCache[key];
+          if (cached != null && cached.isNotEmpty) {
+            _topicControllers[key]?.add(List.unmodifiable(cached));
+          }
         }
       },
       onCancel: (_) {
