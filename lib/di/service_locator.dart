@@ -1,4 +1,7 @@
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collab_tasks/core/config/websocket_config.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
 import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
@@ -18,6 +21,7 @@ import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
+import 'package:collab_tasks/features/chats/data/remote/web_socket_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/repositories/chat_repository_impl.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
@@ -134,9 +138,22 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton<ChatRemoteDataSource>(
       () => switch (chatBackend) {
-        // TODO change when WebSocketChatRemoteDataSource will create
-        ChatBackend.webSocket => FirebaseChatRemoteDataSource(
-          firestore: getIt<FirebaseFirestore>(),
+        ChatBackend.webSocket => WebSocketChatRemoteDataSource(
+          baseUrl: WebSocketConfig.serverUrl,
+          getTokenProvider: () async {
+            if (authBackend == AuthBackend.aws) {
+              try {
+                final session = await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
+                return session.userPoolTokensResult.value.accessToken.raw;
+              } catch (e) {
+                debugPrint('Failed to fetch AWS auth session token: $e');
+              }
+            } else if (authBackend == AuthBackend.firebase) {
+              final firebaseToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+              return firebaseToken;
+            }
+            return null;
+          },
         ),
         ChatBackend.firebase => FirebaseChatRemoteDataSource(firestore: getIt<FirebaseFirestore>()),
       },
@@ -278,6 +295,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         watchAuthStateUseCase: getIt(),
         notificationService: getIt(),
         workingGroupsRepository: getIt(),
+        chatRemoteDataSource: getIt<ChatRemoteDataSource>(),
         // Безопасный проброс: если сервис зарегистрирован в GetIt (при Firebase), он прилетит в Блок.
         // Если выбран AWS Amplify — передастся null.
         chatNotificationService: getIt.isRegistered<ChatNotificationService>()
