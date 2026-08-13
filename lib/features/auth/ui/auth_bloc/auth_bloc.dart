@@ -18,8 +18,11 @@ import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
+import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
+import 'package:collab_tasks/features/chats/data/remote/web_socket_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/domain/services/task_notification_service.dart';
 import 'package:collab_tasks/features/working_groups/domain/repositories/working_groups_repository.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -38,6 +41,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required WatchAuthStateUseCase watchAuthStateUseCase,
     required TaskNotificationService notificationService,
     required WorkingGroupsRepository workingGroupsRepository,
+    required ChatRemoteDataSource chatRemoteDataSource,
     ChatNotificationService? chatNotificationService,
   }) : _registerWithEmailUseCase = registerWithEmailUseCase,
        _loginWithEmailUseCase = loginWithEmailUseCase,
@@ -50,6 +54,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _watchAuthStateUseCase = watchAuthStateUseCase,
        _notificationService = notificationService,
        _workingGroupsRepository = workingGroupsRepository,
+       _chatRemoteDataSource = chatRemoteDataSource,
        _chatNotificationService = chatNotificationService,
        super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
@@ -74,6 +79,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogOutUseCase _logOutUseCase;
   final WatchAuthStateUseCase _watchAuthStateUseCase;
   final TaskNotificationService _notificationService;
+  final ChatRemoteDataSource _chatRemoteDataSource;
   final ChatNotificationService? _chatNotificationService;
 
   Future<void> _onSubscriptionStarted(
@@ -116,6 +122,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
                   debugPrint('Failed to sync device token: $error\n$stackTrace');
                 }),
           );
+        }
+        
+        if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
+          unawaited(() async {
+            try {
+              final token = await FirebaseMessaging.instance.getToken();
+              if (token != null) {
+                _chatRemoteDataSource.syncFcmToken(token);
+              }
+            } catch (error, stackTrace) {
+              debugPrint('Failed to sync WebSocket FCM token: $error\n$stackTrace');
+            }
+          }());
         }
 
         return state.copyWith(status: AuthStatus.authenticated, user: user, clearFailure: true);
