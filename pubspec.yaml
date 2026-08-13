@@ -37,7 +37,7 @@ dependencies:
   intl: ^0.20.2
 
   # formatting
-  flutter_quill: ^11.5.0
+  flutter_quill: ^11.5.1
 
   # data persist
   drift: ^2.31.0
