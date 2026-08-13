@@ -229,7 +229,8 @@ function handleGetChats(client: AuthenticatedSocket, userId: string): void {
     return;
   }
 
-  const chats = db.getChatsByUserId(userId);
+  const userIds = [client.user.userId, client.user.email, userId].filter(Boolean);
+  const chats = db.getChatsByUserId(userIds);
   sendToClient(client, { type: 'chat_list', chats });
 }
 
@@ -248,26 +249,26 @@ async function handleGetOrCreateDirectChat(
   }
 
   const currentUserId = client.user.userId;
+  const currentEmail = client.user.email;
 
-  // Ищем существующий прямой чат
-  let existingChat = db.findDirectChat(currentUserId, targetUserId);
-
-  // Если не нашли — пробуем по email текущего пользователя (совместимость с Firebase режимом)
-  if (!existingChat) {
-    existingChat = db.findDirectChat(client.user.email, targetUserId);
-  }
+  // Ищем существующий прямой чат между текущим пользователем (UID / email) и целевым пользователем
+  const existingChat = db.findDirectChat(
+    [currentUserId, currentEmail],
+    [targetUserId]
+  );
 
   if (existingChat) {
     sendToClient(client, { type: 'direct_chat_created', chatId: existingChat.id });
     return;
   }
 
-  // Создаём новый чат
+  // Создаём новый чат. Предпочитаем email для единообразия, если он есть
+  const primaryCurrentId = currentEmail || currentUserId;
   const newChatId = uuidv4();
   const newChat: ChatDto = {
     id: newChatId,
     type: 'direct',
-    participantIds: [currentUserId, targetUserId],
+    participantIds: [primaryCurrentId, targetUserId],
     lastMessage: '',
     updatedAtMillis: Date.now(),
   };
@@ -276,12 +277,12 @@ async function handleGetOrCreateDirectChat(
 
   console.log(
     `[ChatController] Создан прямой чат ${newChatId} ` +
-    `между ${currentUserId} и ${targetUserId}`
+    `между ${primaryCurrentId} и ${targetUserId}`
   );
 
   sendToClient(client, { type: 'direct_chat_created', chatId: newChatId });
 
-  // Уведомляем targetUserId если онлайн
+  // Уведомляем targetUserId если он онлайн (по UID или email)
   sendToUser(targetUserId, { type: 'chat_list', chats: [newChat] });
 }
 

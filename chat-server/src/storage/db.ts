@@ -195,15 +195,16 @@ export function getChatById(chatId: string): ChatDto | null {
   return row ? rowToChat(row) : null;
 }
 
-export function getChatsByUserId(userId: string): ChatDto[] {
-  // Ищем чаты где participant_ids JSON-массив содержит userId
-  // sql.js не поддерживает json_each — используем LIKE для простоты
-  const all = queryAll("SELECT * FROM chats WHERE participant_ids LIKE ?", [`%"${userId}"%`]);
-  // Дополнительная точная проверка
+export function getChatsByUserId(userIdentifiers: string | string[]): ChatDto[] {
+  const idsToMatch = (Array.isArray(userIdentifiers) ? userIdentifiers : [userIdentifiers])
+    .filter(Boolean)
+    .map((id) => id.toLowerCase());
+
+  const all = queryAll("SELECT * FROM chats");
   return all
     .filter((row) => {
-      const ids = JSON.parse(row['participant_ids'] as string) as string[];
-      return ids.includes(userId);
+      const ids = (JSON.parse(row['participant_ids'] as string) as string[]).map((id) => id.toLowerCase());
+      return ids.some((id) => idsToMatch.includes(id));
     })
     .map(rowToChat);
 }
@@ -223,16 +224,27 @@ export function updateChatLastMessage(chatId: string, lastMessage: string, updat
   );
 }
 
-export function findDirectChat(userId: string, targetUserId: string): ChatDto | null {
-  // Получаем все direct-чаты где участвует userId
-  const candidates = queryAll(
-    "SELECT * FROM chats WHERE type = 'direct' AND participant_ids LIKE ?",
-    [`%"${userId}"%`]
-  );
+export function findDirectChat(
+  userAIdentifiers: string | string[],
+  userBIdentifiers: string | string[]
+): ChatDto | null {
+  const idsA = (Array.isArray(userAIdentifiers) ? userAIdentifiers : [userAIdentifiers])
+    .filter(Boolean)
+    .map((id) => id.toLowerCase());
+
+  const idsB = (Array.isArray(userBIdentifiers) ? userBIdentifiers : [userBIdentifiers])
+    .filter(Boolean)
+    .map((id) => id.toLowerCase());
+
+  const candidates = queryAll("SELECT * FROM chats WHERE type = 'direct'");
   for (const row of candidates) {
-    const participants = JSON.parse(row['participant_ids'] as string) as string[];
-    if (participants.length === 2 && participants.includes(targetUserId) && participants.includes(userId)) {
-      return rowToChat(row);
+    const participants = (JSON.parse(row['participant_ids'] as string) as string[]).map((id) => id.toLowerCase());
+    if (participants.length === 2) {
+      const matchesA = participants.some((p) => idsA.includes(p));
+      const matchesB = participants.some((p) => idsB.includes(p));
+      if (matchesA && matchesB) {
+        return rowToChat(row);
+      }
     }
   }
   return null;

@@ -91,16 +91,25 @@ export function getClientBySocket(ws: WebSocket): AuthenticatedSocket | undefine
   return socketToClient.get(ws);
 }
 
-/** Получает все активные сокеты для данного userId */
-export function getSocketsByUserId(userId: string): AuthenticatedSocket[] {
-  const sockets = connectionsByUserId.get(userId);
-  return sockets ? Array.from(sockets) : [];
+/** Получает все активные сокеты для данного userId или email */
+export function getSocketsByUserId(id: string): AuthenticatedSocket[] {
+  if (!id) return [];
+  const target = id.toLowerCase();
+  const result: AuthenticatedSocket[] = [];
+  for (const client of socketToClient.values()) {
+    if (
+      client.user.userId.toLowerCase() === target ||
+      client.user.email.toLowerCase() === target
+    ) {
+      result.push(client);
+    }
+  }
+  return result;
 }
 
-/** Проверяет, подключён ли пользователь хотя бы через один сокет */
-export function isUserOnline(userId: string): boolean {
-  const sockets = connectionsByUserId.get(userId);
-  return !!sockets && sockets.size > 0;
+/** Проверяет, подключён ли пользователь хотя бы через один сокет (по userId или email) */
+export function isUserOnline(id: string): boolean {
+  return getSocketsByUserId(id).length > 0;
 }
 
 /** Возвращает список всех онлайн-пользователей */
