@@ -78,6 +78,10 @@ export async function handleEvent(
       handleSyncFcmToken(client, event.token);
       break;
 
+    case 'remove_fcm_token':
+      handleRemoveFcmToken(client, event.token);
+      break;
+
     case 'upsert_group_chat':
       handleUpsertGroupChat(client, event.chat);
       break;
@@ -375,6 +379,28 @@ function handleSyncFcmToken(client: AuthenticatedSocket, token: string): void {
 
   console.log(
     `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId} / email=${client.user.email}: ` +
+    `${token.slice(0, 20)}...`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// remove_fcm_token
+// Удаляет FCM-токен устройства из БД при выходе из аккаунта (логауте)
+// ─────────────────────────────────────────────────────────────
+
+function handleRemoveFcmToken(client: AuthenticatedSocket, token: string): void {
+  if (!token) {
+    sendError(client, 'remove_fcm_token: token обязателен');
+    return;
+  }
+
+  db.deleteFcmToken(client.user.userId, token);
+  if (client.user.email && client.user.email !== client.user.userId) {
+    db.deleteFcmToken(client.user.email, token);
+  }
+
+  console.log(
+    `[ChatController] FCM-токен удалён при логауте для userId=${client.user.userId} / email=${client.user.email}: ` +
     `${token.slice(0, 20)}...`
   );
 }

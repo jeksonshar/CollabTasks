@@ -16,7 +16,7 @@ StorageBackend get storageBackend => switch (authBackend) {
 
 ChatBackend get chatBackend => switch (authBackend) {
   AuthBackend.aws => ChatBackend.webSocket,
-  AuthBackend.firebase => ChatBackend.firebase,
+  AuthBackend.firebase => ChatBackend.webSocket,
 };
 
 String mapProviderLabel(AppLocalizations localization, AuthUser? user) {

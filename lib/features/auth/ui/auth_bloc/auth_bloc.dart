@@ -123,7 +123,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
                 }),
           );
         }
-        
+
         if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
           unawaited(() async {
             try {
@@ -376,6 +376,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         await _chatNotificationService.removeDeviceToken(currentUserId);
       } catch (e) {
         debugPrint('Failed to remove device token on logout: $e');
+      }
+    }
+
+    if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await _chatRemoteDataSource.removeFcmToken(token);
+        }
+      } catch (e) {
+        debugPrint('Failed to remove WebSocket FCM token on logout: $e');
       }
     }
 

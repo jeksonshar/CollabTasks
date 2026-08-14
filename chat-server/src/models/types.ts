@@ -107,6 +107,11 @@ export interface SyncFcmTokenEvent {
   token: string;
 }
 
+export interface RemoveFcmTokenEvent {
+  type: 'remove_fcm_token';
+  token: string;
+}
+
 export interface UpsertGroupChatEvent {
   type: 'upsert_group_chat';
   chat: GroupChatDto;
@@ -124,6 +129,7 @@ export type InboundEvent =
   | GetGroupChatByIdEvent
   | DeleteMessageEvent
   | SyncFcmTokenEvent
+  | RemoveFcmTokenEvent
   | UpsertGroupChatEvent;
 
 // ─────────────────────────────────────────────────────────────

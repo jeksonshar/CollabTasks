@@ -445,6 +445,11 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     _send({'type': 'sync_fcm_token', 'token': token});
   }
 
+  /// Удаляет FCM-токен устройства с сервера при выходе из аккаунта (логауте).
+  Future<void> removeFcmToken(String token) async {
+    await _send({'type': 'remove_fcm_token', 'token': token});
+  }
+
   /// Закрывает WebSocket-соединение и освобождает все ресурсы.
   Future<void> dispose() async {
     _failAllPending(const WebSocketConnectionException('DataSource был уничтожен'));
