@@ -327,9 +327,22 @@ export function upsertFcmToken(userId: string, token: string): void {
   execute('INSERT OR REPLACE INTO fcm_tokens (user_id, token) VALUES (?, ?)', [userId, token]);
 }
 
-export function getFcmTokens(userId: string): string[] {
-  const rows = queryAll('SELECT token FROM fcm_tokens WHERE user_id = ?', [userId]);
-  return rows.map((r) => r['token'] as string);
+export function getFcmTokens(userIdentifiers: string | string[]): string[] {
+  const ids = (Array.isArray(userIdentifiers) ? userIdentifiers : [userIdentifiers])
+    .filter(Boolean)
+    .map((id) => id.toLowerCase());
+
+  if (ids.length === 0) return [];
+
+  const allRows = queryAll('SELECT user_id, token FROM fcm_tokens');
+  const matchedTokens: string[] = [];
+  for (const row of allRows) {
+    const rowUserId = (row['user_id'] as string).toLowerCase();
+    if (ids.includes(rowUserId)) {
+      matchedTokens.push(row['token'] as string);
+    }
+  }
+  return [...new Set(matchedTokens)];
 }
 
 export function deleteFcmToken(userId: string, token: string): void {

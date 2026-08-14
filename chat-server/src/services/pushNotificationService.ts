@@ -6,7 +6,6 @@
 
 import * as admin from 'firebase-admin';
 import * as db from '../storage/db';
-import { isUserOnline } from '../websocket/connectionManager';
 
 // ─────────────────────────────────────────────────────────────
 // Инициализация Firebase Admin SDK
@@ -185,47 +184,30 @@ export async function sendDirectChatPushNotification(
   text: string,
   participantIds: string[]
 ): Promise<void> {
+  const senderIdLower = senderId.toLowerCase();
   const recipientIds = participantIds.filter(
-    (id) => id.toLowerCase() !== senderId.toLowerCase()
+    (id) => String(id).trim().toLowerCase() !== senderIdLower
   );
 
   if (recipientIds.length === 0) return;
 
-  // Собираем токены только offline-получателей
-  const tokens: string[] = [];
-  const offlineRecipientIds: string[] = [];
-
-  for (const recipientId of recipientIds) {
-    if (isUserOnline(recipientId)) {
-      console.log(
-        `[FCM] Пропущен online-получатель: ${recipientId} — получает через WS`
-      );
-      continue;
-    }
-
-    offlineRecipientIds.push(recipientId);
-    const recipientTokens = db.getFcmTokens(recipientId);
-    tokens.push(...recipientTokens);
-  }
+  const tokens = db.getFcmTokens(recipientIds);
 
   if (tokens.length === 0) {
-    console.log(`[FCM] Нет FCM-токенов для offline-получателей чата ${chatId}`);
+    console.log(
+      `[FCM] Нет FCM-токенов для получателей чата ${chatId} ` +
+      `(искали по: ${recipientIds.join(', ')})`
+    );
     return;
   }
 
   const uniqueTokens = [...new Set(tokens)];
   const payload = buildDirectChatPayload(uniqueTokens, senderName, text, chatId);
-  await sendMulticast(payload, offlineRecipientIds);
+  await sendMulticast(payload, recipientIds);
 }
 
 /**
  * Отправляет FCM push-уведомление участникам ГРУППОВОГО чата.
- *
- * Логика (зеркало index.ts onNewGroupMessageSent):
- * 1. Получаем participantUserIds из GroupChatDto
- * 2. Исключаем senderId (по userId и email)
- * 3. Для каждого offline-получателя берём FCM-токены из локальной БД
- * 4. Отправляем multicast FCM
  */
 export async function sendGroupChatPushNotification(
   groupId: string,
@@ -236,7 +218,6 @@ export async function sendGroupChatPushNotification(
 ): Promise<void> {
   const senderIdLower = senderId.toLowerCase();
 
-  // Фильтруем отправителя (точная логика из index.ts)
   const filteredRecipients = participantUserIds.filter((id) => {
     const cleanId = String(id).trim();
     if (!cleanId) return false;
@@ -250,26 +231,11 @@ export async function sendGroupChatPushNotification(
     return;
   }
 
-  // Собираем токены только offline-получателей
-  const tokens: string[] = [];
-  const offlineRecipientIds: string[] = [];
-
-  for (const recipientId of uniqueRecipients) {
-    if (isUserOnline(recipientId)) {
-      console.log(
-        `[FCM] Пропущен online-участник группы: ${recipientId} — получает через WS`
-      );
-      continue;
-    }
-
-    offlineRecipientIds.push(recipientId);
-    const recipientTokens = db.getFcmTokens(recipientId);
-    tokens.push(...recipientTokens);
-  }
+  const tokens = db.getFcmTokens(uniqueRecipients);
 
   if (tokens.length === 0) {
     console.log(
-      `[FCM] Нет FCM-токенов для offline-участников группы ${groupId}. ` +
+      `[FCM] Нет FCM-токенов для участников группы ${groupId}. ` +
       `Искали по: ${uniqueRecipients.join(', ')}`
     );
     return;
@@ -277,5 +243,5 @@ export async function sendGroupChatPushNotification(
 
   const uniqueTokens = [...new Set(tokens)];
   const payload = buildGroupChatPayload(uniqueTokens, senderName, text, groupId);
-  await sendMulticast(payload, offlineRecipientIds);
+  await sendMulticast(payload, uniqueRecipients);
 }

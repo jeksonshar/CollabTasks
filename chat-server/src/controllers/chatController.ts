@@ -210,15 +210,19 @@ async function handleSendGroupMessage(
     `→ доставлено ${subscribers.length} подписчикам`
   );
 
-  // 3. FCM для offline-участников
+  // 3. FCM для участников группы
   const groupChat = db.getGroupChatById(groupId);
   if (groupChat) {
+    const allParticipants = [
+      ...(groupChat.participantUserIds ?? []),
+      ...(groupChat.participantEmails ?? []),
+    ];
     await sendGroupChatPushNotification(
       groupId,
       message.senderId,
       message.senderName,
       message.text,
-      groupChat.participantUserIds
+      allParticipants
     );
   }
 }
@@ -365,9 +369,12 @@ function handleSyncFcmToken(client: AuthenticatedSocket, token: string): void {
   }
 
   db.upsertFcmToken(client.user.userId, token);
+  if (client.user.email && client.user.email !== client.user.userId) {
+    db.upsertFcmToken(client.user.email, token);
+  }
 
   console.log(
-    `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId}: ` +
+    `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId} / email=${client.user.email}: ` +
     `${token.slice(0, 20)}...`
   );
 }
