@@ -107,6 +107,11 @@ export interface SyncFcmTokenEvent {
   token: string;
 }
 
+export interface UpsertGroupChatEvent {
+  type: 'upsert_group_chat';
+  chat: GroupChatDto;
+}
+
 /** Объединение всех входящих событий */
 export type InboundEvent =
   | SubscribeTopicEvent
@@ -118,7 +123,8 @@ export type InboundEvent =
   | GetChatByIdEvent
   | GetGroupChatByIdEvent
   | DeleteMessageEvent
-  | SyncFcmTokenEvent;
+  | SyncFcmTokenEvent
+  | UpsertGroupChatEvent;
 
 // ─────────────────────────────────────────────────────────────
 // Исходящие WS-события (Server → Client)

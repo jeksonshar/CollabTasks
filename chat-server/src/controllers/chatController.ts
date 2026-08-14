@@ -21,6 +21,7 @@ import {
 import {
   InboundEvent,
   ChatDto,
+  GroupChatDto,
   MessageDto,
 } from '../models/types';
 
@@ -75,6 +76,10 @@ export async function handleEvent(
 
     case 'sync_fcm_token':
       handleSyncFcmToken(client, event.token);
+      break;
+
+    case 'upsert_group_chat':
+      handleUpsertGroupChat(client, event.chat);
       break;
 
     default: {
@@ -364,5 +369,27 @@ function handleSyncFcmToken(client: AuthenticatedSocket, token: string): void {
   console.log(
     `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId}: ` +
     `${token.slice(0, 20)}...`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// upsert_group_chat
+// Сохраняет или обновляет данные метаинформации группового чата
+// ─────────────────────────────────────────────────────────────
+
+function handleUpsertGroupChat(
+  client: AuthenticatedSocket,
+  chat: GroupChatDto
+): void {
+  if (!chat || !chat.id) {
+    sendError(client, 'upsert_group_chat: chat.id обязателен');
+    return;
+  }
+
+  db.upsertGroupChat(chat);
+
+  console.log(
+    `[ChatController] Групповой чат ${chat.id} ("${chat.title}") сохранён в БД ` +
+    `пользователем ${client.user.userId}`
   );
 }

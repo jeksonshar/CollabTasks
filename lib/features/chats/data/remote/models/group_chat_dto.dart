@@ -41,6 +41,7 @@ class GroupChatDto {
 
   Map<String, dynamic> toFirestore() {
     return {
+      'id': id,
       'participantUserIds': participantUserIds,
       'participantEmails': participantEmails,
       'title': title,

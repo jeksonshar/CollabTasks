@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/group_chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
+import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -394,7 +396,36 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   @override
   Future<GroupChatDto?> getGroupChatById(String chatId) async {
     await _send({'type': 'get_group_chat_by_id', 'chatId': chatId});
-    return _enqueue<GroupChatDto?>('group_chat_by_id');
+    final serverChat = await _enqueue<GroupChatDto?>('group_chat_by_id');
+    if (serverChat != null && serverChat.title.isNotEmpty) {
+      return serverChat;
+    }
+
+    // Fallback на локальную рабочую группу, если на WS сервере еще нет метаданных
+    try {
+      if (getIt.isRegistered<WorkingGroupsLocalDataSource>()) {
+        final localDs = getIt<WorkingGroupsLocalDataSource>();
+        final localGroup = await localDs.watchGroup(chatId).first;
+        if (localGroup != null) {
+          final participants = await localDs.getParticipants(chatId);
+          final dto = GroupChatDto(
+            id: chatId,
+            participantUserIds: participants.map((p) => p.userId).toList(),
+            participantEmails: participants.map((p) => p.userId).toList(),
+            title: localGroup.title,
+            description: localGroup.description,
+            updatedAtMillis: localGroup.updatedAt,
+          );
+          // Сохраняем/синхронизируем метаданные на WS сервер
+          unawaited(_send({'type': 'upsert_group_chat', 'chat': dto.toFirestore()}));
+          return dto;
+        }
+      }
+    } catch (e) {
+      debugPrint('[WS] Ошибка получения локальной метаинформации группы: $e');
+    }
+
+    return serverChat;
   }
 
   @override
