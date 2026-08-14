@@ -7,7 +7,6 @@ import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
@@ -40,12 +39,8 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
       final currentUser = await _getCurrentUserUseCase();
       final currentUserId = currentUser?.email ?? currentUser?.id ?? '';
 
-      debugPrint('GroupChatBlock -> _onLoadGroupMessages() -> currentUser = $currentUser');
-      debugPrint('GroupChatBlock -> _onLoadGroupMessages() -> groupChatId = ${event.groupChatId}');
-
       final chat = await _getGroupChatUseCase(event.groupChatId);
 
-      debugPrint('GroupChatBlock -> _onLoadGroupMessages() -> chat = $chat');
       final title = chat?.title ?? '';
       final description = chat?.description ?? '';
 

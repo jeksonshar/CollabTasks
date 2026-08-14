@@ -165,9 +165,11 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
         });
 
       case 'new_message':
+      case 'new_group_message':
         _handleNewMessage(data);
 
       case 'message_deleted':
+      case 'group_message_deleted':
         _handleMessageDeleted(data);
 
       case 'error':
@@ -223,41 +225,41 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   void _handleNewMessage(Map<String, dynamic> data) {
     final rawMsg = data['message'];
-    final chatId = data['chatId'] as String?;
+    final topicKey = (data['chatId'] ?? data['groupId']) as String?;
 
-    if (rawMsg == null || chatId == null) {
-      debugPrint('[WS] new_message: отсутствуют обязательные поля');
+    if (rawMsg == null || topicKey == null) {
+      debugPrint('[WS] new_message / new_group_message: отсутствуют обязательные поля');
       return;
     }
 
     final msgMap = rawMsg as Map<String, dynamic>;
     final dto = MessageDto.fromFirestore(msgMap, msgMap['id'] as String? ?? '');
 
-    final current = List<MessageDto>.from(_messagesCache[chatId] ?? []);
+    final current = List<MessageDto>.from(_messagesCache[topicKey] ?? []);
     // Дедупликация по id
     if (!current.any((m) => m.id == dto.id)) {
       current
         ..insert(0, dto)
         // Сортировка: новейшие сначала
         ..sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
-      _messagesCache[chatId] = current;
-      _topicControllers[chatId]?.add(List.unmodifiable(current));
+      _messagesCache[topicKey] = current;
+      _topicControllers[topicKey]?.add(List.unmodifiable(current));
     }
   }
 
   void _handleMessageDeleted(Map<String, dynamic> data) {
-    final chatId = data['chatId'] as String?;
+    final topicKey = (data['chatId'] ?? data['groupId']) as String?;
     final messageId = data['messageId'] as String?;
 
-    if (chatId == null || messageId == null) {
+    if (topicKey == null || messageId == null) {
       debugPrint('[WS] message_deleted: отсутствуют обязательные поля');
       return;
     }
 
-    final current = List<MessageDto>.from(_messagesCache[chatId] ?? []);
+    final current = List<MessageDto>.from(_messagesCache[topicKey] ?? []);
     final updated = current.where((m) => m.id != messageId).toList();
-    _messagesCache[chatId] = updated;
-    _topicControllers[chatId]?.add(List.unmodifiable(updated));
+    _messagesCache[topicKey] = updated;
+    _topicControllers[topicKey]?.add(List.unmodifiable(updated));
   }
 
   // ---------------------------------------------------------------------------
