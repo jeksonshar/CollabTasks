@@ -117,6 +117,17 @@ export interface UpsertGroupChatEvent {
   chat: GroupChatDto;
 }
 
+/**
+ * Клиент уведомляет сервер о том, что пользователь печатает / перестал печатать.
+ * Сервер транслирует событие другим участникам прямого чата.
+ */
+export interface TypingEvent {
+  type: 'typing';
+  /** ID прямого чата, в котором происходит набор текста */
+  chatId: string;
+  isTyping: boolean;
+}
+
 /** Объединение всех входящих событий */
 export type InboundEvent =
   | SubscribeTopicEvent
@@ -130,7 +141,8 @@ export type InboundEvent =
   | DeleteMessageEvent
   | SyncFcmTokenEvent
   | RemoveFcmTokenEvent
-  | UpsertGroupChatEvent;
+  | UpsertGroupChatEvent
+  | TypingEvent;
 
 // ─────────────────────────────────────────────────────────────
 // Исходящие WS-события (Server → Client)
@@ -179,6 +191,30 @@ export interface ErrorOutbound {
   message: string;
 }
 
+/**
+ * Сервер → клиенты: статус присутствия пользователя изменился.
+ * `lastSeenMillis` передаётся только при переходе в offline.
+ */
+export interface UserStatusChangedOutbound {
+  type: 'user_status_changed';
+  /** Нормализованный userId (trim + toLowerCase) */
+  userId: string;
+  status: 'online' | 'offline';
+  lastSeenMillis?: number;
+}
+
+/**
+ * Сервер → клиенты: пользователь начал / прекратил набор текста в прямом чате.
+ * Не персистируется в БД.
+ */
+export interface TypingOutbound {
+  type: 'typing';
+  chatId: string;
+  /** Нормализованный userId набирающего пользователя */
+  userId: string;
+  isTyping: boolean;
+}
+
 /** Объединение всех исходящих событий */
 export type OutboundEvent =
   | NewMessageOutbound
@@ -188,4 +224,6 @@ export type OutboundEvent =
   | ChatByIdOutbound
   | GroupChatByIdOutbound
   | MessageDeletedOutbound
-  | ErrorOutbound;
+  | ErrorOutbound
+  | UserStatusChangedOutbound
+  | TypingOutbound;

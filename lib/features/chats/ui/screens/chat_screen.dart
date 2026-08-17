@@ -1,4 +1,5 @@
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
+import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
@@ -9,6 +10,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -20,13 +22,15 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with RouteAware {
+class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBindingObserver {
   late final ChatNotificationService _notificationService;
+  ChatBloc? _chatBloc;
 
   @override
   void initState() {
     super.initState();
     _notificationService = getIt<ChatNotificationService>();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -40,7 +44,15 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _chatBloc?.add(SendTypingEvent(widget.chatId, false));
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Отписываемся от роутера и сбрасываем activeChatId
     routeObserver.unsubscribe(this);
     if (_notificationService.activeChatId == widget.chatId) {
@@ -79,7 +91,11 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     return BlocProvider<ChatBloc>(
-      create: (_) => getIt<ChatBloc>()..add(LoadMessages(widget.chatId)),
+      create: (_) {
+        final bloc = getIt<ChatBloc>()..add(LoadMessages(widget.chatId));
+        _chatBloc = bloc;
+        return bloc;
+      },
       child: BlocBuilder<ChatBloc, ChatState>(
         builder: (context, state) {
           // Локализация заглавия экрана на уровне UI
@@ -93,7 +109,25 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
           }
 
           return Scaffold(
-            appBar: AppBar(titleSpacing: 0, title: Text(appBarTitle)),
+            appBar: AppBar(
+              titleSpacing: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    appBarTitle,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (state is ChatLoaded && chatBackend == ChatBackend.webSocket) ...[
+                    const SizedBox(height: 4),
+                    _buildSubtitle(context, state),
+                  ],
+                ],
+              ),
+            ),
             body: Column(
               children: [
                 Expanded(child: _buildBody(context, state, widget.chatId)),
@@ -102,6 +136,9 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
                   child: MessageInputField(
                     onSendMessage: (text) {
                       context.read<ChatBloc>().add(SendMessageEvent(widget.chatId, text));
+                    },
+                    onTypingChanged: (isTyping) {
+                      context.read<ChatBloc>().add(SendTypingEvent(widget.chatId, isTyping));
                     },
                   ),
                 ),
@@ -112,6 +149,72 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware {
       ),
     );
   }
+
+  Widget _buildSubtitle(BuildContext context, ChatLoaded state) {
+    final theme = Theme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+    final subtitleColor = isLight ? Colors.black54 : Colors.white70;
+
+    if (state.isOpponentTyping) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildSubtitleIndicator(Colors.green),
+          const SizedBox(width: 12),
+          Text(
+            'печатает...',
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final status = state.opponentStatus;
+    if (status == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isOnline = status.isOnline;
+    final dotColor = isOnline ? Colors.green : Colors.grey;
+
+    String statusText;
+    if (isOnline) {
+      statusText = 'в сети';
+    } else {
+      final lastSeenMillis = status.lastSeenMillis;
+      if (lastSeenMillis != null && lastSeenMillis > 0) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(lastSeenMillis).toLocal();
+        final formatted = DateFormat('dd.MM.yyyy HH:mm').format(dt);
+        statusText = 'был в сети $formatted';
+      } else {
+        statusText = 'не в сети';
+      }
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildSubtitleIndicator(dotColor),
+        const SizedBox(width: 12),
+        Text(
+          statusText,
+          style: TextStyle(fontSize: 12, color: isOnline ? Colors.green : subtitleColor),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _buildSubtitleIndicator(Color color) {
+  return Container(
+    width: 6,
+    height: 6,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
 }
 
 Widget _buildBody(BuildContext context, ChatState state, String chatId) {

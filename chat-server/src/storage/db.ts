@@ -98,6 +98,11 @@ export async function initDatabase(): Promise<void> {
       PRIMARY KEY (user_id, token)
     );
 
+    CREATE TABLE IF NOT EXISTS user_last_seen (
+      user_id       TEXT PRIMARY KEY,
+      last_seen_ms  INTEGER NOT NULL DEFAULT 0
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages (chat_id, created_at_ms);
     CREATE INDEX IF NOT EXISTS idx_group_messages_group_id ON group_messages (group_id, created_at_ms);
     CREATE INDEX IF NOT EXISTS idx_fcm_user ON fcm_tokens (user_id);
@@ -347,4 +352,31 @@ export function getFcmTokens(userIdentifiers: string | string[]): string[] {
 
 export function deleteFcmToken(userId: string, token: string): void {
   execute('DELETE FROM fcm_tokens WHERE user_id = ? AND token = ?', [userId, token]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// User Last Seen
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Сохраняет или обновляет время последнего появления пользователя.
+ * Идентификатор нормализуется (trim + toLowerCase) перед записью.
+ */
+export function upsertLastSeen(userId: string, lastSeenMs: number): void {
+  const normalized = userId.trim().toLowerCase();
+  execute(
+    'INSERT OR REPLACE INTO user_last_seen (user_id, last_seen_ms) VALUES (?, ?)',
+    [normalized, lastSeenMs]
+  );
+}
+
+/**
+ * Возвращает время последнего появления пользователя в мс.
+ * Идентификатор нормализуется перед поиском.
+ * Возвращает 0, если запись отсутствует.
+ */
+export function getLastSeen(userId: string): number {
+  const normalized = userId.trim().toLowerCase();
+  const row = queryOne('SELECT last_seen_ms FROM user_last_seen WHERE user_id = ?', [normalized]);
+  return (row?.['last_seen_ms'] as number | undefined) ?? 0;
 }

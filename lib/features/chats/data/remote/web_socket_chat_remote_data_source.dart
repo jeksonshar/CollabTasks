@@ -6,6 +6,8 @@ import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.
 import 'package:collab_tasks/features/chats/data/remote/models/chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/group_chat_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
+import 'package:collab_tasks/features/chats/data/remote/models/ws_typing_dto.dart';
+import 'package:collab_tasks/features/chats/data/remote/models/ws_user_status_dto.dart';
 import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -71,6 +73,25 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   /// Счётчик активных слушателей на топик (для отслеживания ref-count).
   final Map<String, int> _topicListenerCount = {};
+
+  /// Broadcast-поток событий статуса онлайн/офлайн пользователей.
+  final StreamController<WsUserStatusDto> _userStatusController =
+      StreamController<WsUserStatusDto>.broadcast();
+
+  /// Broadcast-поток событий набора текста в прямых чатах.
+  final StreamController<WsTypingDto> _typingController = StreamController<WsTypingDto>.broadcast();
+
+  // ---------------------------------------------------------------------------
+  // Публичные реактивные потоки
+  // ---------------------------------------------------------------------------
+
+  /// Поток событий изменения статуса присутствия пользователей.
+  /// Подписывайтесь для получения `user_status_changed` от сервера.
+  Stream<WsUserStatusDto> get userStatusStream => _userStatusController.stream;
+
+  /// Поток событий набора текста в прямых чатах.
+  /// Подписывайтесь для получения `typing` от сервера.
+  Stream<WsTypingDto> get typingStream => _typingController.stream;
 
   // ---------------------------------------------------------------------------
   // Фабрика канала по умолчанию
@@ -172,6 +193,12 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
       case 'group_message_deleted':
         _handleMessageDeleted(data);
 
+      case 'user_status_changed':
+        _handleUserStatusChanged(data);
+
+      case 'typing':
+        _handleTypingEvent(data);
+
       case 'error':
         final msg = data['message'] as String? ?? 'Неизвестная ошибка сервера';
         final targetType = data['requestType'] as String?;
@@ -260,6 +287,34 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     final updated = current.where((m) => m.id != messageId).toList();
     _messagesCache[topicKey] = updated;
     _topicControllers[topicKey]?.add(List.unmodifiable(updated));
+  }
+
+  /// Обрабатывает входящее событие `user_status_changed` от сервера.
+  /// Публикует [WsUserStatusDto] в [userStatusStream].
+  void _handleUserStatusChanged(Map<String, dynamic> data) {
+    try {
+      final dto = WsUserStatusDto.fromMap(data);
+      if (!_userStatusController.isClosed) {
+        _userStatusController.add(dto);
+      }
+      debugPrint('[WS] user_status_changed: userId=${dto.userId} status=${dto.status.name}');
+    } catch (e) {
+      debugPrint('[WS] Ошибка разбора user_status_changed: $e');
+    }
+  }
+
+  /// Обрабатывает входящее событие `typing` от сервера.
+  /// Публикует [WsTypingDto] в [typingStream].
+  void _handleTypingEvent(Map<String, dynamic> data) {
+    try {
+      final dto = WsTypingDto.fromMap(data);
+      if (!_typingController.isClosed) {
+        _typingController.add(dto);
+      }
+      debugPrint('[WS] typing: chatId=${dto.chatId} userId=${dto.userId} isTyping=${dto.isTyping}');
+    } catch (e) {
+      debugPrint('[WS] Ошибка разбора typing: $e');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -439,6 +494,14 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   // Утилиты
   // ---------------------------------------------------------------------------
 
+  /// Уведомляет сервер о статусе набора текста в прямом чате (fire-and-forget).
+  ///
+  /// Вызывайте с [isTyping] = `true` когда пользователь начинает печатать,
+  /// и с [isTyping] = `false` — когда останавливается (или через debounce).
+  void sendTyping(String chatId, {required bool isTyping}) {
+    _send({'type': 'typing', 'chatId': chatId, 'isTyping': isTyping});
+  }
+
   /// Синхронизирует FCM-токен с сервером (fire-and-forget).
   void syncFcmToken(String token) {
     // unawaited — fire-and-forget
@@ -459,6 +522,9 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     _topicControllers.clear();
     _topicListenerCount.clear();
     _messagesCache.clear();
+
+    await _userStatusController.close();
+    await _typingController.close();
 
     await _channelSubscription?.cancel();
     await _channel?.sink.close();

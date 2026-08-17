@@ -2,10 +2,15 @@ import 'dart:async';
 
 import 'package:collab_tasks/features/auth/domain/usecases/get_current_user_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/typing_status_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/user_status_entity.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/send_typing_status_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_typing_status_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_user_status_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,6 +22,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final GetChatUseCase _getChatUseCase;
   final DeleteMessageUseCase _deleteMessageUseCase;
   final GetCurrentUserUseCase _getCurrentUserUseCase;
+  final WatchUserStatusUseCase _watchUserStatusUseCase;
+  final WatchTypingStatusUseCase _watchTypingStatusUseCase;
+  final SendTypingStatusUseCase _sendTypingStatusUseCase;
+
+  StreamSubscription<List<MessageEntity>>? _messagesSubscription;
+  StreamSubscription<UserStatusEntity>? _userStatusSubscription;
+  StreamSubscription<TypingStatusEntity>? _typingSubscription;
+
+  String _opponentEmail = '';
+  String _currentUserEmail = '';
 
   ChatBloc({
     required WatchMessagesUseCase watchMessagesUseCase,
@@ -24,45 +39,90 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     required GetChatUseCase getChatUseCase,
     required DeleteMessageUseCase deleteMessageUseCase,
     required GetCurrentUserUseCase getCurrentUserUseCase,
+    required WatchUserStatusUseCase watchUserStatusUseCase,
+    required WatchTypingStatusUseCase watchTypingStatusUseCase,
+    required SendTypingStatusUseCase sendTypingStatusUseCase,
   }) : _watchMessagesUseCase = watchMessagesUseCase,
        _sendMessageUseCase = sendMessageUseCase,
        _getChatUseCase = getChatUseCase,
        _deleteMessageUseCase = deleteMessageUseCase,
        _getCurrentUserUseCase = getCurrentUserUseCase,
+       _watchUserStatusUseCase = watchUserStatusUseCase,
+       _watchTypingStatusUseCase = watchTypingStatusUseCase,
+       _sendTypingStatusUseCase = sendTypingStatusUseCase,
        super(const ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<DeleteMessageEvent>(_onDeleteMessage);
+    on<SendTypingEvent>(_onSendTyping);
+    on<MessagesUpdated>(_onMessagesUpdated);
+    on<UserStatusUpdated>(_onUserStatusUpdated);
+    on<TypingStatusUpdated>(_onTypingStatusUpdated);
   }
 
   Future<void> _onLoadMessages(LoadMessages event, Emitter<ChatState> emit) async {
     emit(const ChatLoading());
 
+    await _cancelSubscriptions();
+
     try {
       final currentUser = await _getCurrentUserUseCase();
-      final currentUserEmail = currentUser?.email ?? '';
+      _currentUserEmail = currentUser?.email ?? '';
 
       final chat = await _getChatUseCase(event.chatId);
       final participantIds = chat?.participantIds ?? [];
 
-      // 2. Ищем email собеседника
-      final opponentEmail = participantIds.firstWhere(
-        (id) => id != currentUserEmail,
+      // Ищем идентификатор (email/id) собеседника
+      _opponentEmail = participantIds.firstWhere(
+        (id) => id.trim().toLowerCase() != _currentUserEmail.trim().toLowerCase(),
         orElse: () => '',
       );
 
-      // Использование emit.forEach автоматически отменяет предыдущий Stream при вызове нового handler
-      await emit.forEach<List<MessageEntity>>(
-        _watchMessagesUseCase(event.chatId),
-        onData: (messages) => ChatLoaded(
-          messages: messages,
-          opponentEmail: opponentEmail,
-          currentUserId: currentUserEmail,
-        ),
-        onError: (error, stackTrace) => ChatError(error.toString()),
+      _messagesSubscription = _watchMessagesUseCase(event.chatId).listen(
+        (messages) => add(MessagesUpdated(messages)),
+        onError: (error) => add(const MessagesUpdated([])),
       );
+
+      if (_opponentEmail.isNotEmpty) {
+        _userStatusSubscription = _watchUserStatusUseCase(
+          _opponentEmail,
+        ).listen((userStatus) => add(UserStatusUpdated(userStatus)));
+      }
+
+      _typingSubscription = _watchTypingStatusUseCase(
+        event.chatId,
+      ).listen((typingStatus) => add(TypingStatusUpdated(typingStatus)));
     } catch (e) {
       emit(ChatError(e.toString()));
+    }
+  }
+
+  void _onMessagesUpdated(MessagesUpdated event, Emitter<ChatState> emit) {
+    if (state is ChatLoaded) {
+      emit((state as ChatLoaded).copyWith(messages: event.messages));
+    } else {
+      emit(
+        ChatLoaded(
+          messages: event.messages,
+          opponentEmail: _opponentEmail,
+          currentUserId: _currentUserEmail,
+        ),
+      );
+    }
+  }
+
+  void _onUserStatusUpdated(UserStatusUpdated event, Emitter<ChatState> emit) {
+    if (state is ChatLoaded) {
+      emit((state as ChatLoaded).copyWith(opponentStatus: event.userStatus));
+    }
+  }
+
+  void _onTypingStatusUpdated(TypingStatusUpdated event, Emitter<ChatState> emit) {
+    if (state is ChatLoaded) {
+      final isOpponent =
+          event.typingStatus.userId.trim().toLowerCase() != _currentUserEmail.trim().toLowerCase();
+      final isTyping = isOpponent && event.typingStatus.isTyping;
+      emit((state as ChatLoaded).copyWith(isOpponentTyping: isTyping));
     }
   }
 
@@ -92,5 +152,28 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } catch (e) {
       emit(ChatError(e.toString()));
     }
+  }
+
+  Future<void> _onSendTyping(SendTypingEvent event, Emitter<ChatState> emit) async {
+    try {
+      await _sendTypingStatusUseCase(event.chatId, event.isTyping);
+    } catch (e) {
+      // Fire-and-forget
+    }
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    await _messagesSubscription?.cancel();
+    _messagesSubscription = null;
+    await _userStatusSubscription?.cancel();
+    _userStatusSubscription = null;
+    await _typingSubscription?.cancel();
+    _typingSubscription = null;
+  }
+
+  @override
+  Future<void> close() async {
+    await _cancelSubscriptions();
+    return super.close();
   }
 }

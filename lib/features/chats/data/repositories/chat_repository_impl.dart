@@ -1,8 +1,12 @@
+import 'package:collab_tasks/features/chats/data/mappers/chat_ws_mappers.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
+import 'package:collab_tasks/features/chats/data/remote/web_socket_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/group_chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/typing_status_entity.dart';
+import 'package:collab_tasks/features/chats/domain/models/user_status_entity.dart';
 import 'package:collab_tasks/features/chats/domain/repositories/chat_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
@@ -10,8 +14,15 @@ import 'package:uuid/uuid.dart';
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
 
-  const ChatRepositoryImpl({required ChatRemoteDataSource remoteDataSource})
-    : _remoteDataSource = remoteDataSource;
+  /// Конкретная реализация WebSocket DataSource для real-time функций.
+  /// `null` при использовании Firebase-backend — методы возвращают пустые потоки.
+  final WebSocketChatRemoteDataSource? _wsDataSource;
+
+  const ChatRepositoryImpl({
+    required ChatRemoteDataSource remoteDataSource,
+    WebSocketChatRemoteDataSource? wsDataSource,
+  }) : _remoteDataSource = remoteDataSource,
+       _wsDataSource = wsDataSource;
 
   @override
   Stream<List<MessageEntity>> watchMessages(String chatId) {
@@ -77,7 +88,6 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<ChatEntity?> getChatById(String chatId) async {
-    // Передаем запрос в RemoteDataSource
     final dto = await _remoteDataSource.getChatById(chatId);
     return dto?.toDomain();
   }
@@ -91,5 +101,54 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> deleteMessage(String chatId, String messageId) {
     return _remoteDataSource.deleteMessage(chatId, messageId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Real-time: User Status
+  // ---------------------------------------------------------------------------
+
+  /// Возвращает поток событий изменения статуса присутствия для [userId].
+  ///
+  /// Фильтрует общий `userStatusStream` DataSource'а по нормализованному `userId`
+  /// и преобразует каждый [WsUserStatusDto] в [UserStatusEntity] через маппер.
+  ///
+  /// При Firebase-backend (когда [_wsDataSource] == `null`) возвращает
+  /// [Stream.empty()] — подключение к Firebase Presence реализуется отдельно.
+  @override
+  Stream<UserStatusEntity> watchUserStatus(String userId) {
+    final ws = _wsDataSource;
+    if (ws == null) return const Stream.empty();
+
+    final normalizedId = userId.trim().toLowerCase();
+    return ws.userStatusStream
+        .where((dto) => dto.userId == normalizedId)
+        .map(wsUserStatusDtoToEntity);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Real-time: Typing Status
+  // ---------------------------------------------------------------------------
+
+  /// Возвращает поток событий набора текста для конкретного [chatId].
+  ///
+  /// Фильтрует общий `typingStream` DataSource'а по `chatId` и преобразует
+  /// каждый [WsTypingDto] в [TypingStatusEntity] через маппер.
+  ///
+  /// При Firebase-backend (когда [_wsDataSource] == `null`) возвращает
+  /// [Stream.empty()].
+  @override
+  Stream<TypingStatusEntity> watchTypingStatus(String chatId) {
+    final ws = _wsDataSource;
+    if (ws == null) return const Stream.empty();
+
+    return ws.typingStream.where((dto) => dto.chatId == chatId).map(wsTypingDtoToEntity);
+  }
+
+  /// Уведомляет сервер о статусе набора текста в прямом чате.
+  ///
+  /// При Firebase-backend (когда [_wsDataSource] == `null`) — no-op.
+  @override
+  Future<void> sendTypingStatus(String chatId, bool isTyping) async {
+    _wsDataSource?.sendTyping(chatId, isTyping: isTyping);
   }
 }

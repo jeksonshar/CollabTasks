@@ -5,11 +5,18 @@
 // ============================================================
 
 import { v4 as uuidv4 } from 'uuid';
-import { AuthenticatedSocket, sendToClient, sendError, sendToUser } from '../websocket/connectionManager';
+import {
+  AuthenticatedSocket,
+  sendToClient,
+  sendError,
+  sendToUser,
+  isUserOnline,
+} from '../websocket/connectionManager';
 import {
   subscribe,
   unsubscribe,
   getSubscribers,
+  isUserSubscribed,
   chatTopicKey,
   groupTopicKey,
 } from '../websocket/subscriptionManager';
@@ -86,6 +93,10 @@ export async function handleEvent(
       handleUpsertGroupChat(client, event.chat);
       break;
 
+    case 'typing':
+      handleTyping(client, event.chatId, event.isTyping);
+      break;
+
     default: {
       // Неизвестный тип события — явно сообщаем об ошибке
       const unknownType = (event as { type: string }).type;
@@ -109,13 +120,51 @@ function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): voi
   }
   subscribe(client, topicId);
 
-  // При подписке на чат — сразу отдаём историю сообщений
+  // При подписке на чат — сразу отдаём историю сообщений и статус участников
   if (topicId.startsWith('chat:')) {
     const chatId = topicId.slice(5);
     const messages = db.getMessages(chatId);
     // Отдаём все сообщения как серию new_message событий
     for (const message of messages.slice().reverse()) {
       sendToClient(client, { type: 'new_message', chatId, message });
+    }
+
+    const clientIdentifiers = [
+      client.user.userId.trim().toLowerCase(),
+      client.user.email.trim().toLowerCase(),
+    ];
+
+    // 1. Оповещаем остальных участников этого чата, что данный пользователь вошёл (online)
+    const subscribers = getSubscribers(topicId);
+    for (const sub of subscribers) {
+      if (clientIdentifiers.includes(sub.user.userId.trim().toLowerCase())) continue;
+      for (const id of clientIdentifiers) {
+        sendToClient(sub, {
+          type: 'user_status_changed',
+          userId: id,
+          status: 'online',
+        });
+      }
+    }
+
+    // 2. Отправляем актуальный статус собеседников вошедшему пользователю
+    const chat = db.getChatById(chatId);
+    if (chat && chat.type === 'direct') {
+      for (const participantId of chat.participantIds) {
+        const normParticipant = participantId.trim().toLowerCase();
+        if (clientIdentifiers.includes(normParticipant)) continue;
+
+        // Пользователь онлайн в этом чате, если он сейчас подписан на данный топик
+        const online = isUserSubscribed(normParticipant, topicId);
+        const lastSeenMs = online ? undefined : db.getLastSeen(normParticipant);
+
+        sendToClient(client, {
+          type: 'user_status_changed',
+          userId: normParticipant,
+          status: online ? 'online' : 'offline',
+          ...(lastSeenMs && lastSeenMs > 0 ? { lastSeenMillis: lastSeenMs } : {}),
+        });
+      }
     }
   } else if (topicId.startsWith('group:')) {
     const groupId = topicId.slice(6);
@@ -132,6 +181,38 @@ function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: string): v
     return;
   }
   unsubscribe(client, topicId);
+
+  if (topicId.startsWith('chat:')) {
+    // Пользователь вышел из чата — фиксируем время выхода
+    const lastSeenMs = Date.now();
+    db.upsertLastSeen(client.user.userId, lastSeenMs);
+    if (client.user.email) {
+      db.upsertLastSeen(client.user.email, lastSeenMs);
+    }
+
+    const clientIdentifiers = [
+      client.user.userId.trim().toLowerCase(),
+      client.user.email.trim().toLowerCase(),
+    ];
+
+    // Проверяем, не остался ли сокет с этого же аккаунта в данном топике
+    const stillSubscribed = isUserSubscribed(client.user.userId, topicId);
+    if (!stillSubscribed) {
+      // Оповещаем оставшихся участников чата, что пользователь вышел (offline)
+      const subscribers = getSubscribers(topicId);
+      for (const sub of subscribers) {
+        if (clientIdentifiers.includes(sub.user.userId.trim().toLowerCase())) continue;
+        for (const id of clientIdentifiers) {
+          sendToClient(sub, {
+            type: 'user_status_changed',
+            userId: id,
+            status: 'offline',
+            lastSeenMillis: lastSeenMs,
+          });
+        }
+      }
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -425,4 +506,39 @@ function handleUpsertGroupChat(
     `[ChatController] Групповой чат ${chat.id} ("${chat.title}") сохранён в БД ` +
     `пользователем ${client.user.userId}`
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+// typing
+// Транслирует событие набора текста другим участникам прямого чата.
+// Не персистируется в БД.
+// ─────────────────────────────────────────────────────────────
+
+function handleTyping(
+  client: AuthenticatedSocket,
+  chatId: string,
+  isTyping: boolean
+): void {
+  if (!chatId) {
+    sendError(client, 'typing: chatId обязателен');
+    return;
+  }
+
+  const senderId = client.user.userId.trim().toLowerCase();
+  const topicId = chatTopicKey(chatId);
+  const subscribers = getSubscribers(topicId);
+
+  const outbound = {
+    type: 'typing' as const,
+    chatId,
+    userId: senderId,
+    isTyping,
+  };
+
+  for (const subscriber of subscribers) {
+    // Не отправляем самому отправителю
+    if (subscriber.user.userId.trim().toLowerCase() !== senderId) {
+      sendToClient(subscriber, outbound);
+    }
+  }
 }

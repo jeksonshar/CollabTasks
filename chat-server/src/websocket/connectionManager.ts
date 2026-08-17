@@ -117,6 +117,66 @@ export function getOnlineUserIds(): string[] {
   return Array.from(connectionsByUserId.keys());
 }
 
+import * as db from '../storage/db';
+
+/**
+ * Рассылает событие `user_status_changed` всем online-собеседникам пользователя
+ * во всех его direct-чатах.
+ *
+ * @param user            Пользователь (userId, email)
+ * @param status          'online' | 'offline'
+ * @param lastSeenMillis  только при status='offline' — timestamp отключения
+ */
+export function broadcastUserStatus(
+  user: AuthenticatedUser,
+  status: 'online' | 'offline',
+  lastSeenMillis?: number
+): void {
+  const identifiers = [user.userId, user.email || '']
+    .filter(Boolean)
+    .map((id) => id.trim().toLowerCase());
+
+  // 1. Ищем все direct-чаты, где участвует этот пользователь
+  const userChats = db.getChatsByUserId(identifiers).filter((c) => c.type === 'direct');
+
+  // 2. Находим собеседников в этих чатах
+  const opponentIds = new Set<string>();
+  for (const chat of userChats) {
+    for (const p of chat.participantIds) {
+      const normP = p.trim().toLowerCase();
+      if (!identifiers.includes(normP)) {
+        opponentIds.add(normP);
+      }
+    }
+  }
+
+  // 3. Находим все активные сокеты собеседников
+  const recipients = new Set<AuthenticatedSocket>();
+  for (const oppId of opponentIds) {
+    for (const client of getSocketsByUserId(oppId)) {
+      recipients.add(client);
+    }
+  }
+
+  // 4. Отправляем событие user_status_changed для каждого идентификатора (UID и Email)
+  for (const id of identifiers) {
+    const event = {
+      type: 'user_status_changed' as const,
+      userId: id,
+      status,
+      ...(status === 'offline' && lastSeenMillis !== undefined ? { lastSeenMillis } : {}),
+    };
+    for (const recipient of recipients) {
+      sendToClient(recipient, event);
+    }
+  }
+
+  console.log(
+    `[ConnectionManager] user_status_changed userId=${user.userId} status=${status} ` +
+    `→ уведомлены ${recipients.size} клиентов (${opponentIds.size} собеседников)`
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Отправка сообщений
 // ─────────────────────────────────────────────────────────────

@@ -13,15 +13,16 @@ import {
   removeConnection,
   startHeartbeat,
   handlePong,
+  broadcastUserStatus,
 } from './websocket/connectionManager';
 import { unsubscribeAll } from './websocket/subscriptionManager';
 import { handleEvent } from './controllers/chatController';
 import { initializeFirebase } from './services/pushNotificationService';
-import { initDatabase } from './storage/db';
+import { initDatabase, upsertLastSeen } from './storage/db';
 import { InboundEvent } from './models/types';
 
 // ─────────────────────────────────────────────────────────────
-// Конфигурация
+// Конфигурация (должна совпадать с данными в .env файле)
 // ─────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PORT ?? '8080', 10);
@@ -95,12 +96,15 @@ async function main(): Promise<void> {
     // ── 2. Регистрация аутентифицированного клиента ──
     const client = addConnection(ws, user);
 
-    // ── 3. Heartbeat: помечаем живым при получении pong ──
+    // ── 3. Рассылаем user_status_changed (online) всем контактам по direct-чатам ──
+    broadcastUserStatus(user, 'online');
+
+    // ── 4. Heartbeat: помечаем живым при получении pong ──
     ws.on('pong', () => {
       handlePong(ws);
     });
 
-    // ── 4. Входящие сообщения ──
+    // ── 5. Входящие сообщения ──
     ws.on('message', async (rawData: WebSocket.RawData) => {
       let event: InboundEvent;
 
@@ -139,17 +143,27 @@ async function main(): Promise<void> {
       }
     });
 
-    // ── 5. Обработка закрытия соединения ──
+    // ── 6. Обработка закрытия соединения ──
     ws.on('close', (code: number, reason: Buffer) => {
       console.log(
         `[Server] WS закрыт: userId=${user.userId} ` +
         `code=${code} reason=${reason.toString() || '—'}`
       );
+
       unsubscribeAll(client);
+
+      // Сохраняем lastSeen и рассылаем offline-статус до удаления сокета
+      const lastSeenMs = Date.now();
+      upsertLastSeen(user.userId, lastSeenMs);
+      if (user.email) upsertLastSeen(user.email, lastSeenMs);
+
       removeConnection(ws);
+
+      // broadcastUserStatus: уведомляем контакты в direct-чатах о переходе в offline
+      broadcastUserStatus(user, 'offline', lastSeenMs);
     });
 
-    // ── 6. Обработка ошибок сокета ──
+    // ── 7. Обработка ошибок сокета ──
     ws.on('error', (err: Error) => {
       console.error(`[Server] Ошибка сокета userId=${user.userId}:`, err.message);
       // close-событие будет вызвано автоматически после ошибки

@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class MessageInputField extends StatefulWidget {
   final void Function(String) onSendMessage;
+  final void Function(bool)? onTypingChanged;
 
-  const MessageInputField({super.key, required this.onSendMessage});
+  const MessageInputField({super.key, required this.onSendMessage, this.onTypingChanged});
 
   @override
   State<MessageInputField> createState() => _MessageInputFieldState();
@@ -13,6 +16,8 @@ class MessageInputField extends StatefulWidget {
 class _MessageInputFieldState extends State<MessageInputField> {
   late final TextEditingController _controller;
   bool _isTextNotEmpty = false;
+  Timer? _typingDebounceTimer;
+  bool _isTypingSent = false;
 
   @override
   void initState() {
@@ -28,11 +33,38 @@ class _MessageInputFieldState extends State<MessageInputField> {
         _isTextNotEmpty = textNotEmpty;
       });
     }
+
+    if (widget.onTypingChanged != null) {
+      if (textNotEmpty) {
+        if (!_isTypingSent) {
+          _isTypingSent = true;
+          widget.onTypingChanged!(true);
+        }
+        _typingDebounceTimer?.cancel();
+        _typingDebounceTimer = Timer(const Duration(seconds: 2), () {
+          if (_isTypingSent) {
+            _isTypingSent = false;
+            widget.onTypingChanged!(false);
+          }
+        });
+      } else {
+        if (_isTypingSent) {
+          _isTypingSent = false;
+          widget.onTypingChanged!(false);
+        }
+        _typingDebounceTimer?.cancel();
+      }
+    }
   }
 
   void _submit() {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
+      if (_isTypingSent) {
+        _isTypingSent = false;
+        widget.onTypingChanged?.call(false);
+      }
+      _typingDebounceTimer?.cancel();
       widget.onSendMessage(text);
       _controller.clear();
     }
@@ -40,6 +72,10 @@ class _MessageInputFieldState extends State<MessageInputField> {
 
   @override
   void dispose() {
+    _typingDebounceTimer?.cancel();
+    if (_isTypingSent) {
+      widget.onTypingChanged?.call(false);
+    }
     _controller.dispose();
     super.dispose();
   }

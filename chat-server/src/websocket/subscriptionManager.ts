@@ -121,6 +121,25 @@ export function isSubscribed(client: AuthenticatedSocket, topicId: string): bool
 }
 
 /**
+ * Проверяет, подписан ли пользователь (по userId или email) на данный топик.
+ */
+export function isUserSubscribed(userIdOrEmail: string, topicId: string): boolean {
+  if (!userIdOrEmail) return false;
+  const norm = userIdOrEmail.trim().toLowerCase();
+  const subs = topicToSubscribers.get(topicId);
+  if (!subs) return false;
+  for (const client of subs) {
+    if (
+      client.user.userId.trim().toLowerCase() === norm ||
+      client.user.email.trim().toLowerCase() === norm
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Возвращает список всех топиков, на которые подписан клиент.
  */
 export function getClientTopics(client: AuthenticatedSocket): string[] {

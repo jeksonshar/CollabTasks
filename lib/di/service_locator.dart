@@ -30,8 +30,11 @@ import 'package:collab_tasks/features/chats/domain/use_cases/get_group_chat_use_
 import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/send_typing_status_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_messages_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_typing_status_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/watch_user_status_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/settings/data/datastore/app_settings_datastore.dart';
@@ -159,7 +162,12 @@ void setupLocator(SharedPreferences sharedPreferences) {
       },
     )
     ..registerLazySingleton<ChatRepository>(
-      () => ChatRepositoryImpl(remoteDataSource: getIt<ChatRemoteDataSource>()),
+      () => ChatRepositoryImpl(
+        remoteDataSource: getIt<ChatRemoteDataSource>(),
+        wsDataSource: chatBackend == ChatBackend.webSocket
+            ? getIt<ChatRemoteDataSource>() as WebSocketChatRemoteDataSource
+            : null,
+      ),
     )
     ..registerLazySingleton<WorkingGroupsRemoteDataSource>(
       () => switch (authBackend) {
@@ -221,6 +229,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SendGroupMessageUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetChatUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => GetGroupChatUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => WatchUserStatusUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => WatchTypingStatusUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => SendTypingStatusUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(
       () => GetOrCreateDirectChatUseCase(
         chatRepository: getIt<ChatRepository>(),
@@ -359,6 +370,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
         getChatUseCase: getIt<GetChatUseCase>(),
         deleteMessageUseCase: getIt<DeleteMessageUseCase>(),
         getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
+        watchUserStatusUseCase: getIt<WatchUserStatusUseCase>(),
+        watchTypingStatusUseCase: getIt<WatchTypingStatusUseCase>(),
+        sendTypingStatusUseCase: getIt<SendTypingStatusUseCase>(),
       ),
     )
     ..registerFactory<GroupChatBloc>(
