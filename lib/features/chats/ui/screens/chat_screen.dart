@@ -89,7 +89,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final localization = AppLocalizations.of(context)!;
     return BlocProvider<ChatBloc>(
       create: (_) {
         final bloc = getIt<ChatBloc>()..add(LoadMessages(widget.chatId));
@@ -99,13 +99,13 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
       child: BlocBuilder<ChatBloc, ChatState>(
         builder: (context, state) {
           // Локализация заглавия экрана на уровне UI
-          String appBarTitle = localizations.direct_chat_toolbarTitle;
+          String appBarTitle = localization.direct_chat_toolbarTitle;
           if (state is ChatLoaded) {
             appBarTitle =
                 widget.opponentName ??
                 (state.opponentEmail.isNotEmpty
                     ? state.opponentEmail
-                    : localizations.direct_chat_toolbarTitle);
+                    : localization.direct_chat_toolbarTitle);
           }
 
           return Scaffold(
@@ -154,6 +154,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
     final subtitleColor = isLight ? Colors.black54 : Colors.white70;
+    final localization = AppLocalizations.of(context)!;
 
     if (state.isOpponentTyping) {
       return Row(
@@ -162,7 +163,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
           _buildSubtitleIndicator(Colors.green),
           const SizedBox(width: 12),
           Text(
-            'печатает...',
+            localization.direct_chat_typingStatus,
             style: TextStyle(
               fontSize: 12,
               fontStyle: FontStyle.italic,
@@ -183,15 +184,15 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
 
     String statusText;
     if (isOnline) {
-      statusText = 'в сети';
+      statusText = localization.direct_chat_opponentStatusOnline;
     } else {
       final lastSeenMillis = status.lastSeenMillis;
       if (lastSeenMillis != null && lastSeenMillis > 0) {
         final dt = DateTime.fromMillisecondsSinceEpoch(lastSeenMillis).toLocal();
         final formatted = DateFormat('dd.MM.yyyy HH:mm').format(dt);
-        statusText = 'был в сети $formatted';
+        statusText = localization.direct_chat_wasOnline(formatted);
       } else {
-        statusText = 'не в сети';
+        statusText = localization.direct_chat_opponentStatusOffline;
       }
     }
 

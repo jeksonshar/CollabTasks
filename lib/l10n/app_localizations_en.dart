@@ -689,5 +689,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get direct_chat_deleteMessageCancelBtn => 'Cancel';
 
   @override
+  String get direct_chat_typingStatus => 'typing...';
+
+  @override
+  String get direct_chat_opponentStatusOnline => 'online';
+
+  @override
+  String get direct_chat_opponentStatusOffline => 'offline';
+
+  @override
+  String direct_chat_wasOnline(Object time) {
+    return 'was online \"$time\"';
+  }
+
+  @override
   String get group_chat_toolbarSabTitle => 'Group chat';
 }

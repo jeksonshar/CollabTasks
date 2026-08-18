@@ -690,5 +690,19 @@ class AppLocalizationsUk extends AppLocalizations {
   String get direct_chat_deleteMessageCancelBtn => 'Відміна';
 
   @override
+  String get direct_chat_typingStatus => 'друкує...';
+
+  @override
+  String get direct_chat_opponentStatusOnline => 'у мережі';
+
+  @override
+  String get direct_chat_opponentStatusOffline => 'не в мережі';
+
+  @override
+  String direct_chat_wasOnline(Object time) {
+    return 'був у мережі \"$time\"';
+  }
+
+  @override
   String get group_chat_toolbarSabTitle => 'Груповий чат';
 }

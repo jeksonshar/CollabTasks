@@ -284,6 +284,15 @@
   "direct_chat_deleteMessageConfirmationTitle": "Удалить сообщение?",
   "direct_chat_deleteMessageConfirmBtn": "Удалить",
   "direct_chat_deleteMessageCancelBtn": "Отмена",
+  "direct_chat_typingStatus": "печатает...",
+  "direct_chat_opponentStatusOnline": "в сети",
+  "direct_chat_opponentStatusOffline": "не в сети",
+  "direct_chat_wasOnline": "был в сети \"{time}\"",
+  "@direct_chat_wasOnline": {
+    "placeholders": {
+      "time": {}
+    }
+  },
 
   "group_chat_toolbarSabTitle": "Групповой чат"
 }

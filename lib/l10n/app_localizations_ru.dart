@@ -687,5 +687,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get direct_chat_deleteMessageCancelBtn => 'Отмена';
 
   @override
+  String get direct_chat_typingStatus => 'печатает...';
+
+  @override
+  String get direct_chat_opponentStatusOnline => 'в сети';
+
+  @override
+  String get direct_chat_opponentStatusOffline => 'не в сети';
+
+  @override
+  String direct_chat_wasOnline(Object time) {
+    return 'был в сети \"$time\"';
+  }
+
+  @override
   String get group_chat_toolbarSabTitle => 'Групповой чат';
 }

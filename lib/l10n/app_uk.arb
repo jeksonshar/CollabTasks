@@ -282,6 +282,15 @@
   "direct_chat_deleteMessageConfirmationTitle": "Видалити повідомлення?",
   "direct_chat_deleteMessageConfirmBtn": "Видалити",
   "direct_chat_deleteMessageCancelBtn": "Відміна",
+  "direct_chat_typingStatus": "друкує...",
+  "direct_chat_opponentStatusOnline": "у мережі",
+  "direct_chat_opponentStatusOffline": "не в мережі",
+  "direct_chat_wasOnline": "був у мережі \"{time}\"",
+  "@direct_chat_wasOnline": {
+    "placeholders": {
+      "time": {}
+    }
+  },
 
   "group_chat_toolbarSabTitle": "Груповий чат"
 }

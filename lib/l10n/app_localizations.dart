@@ -1354,6 +1354,30 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get direct_chat_deleteMessageCancelBtn;
 
+  /// No description provided for @direct_chat_typingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'typing...'**
+  String get direct_chat_typingStatus;
+
+  /// No description provided for @direct_chat_opponentStatusOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'online'**
+  String get direct_chat_opponentStatusOnline;
+
+  /// No description provided for @direct_chat_opponentStatusOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'offline'**
+  String get direct_chat_opponentStatusOffline;
+
+  /// No description provided for @direct_chat_wasOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'was online \"{time}\"'**
+  String direct_chat_wasOnline(Object time);
+
   /// No description provided for @group_chat_toolbarSabTitle.
   ///
   /// In en, this message translates to:

@@ -284,6 +284,15 @@
   "direct_chat_deleteMessageConfirmationTitle": "Delete message?",
   "direct_chat_deleteMessageConfirmBtn": "Delete",
   "direct_chat_deleteMessageCancelBtn": "Cancel",
+  "direct_chat_typingStatus": "typing...",
+  "direct_chat_opponentStatusOnline": "online",
+  "direct_chat_opponentStatusOffline": "offline",
+  "direct_chat_wasOnline": "was online \"{time}\"",
+  "@direct_chat_wasOnline": {
+    "placeholders": {
+      "time": {}
+    }
+  },
 
   "group_chat_toolbarSabTitle": "Group chat"
 }
