@@ -1,6 +1,7 @@
 // ============================================================
 // src/server.ts
 // Точка входа — HTTP-сервер + raw ws.Server
+// Адаптировано для асинхронного PostgreSQL API (storage/db.ts)
 // ============================================================
 
 import 'dotenv/config';
@@ -13,18 +14,20 @@ import {
   removeConnection,
   startHeartbeat,
   handlePong,
-  broadcastUserStatus,
+  broadcastUserStatus, // Тепер async
 } from './websocket/connectionManager';
 import { unsubscribeAll } from './websocket/subscriptionManager';
 import { handleEvent } from './controllers/chatController';
 import { initializeFirebase } from './services/pushNotificationService';
-import { initDatabase, upsertLastSeen } from './storage/db';
+import { initDatabase, upsertLastSeen } from './storage/db'; // upsertLastSeen тепер async
 import { InboundEvent } from './models/types';
 
 // ─────────────────────────────────────────────────────────────
 // Конфигурация (должна совпадать с данными в .env файле)
 // ─────────────────────────────────────────────────────────────
 
+// ВАЖНО: Render передает порт в env.PORT.
+// Ваш код правильно читает его или использует 8080 как fallback.
 const PORT = parseInt(process.env.PORT ?? '8080', 10);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
@@ -33,10 +36,12 @@ const HOST = process.env.HOST ?? '0.0.0.0';
 // ─────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // 1. Инициализируем SQLite базу данных (async WASM via sql.js)
+  // 1. Инициализируем PostgreSQL базу данных (Supabase)
+  // Асинхронно проверяет подключение и наличие таблиц (на Шаге 1).
   await initDatabase();
 
   // 2. Firebase Admin SDK для FCM push-уведомлений
+  // Читает JSON из FIREBASE_SERVICE_ACCOUNT_JSON на Render.
   initializeFirebase();
 
   // ─────────────────────────────────────────────────────────────
@@ -44,7 +49,8 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────
 
   const httpServer = http.createServer((req, res) => {
-    // Health-check endpoint для load balancer / мониторинга
+    // Health-check endpoint для Render / Load Balancer / мониторинга
+    // Render будет использовать этот URL для проверки работоспособности сервиса.
     if (req.url === '/health' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -78,10 +84,10 @@ async function main(): Promise<void> {
 
   wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
     console.log(
-      `[Server] Новое WS-подключение от ${req.socket.remoteAddress ?? 'unknown'}`
+        `[Server] Новое WS-подключение от ${req.socket.remoteAddress ?? 'unknown'}`
     );
 
-    // ── 1. Аутентификация через Cognito JWT ──
+    // ── 1. Аутентификация через JWT токен (выбранного провайдера) ──
     let user;
     try {
       user = await authenticateRequest(req);
@@ -93,13 +99,14 @@ async function main(): Promise<void> {
       return;
     }
 
-    // ── 2. Регистрация аутентифицированного клиента ──
+    // ── 2. Регистрация аутентифицированного клиента (в памяти) ──
     const client = addConnection(ws, user);
 
-    // ── 3. Рассылаем user_status_changed (online) всем контактам по direct-чатам ──
-    broadcastUserStatus(user, 'online');
+    // ── 3. Рассылаем user_status_changed (online) всем контактам (direct-чатам) ──
+    // !!! ВАЖНО: Функция broadcastUserStatus теперь async, добавляем await !!!
+    await broadcastUserStatus(user, 'online');
 
-    // ── 4. Heartbeat: помечаем живым при получении pong ──
+    // ── 4. Heartbeat: помечаем живым при получении pong (в памяти) ──
     ws.on('pong', () => {
       handlePong(ws);
     });
@@ -121,46 +128,55 @@ async function main(): Promise<void> {
       // Валидируем наличие поля type
       if (!event || typeof event.type !== 'string') {
         ws.send(
-          JSON.stringify({ type: 'error', message: 'Поле "type" обязательно в каждом событии' })
+            JSON.stringify({ type: 'error', message: 'Поле "type" обязательно в каждом событии' })
         );
         return;
       }
 
       // Диспетчеризируем событие в контроллер
+      // В контроллере все методы тоже асинхронные, вызываются с await.
       try {
         await handleEvent(client, event);
       } catch (err) {
         console.error(
-          `[Server] Необработанная ошибка при обработке события от userId=${user.userId}:`,
-          err
+            `[Server] Необработанная ошибка при обработке события от userId=${user.userId}:`,
+            err
         );
         ws.send(
-          JSON.stringify({
-            type: 'error',
-            message: 'Внутренняя ошибка сервера. Попробуйте позже.',
-          })
+            JSON.stringify({
+              type: 'error',
+              message: 'Внутренняя ошибка сервера. Попробуйте позже.',
+            })
         );
       }
     });
 
     // ── 6. Обработка закрытия соединения ──
-    ws.on('close', (code: number, reason: Buffer) => {
+    ws.on('close', async (code: number, reason: Buffer) => {
       console.log(
-        `[Server] WS закрыт: userId=${user.userId} ` +
-        `code=${code} reason=${reason.toString() || '—'}`
+          `[Server] WS закрыт: userId=${user.userId} ` +
+          `code=${code} reason=${reason.toString() || '—'}`
       );
 
       unsubscribeAll(client);
 
-      // Сохраняем lastSeen и рассылаем offline-статус до удаления сокета
+      // Сохраняем lastSeen в PostgreSQL и рассылаем offline-статус до удаления сокета
       const lastSeenMs = Date.now();
-      upsertLastSeen(user.userId, lastSeenMs);
-      if (user.email) upsertLastSeen(user.email, lastSeenMs);
+      // !!! ВАЖНО: Функции стали async, добавляем Promise.all и await !!!
+      const dbPromises: Promise<void>[] = [];
+      dbPromises.push(upsertLastSeen(user.userId, lastSeenMs));
+      if (user.email) {
+        dbPromises.push(upsertLastSeen(user.email, lastSeenMs));
+      }
+
+      // Ожидаем сохранения времени выхода
+      await Promise.all(dbPromises);
 
       removeConnection(ws);
 
-      // broadcastUserStatus: уведомляем контакты в direct-чатах о переходе в offline
-      broadcastUserStatus(user, 'offline', lastSeenMs);
+      // notify neighbours: уведомляем контакты в direct-чатах о переходе в offline
+      // !!! ВАЖНО: Функция broadcastUserStatus теперь async, добавляем await !!!
+      await broadcastUserStatus(user, 'offline', lastSeenMs);
     });
 
     // ── 7. Обработка ошибок сокета ──
@@ -176,12 +192,14 @@ async function main(): Promise<void> {
   // Запуск HTTP сервера
   // ─────────────────────────────────────────────────────────────
 
+  // Render назначит порт, бэкенд его прочитает. adb reverse больше не нужен.
   await new Promise<void>((resolve) => {
     httpServer.listen(PORT, HOST, () => {
       console.log(`\n🚀 CollabTasks Chat Server запущен`);
       console.log(`   HTTP/WS: ws://${HOST}:${PORT}`);
       console.log(`   Health:  http://${HOST}:${PORT}/health`);
       console.log(`   Режим:   ${process.env.NODE_ENV ?? 'development'}\n`);
+      // Heartbeat важен на Render (убирает молчаливые разрывы load balancer'ом)
       startHeartbeat();
       resolve();
     });
@@ -190,6 +208,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────
   // Graceful shutdown
   // ─────────────────────────────────────────────────────────────
+  // Render посылает SIGTERM при остановке/редеплое сервиса.
 
   function shutdown(signal: string): void {
     console.log(`\n[Server] Получен сигнал ${signal}, завершаем работу...`);
@@ -198,6 +217,7 @@ async function main(): Promise<void> {
 
     httpServer.close(() => {
       console.log('[Server] HTTP сервер закрыт.');
+      // Закрытие пула PostgreSQL здесь не требуется, т.к. процесс завершается.
       process.exit(0);
     });
 

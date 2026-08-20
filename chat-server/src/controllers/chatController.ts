@@ -2,6 +2,7 @@
 // src/controllers/chatController.ts
 // Обработчик входящих WS-событий от аутентифицированных клиентов
 // Реализует полный контракт ChatRemoteDataSource
+// Адаптировано для асинхронного PostgreSQL API (storage/db.ts)
 // ============================================================
 
 import { v4 as uuidv4 } from 'uuid';
@@ -10,7 +11,6 @@ import {
   sendToClient,
   sendError,
   sendToUser,
-  isUserOnline,
 } from '../websocket/connectionManager';
 import {
   subscribe,
@@ -36,21 +36,23 @@ import {
 // Главная точка входа
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Диспетчер входящих событий.
+/** * Диспетчер входящих событий.
  * Вызывается из server.ts для каждого валидного JSON-сообщения.
+ * ВСЕ ОБРАБОТЧИКИ ТЕПЕРЬ ASYNC И ВЫЗЫВАЮТСЯ С AWAIT
  */
 export async function handleEvent(
-  client: AuthenticatedSocket,
-  event: InboundEvent
+    client: AuthenticatedSocket,
+    event: InboundEvent
 ): Promise<void> {
   switch (event.type) {
     case 'subscribe_topic':
-      handleSubscribeTopic(client, event.topicId);
+      // Добавлен await
+      await handleSubscribeTopic(client, event.topicId);
       break;
 
     case 'unsubscribe_topic':
-      handleUnsubscribeTopic(client, event.topicId);
+      // Добавлен await
+      await handleUnsubscribeTopic(client, event.topicId);
       break;
 
     case 'send_message':
@@ -62,7 +64,8 @@ export async function handleEvent(
       break;
 
     case 'get_chats':
-      handleGetChats(client, event.userId);
+      // Добавлен await
+      await handleGetChats(client, event.userId);
       break;
 
     case 'get_or_create_direct_chat':
@@ -70,30 +73,37 @@ export async function handleEvent(
       break;
 
     case 'get_chat_by_id':
-      handleGetChatById(client, event.chatId);
+      // Добавлен await
+      await handleGetChatById(client, event.chatId);
       break;
 
     case 'get_group_chat_by_id':
-      handleGetGroupChatById(client, event.chatId);
+      // Добавлен await
+      await handleGetGroupChatById(client, event.chatId);
       break;
 
     case 'delete_message':
-      handleDeleteMessage(client, event.chatId, event.messageId);
+      // Добавлен await
+      await handleDeleteMessage(client, event.chatId, event.messageId);
       break;
 
     case 'sync_fcm_token':
-      handleSyncFcmToken(client, event.token);
+      // Добавлен await
+      await handleSyncFcmToken(client, event.token);
       break;
 
     case 'remove_fcm_token':
-      handleRemoveFcmToken(client, event.token);
+      // Добавлен await
+      await handleRemoveFcmToken(client, event.token);
       break;
 
     case 'upsert_group_chat':
-      handleUpsertGroupChat(client, event.chat);
+      // Добавлен await
+      await handleUpsertGroupChat(client, event.chat);
       break;
 
     case 'typing':
+      //typing не лезет в БД, оставляем синхронным
       handleTyping(client, event.chatId, event.isTyping);
       break;
 
@@ -102,7 +112,7 @@ export async function handleEvent(
       const unknownType = (event as { type: string }).type;
       sendError(client, `Неизвестный тип события: ${unknownType}`);
       console.warn(
-        `[ChatController] Неизвестный тип события от userId=${client.user.userId}: ${unknownType}`
+          `[ChatController] Неизвестный тип события от userId=${client.user.userId}: ${unknownType}`
       );
     }
   }
@@ -113,7 +123,8 @@ export async function handleEvent(
 // Зеркало: watchMessages(chatId) / watchGroupMessages(groupId)
 // ─────────────────────────────────────────────────────────────
 
-function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): void {
+// Функция стала async
+async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): Promise<void> {
   if (!topicId) {
     sendError(client, 'subscribe_topic: topicId обязателен');
     return;
@@ -123,7 +134,8 @@ function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): voi
   // При подписке на чат — сразу отдаём историю сообщений и статус участников
   if (topicId.startsWith('chat:')) {
     const chatId = topicId.slice(5);
-    const messages = db.getMessages(chatId);
+    // Добавлен await для db.getMessages
+    const messages = await db.getMessages(chatId);
     // Отдаём все сообщения как серию new_message событий
     for (const message of messages.slice().reverse()) {
       sendToClient(client, { type: 'new_message', chatId, message });
@@ -148,7 +160,8 @@ function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): voi
     }
 
     // 2. Отправляем актуальный статус собеседников вошедшему пользователю
-    const chat = db.getChatById(chatId);
+    // Добавлен await для db.getChatById
+    const chat = await db.getChatById(chatId);
     if (chat && chat.type === 'direct') {
       for (const participantId of chat.participantIds) {
         const normParticipant = participantId.trim().toLowerCase();
@@ -156,7 +169,8 @@ function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): voi
 
         // Пользователь онлайн в этом чате, если он сейчас подписан на данный топик
         const online = isUserSubscribed(normParticipant, topicId);
-        const lastSeenMs = online ? undefined : db.getLastSeen(normParticipant);
+        // Добавлен await для db.getLastSeen
+        const lastSeenMs = online ? undefined : await db.getLastSeen(normParticipant);
 
         sendToClient(client, {
           type: 'user_status_changed',
@@ -168,14 +182,16 @@ function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string): voi
     }
   } else if (topicId.startsWith('group:')) {
     const groupId = topicId.slice(6);
-    const messages = db.getGroupMessages(groupId);
+    // Добавлен await для db.getGroupMessages
+    const messages = await db.getGroupMessages(groupId);
     for (const message of messages.slice().reverse()) {
       sendToClient(client, { type: 'new_group_message', groupId, message });
     }
   }
 }
 
-function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: string): void {
+// Функция стала async
+async function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: string): Promise<void> {
   if (!topicId) {
     sendError(client, 'unsubscribe_topic: topicId обязателен');
     return;
@@ -185,9 +201,10 @@ function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: string): v
   if (topicId.startsWith('chat:')) {
     // Пользователь вышел из чата — фиксируем время выхода
     const lastSeenMs = Date.now();
-    db.upsertLastSeen(client.user.userId, lastSeenMs);
+    // Добавлены await для db.upsertLastSeen
+    await db.upsertLastSeen(client.user.userId, lastSeenMs);
     if (client.user.email) {
-      db.upsertLastSeen(client.user.email, lastSeenMs);
+      await db.upsertLastSeen(client.user.email, lastSeenMs);
     }
 
     const clientIdentifiers = [
@@ -220,21 +237,22 @@ function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: string): v
 // Зеркало: sendMessage(chatId, message)
 // ─────────────────────────────────────────────────────────────
 
+// Функция уже была async, добавлены await внутри
 async function handleSendMessage(
-  client: AuthenticatedSocket,
-  chatId: string,
-  message: MessageDto
+    client: AuthenticatedSocket,
+    chatId: string,
+    message: MessageDto
 ): Promise<void> {
   if (!chatId || !message?.id) {
     sendError(client, 'send_message: chatId и message.id обязательны');
     return;
   }
 
-  // 1. Сохраняем сообщение в БД
-  db.insertMessage(chatId, message);
+  // 1. Сохраняем сообщение в БД (добавлен await)
+  await db.insertMessage(chatId, message);
 
-  // 2. Обновляем lastMessage у чата
-  db.updateChatLastMessage(chatId, message.text, message.createdAtMillis);
+  // 2. Обновляем lastMessage у чата (добавлен await)
+  await db.updateChatLastMessage(chatId, message.text, message.createdAtMillis);
 
   // 3. Рассылаем всем подписчикам топика "chat:<chatId>"
   const topicId = chatTopicKey(chatId);
@@ -246,19 +264,21 @@ async function handleSendMessage(
   }
 
   console.log(
-    `[ChatController] Сообщение в чате ${chatId} от ${client.user.userId} ` +
-    `→ доставлено ${subscribers.length} подписчикам`
+      `[ChatController] Сообщение в чате ${chatId} от ${client.user.userId} ` +
+      `→ доставлено ${subscribers.length} подписчикам`
   );
 
   // 4. FCM для offline-получателей
-  const chat = db.getChatById(chatId);
+  // Добавлен await для db.getChatById
+  const chat = await db.getChatById(chatId);
   if (chat) {
+    // sendDirectChatPushNotification уже async и вызывается с await
     await sendDirectChatPushNotification(
-      chatId,
-      message.senderId,
-      message.senderName,
-      message.text,
-      chat.participantIds
+        chatId,
+        message.senderId,
+        message.senderName,
+        message.text,
+        chat.participantIds
     );
   }
 }
@@ -268,18 +288,19 @@ async function handleSendMessage(
 // Зеркало: sendGroupMessage(groupId, message)
 // ─────────────────────────────────────────────────────────────
 
+// Функция уже была async, добавлены await внутри
 async function handleSendGroupMessage(
-  client: AuthenticatedSocket,
-  groupId: string,
-  message: MessageDto
+    client: AuthenticatedSocket,
+    groupId: string,
+    message: MessageDto
 ): Promise<void> {
   if (!groupId || !message?.id) {
     sendError(client, 'send_group_message: groupId и message.id обязательны');
     return;
   }
 
-  // 1. Сохраняем сообщение в БД
-  db.insertGroupMessage(groupId, message);
+  // 1. Сохраняем сообщение в БД (добавлен await)
+  await db.insertGroupMessage(groupId, message);
 
   // 2. Рассылаем всем подписчикам топика "group:<groupId>"
   const topicId = groupTopicKey(groupId);
@@ -291,23 +312,25 @@ async function handleSendGroupMessage(
   }
 
   console.log(
-    `[ChatController] Сообщение в группе ${groupId} от ${client.user.userId} ` +
-    `→ доставлено ${subscribers.length} подписчикам`
+      `[ChatController] Сообщение в группе ${groupId} от ${client.user.userId} ` +
+      `→ доставлено ${subscribers.length} подписчикам`
   );
 
   // 3. FCM для участников группы
-  const groupChat = db.getGroupChatById(groupId);
+  // Добавлен await для db.getGroupChatById
+  const groupChat = await db.getGroupChatById(groupId);
   if (groupChat) {
     const allParticipants = [
       ...(groupChat.participantUserIds ?? []),
       ...(groupChat.participantEmails ?? []),
     ];
+    // sendGroupChatPushNotification уже async и вызывается с await
     await sendGroupChatPushNotification(
-      groupId,
-      message.senderId,
-      message.senderName,
-      message.text,
-      allParticipants
+        groupId,
+        message.senderId,
+        message.senderName,
+        message.text,
+        allParticipants
     );
   }
 }
@@ -317,14 +340,16 @@ async function handleSendGroupMessage(
 // Зеркало: getChats(userId)
 // ─────────────────────────────────────────────────────────────
 
-function handleGetChats(client: AuthenticatedSocket, userId: string): void {
+// Функция стала async
+async function handleGetChats(client: AuthenticatedSocket, userId: string): Promise<void> {
   if (!userId) {
     sendError(client, 'get_chats: userId обязателен');
     return;
   }
 
   const userIds = [client.user.userId, client.user.email, userId].filter(Boolean);
-  const chats = db.getChatsByUserId(userIds);
+  // Добавлен await для db.getChatsByUserId
+  const chats = await db.getChatsByUserId(userIds);
   sendToClient(client, { type: 'chat_list', chats });
 }
 
@@ -333,9 +358,10 @@ function handleGetChats(client: AuthenticatedSocket, userId: string): void {
 // Зеркало: getOrCreateDirectChat(targetUserId)
 // ─────────────────────────────────────────────────────────────
 
+// Функция уже была async, добавлены await внутри
 async function handleGetOrCreateDirectChat(
-  client: AuthenticatedSocket,
-  targetUserId: string
+    client: AuthenticatedSocket,
+    targetUserId: string
 ): Promise<void> {
   if (!targetUserId) {
     sendError(client, 'get_or_create_direct_chat: targetUserId обязателен');
@@ -345,10 +371,10 @@ async function handleGetOrCreateDirectChat(
   const currentUserId = client.user.userId;
   const currentEmail = client.user.email;
 
-  // Ищем существующий прямой чат между текущим пользователем (UID / email) и целевым пользователем
-  const existingChat = db.findDirectChat(
-    [currentUserId, currentEmail],
-    [targetUserId]
+  // Ищем существующий прямой чат (добавлен await для db.findDirectChat)
+  const existingChat = await db.findDirectChat(
+      [currentUserId, currentEmail],
+      [targetUserId]
   );
 
   if (existingChat) {
@@ -367,11 +393,12 @@ async function handleGetOrCreateDirectChat(
     updatedAtMillis: Date.now(),
   };
 
-  db.upsertChat(newChat);
+  // Добавлен await для db.upsertChat
+  await db.upsertChat(newChat);
 
   console.log(
-    `[ChatController] Создан прямой чат ${newChatId} ` +
-    `между ${primaryCurrentId} и ${targetUserId}`
+      `[ChatController] Создан прямой чат ${newChatId} ` +
+      `между ${primaryCurrentId} и ${targetUserId}`
   );
 
   sendToClient(client, { type: 'direct_chat_created', chatId: newChatId });
@@ -385,13 +412,15 @@ async function handleGetOrCreateDirectChat(
 // Зеркало: getChatById(chatId)
 // ─────────────────────────────────────────────────────────────
 
-function handleGetChatById(client: AuthenticatedSocket, chatId: string): void {
+// Функция стала async
+async function handleGetChatById(client: AuthenticatedSocket, chatId: string): Promise<void> {
   if (!chatId) {
     sendError(client, 'get_chat_by_id: chatId обязателен');
     return;
   }
 
-  const chat = db.getChatById(chatId);
+  // Добавлен await для db.getChatById
+  const chat = await db.getChatById(chatId);
   sendToClient(client, { type: 'chat_by_id', chat });
 }
 
@@ -400,13 +429,15 @@ function handleGetChatById(client: AuthenticatedSocket, chatId: string): void {
 // Зеркало: getGroupChatById(chatId)
 // ─────────────────────────────────────────────────────────────
 
-function handleGetGroupChatById(client: AuthenticatedSocket, chatId: string): void {
+// Функция стала async
+async function handleGetGroupChatById(client: AuthenticatedSocket, chatId: string): Promise<void> {
   if (!chatId) {
     sendError(client, 'get_group_chat_by_id: chatId обязателен');
     return;
   }
 
-  const chat = db.getGroupChatById(chatId);
+  // Добавлен await для db.getGroupChatById
+  const chat = await db.getGroupChatById(chatId);
   sendToClient(client, { type: 'group_chat_by_id', chat });
 }
 
@@ -415,17 +446,19 @@ function handleGetGroupChatById(client: AuthenticatedSocket, chatId: string): vo
 // Зеркало: deleteMessage(chatId, messageId)
 // ─────────────────────────────────────────────────────────────
 
-function handleDeleteMessage(
-  client: AuthenticatedSocket,
-  chatId: string,
-  messageId: string
-): void {
+// Функция стала async
+async function handleDeleteMessage(
+    client: AuthenticatedSocket,
+    chatId: string,
+    messageId: string
+): Promise<void> {
   if (!chatId || !messageId) {
     sendError(client, 'delete_message: chatId и messageId обязательны');
     return;
   }
 
-  db.deleteMessage(chatId, messageId);
+  // Добавлен await для db.deleteMessage
+  await db.deleteMessage(chatId, messageId);
 
   // Уведомляем всех подписчиков топика об удалении
   const topicId = chatTopicKey(chatId);
@@ -437,30 +470,32 @@ function handleDeleteMessage(
   }
 
   console.log(
-    `[ChatController] Сообщение ${messageId} удалено из чата ${chatId} ` +
-    `пользователем ${client.user.userId}`
+      `[ChatController] Сообщение ${messageId} удалено из чата ${chatId} ` +
+      `пользователем ${client.user.userId}`
   );
 }
 
 // ─────────────────────────────────────────────────────────────
 // sync_fcm_token
-// Сохраняет FCM-токен устройства в локальную БД для offline push
+// Сохраняет FCM-токен устройства в асинхронную БД для offline push
 // ─────────────────────────────────────────────────────────────
 
-function handleSyncFcmToken(client: AuthenticatedSocket, token: string): void {
+// Функция стала async
+async function handleSyncFcmToken(client: AuthenticatedSocket, token: string): Promise<void> {
   if (!token || token.length < 20) {
     sendError(client, 'sync_fcm_token: token невалиден или пуст');
     return;
   }
 
-  db.upsertFcmToken(client.user.userId, token);
+  // Добавлены await для db.upsertFcmToken
+  await db.upsertFcmToken(client.user.userId, token);
   if (client.user.email && client.user.email !== client.user.userId) {
-    db.upsertFcmToken(client.user.email, token);
+    await db.upsertFcmToken(client.user.email, token);
   }
 
   console.log(
-    `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId} / email=${client.user.email}: ` +
-    `${token.slice(0, 20)}...`
+      `[ChatController] FCM-токен синхронизирован для userId=${client.user.userId} / email=${client.user.email}: ` +
+      `${token.slice(0, 20)}...`
   );
 }
 
@@ -469,20 +504,22 @@ function handleSyncFcmToken(client: AuthenticatedSocket, token: string): void {
 // Удаляет FCM-токен устройства из БД при выходе из аккаунта (логауте)
 // ─────────────────────────────────────────────────────────────
 
-function handleRemoveFcmToken(client: AuthenticatedSocket, token: string): void {
+// Функция стала async
+async function handleRemoveFcmToken(client: AuthenticatedSocket, token: string): Promise<void> {
   if (!token) {
     sendError(client, 'remove_fcm_token: token обязателен');
     return;
   }
 
-  db.deleteFcmToken(client.user.userId, token);
+  // Добавлены await для db.deleteFcmToken
+  await db.deleteFcmToken(client.user.userId, token);
   if (client.user.email && client.user.email !== client.user.userId) {
-    db.deleteFcmToken(client.user.email, token);
+    await db.deleteFcmToken(client.user.email, token);
   }
 
   console.log(
-    `[ChatController] FCM-токен удалён при логауте для userId=${client.user.userId} / email=${client.user.email}: ` +
-    `${token.slice(0, 20)}...`
+      `[ChatController] FCM-токен удалён при логауте для userId=${client.user.userId} / email=${client.user.email}: ` +
+      `${token.slice(0, 20)}...`
   );
 }
 
@@ -491,33 +528,35 @@ function handleRemoveFcmToken(client: AuthenticatedSocket, token: string): void 
 // Сохраняет или обновляет данные метаинформации группового чата
 // ─────────────────────────────────────────────────────────────
 
-function handleUpsertGroupChat(
-  client: AuthenticatedSocket,
-  chat: GroupChatDto
-): void {
+// Функция стала async
+async function handleUpsertGroupChat(
+    client: AuthenticatedSocket,
+    chat: GroupChatDto
+): Promise<void> {
   if (!chat || !chat.id) {
     sendError(client, 'upsert_group_chat: chat.id обязателен');
     return;
   }
 
-  db.upsertGroupChat(chat);
+  // Добавлен await для db.upsertGroupChat
+  await db.upsertGroupChat(chat);
 
   console.log(
-    `[ChatController] Групповой чат ${chat.id} ("${chat.title}") сохранён в БД ` +
-    `пользователем ${client.user.userId}`
+      `[ChatController] Групповой чат ${chat.id} ("${chat.title}") сохранён в БД ` +
+      `пользователем ${client.user.userId}`
   );
 }
 
 // ─────────────────────────────────────────────────────────────
 // typing
 // Транслирует событие набора текста другим участникам прямого чата.
-// Не персистируется в БД.
+// Не персистируется в БД, поэтому остается синхронным.
 // ─────────────────────────────────────────────────────────────
 
 function handleTyping(
-  client: AuthenticatedSocket,
-  chatId: string,
-  isTyping: boolean
+    client: AuthenticatedSocket,
+    chatId: string,
+    isTyping: boolean
 ): void {
   if (!chatId) {
     sendError(client, 'typing: chatId обязателен');

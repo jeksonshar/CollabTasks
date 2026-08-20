@@ -1,10 +1,12 @@
 // ============================================================
 // src/websocket/connectionManager.ts
 // Управление аутентифицированными WS-соединениями и heartbeat
+// Адаптировано для асинхронного PostgreSQL API (storage/db.ts)
 // ============================================================
 
 import WebSocket from 'ws';
 import { AuthenticatedUser, OutboundEvent } from '../models/types';
+import * as db from '../storage/db'; // Импорт дб
 
 // ─────────────────────────────────────────────────────────────
 // Типы
@@ -59,8 +61,8 @@ export function addConnection(ws: WebSocket, user: AuthenticatedUser): Authentic
   socketToClient.set(ws, client);
 
   console.log(
-    `[ConnectionManager] Подключён: userId=${user.userId} email=${user.email} ` +
-    `(всего сессий у пользователя: ${userSockets.size})`
+      `[ConnectionManager] Подключён: userId=${user.userId} email=${user.email} ` +
+      `(всего сессий у пользователя: ${userSockets.size})`
   );
 
   return client;
@@ -82,7 +84,7 @@ export function removeConnection(ws: WebSocket): void {
   }
 
   console.log(
-    `[ConnectionManager] Отключён: userId=${client.user.userId} email=${client.user.email}`
+      `[ConnectionManager] Отключён: userId=${client.user.userId} email=${client.user.email}`
   );
 }
 
@@ -98,8 +100,8 @@ export function getSocketsByUserId(id: string): AuthenticatedSocket[] {
   const result: AuthenticatedSocket[] = [];
   for (const client of socketToClient.values()) {
     if (
-      client.user.userId.toLowerCase() === target ||
-      client.user.email.toLowerCase() === target
+        client.user.userId.toLowerCase() === target ||
+        client.user.email.toLowerCase() === target
     ) {
       result.push(client);
     }
@@ -117,31 +119,32 @@ export function getOnlineUserIds(): string[] {
   return Array.from(connectionsByUserId.keys());
 }
 
-import * as db from '../storage/db';
-
 /**
  * Рассылает событие `user_status_changed` всем online-собеседникам пользователя
  * во всех его direct-чатах.
+ *
+ * ФУНКЦИЯ СТАЛА ASYNC ТАК КАК ОБРАЩАЕТСЯ К БД
  *
  * @param user            Пользователь (userId, email)
  * @param status          'online' | 'offline'
  * @param lastSeenMillis  только при status='offline' — timestamp отключения
  */
-export function broadcastUserStatus(
-  user: AuthenticatedUser,
-  status: 'online' | 'offline',
-  lastSeenMillis?: number
-): void {
+export async function broadcastUserStatus(
+    user: AuthenticatedUser,
+    status: 'online' | 'offline',
+    lastSeenMillis?: number
+): Promise<void> {
   const identifiers = [user.userId, user.email || '']
-    .filter(Boolean)
-    .map((id) => id.trim().toLowerCase());
+      .filter(Boolean)
+      .map((id) => id.trim().toLowerCase());
 
-  // 1. Ищем все direct-чаты, где участвует этот пользователь
-  const userChats = db.getChatsByUserId(identifiers).filter((c) => c.type === 'direct');
+  // 1. Ищем все direct-чаты, где участвует этот пользователь (добавлен await)
+  const allUserChats = await db.getChatsByUserId(identifiers);
+  const directChats = allUserChats.filter((c) => c.type === 'direct');
 
   // 2. Находим собеседников в этих чатах
   const opponentIds = new Set<string>();
-  for (const chat of userChats) {
+  for (const chat of directChats) {
     for (const p of chat.participantIds) {
       const normP = p.trim().toLowerCase();
       if (!identifiers.includes(normP)) {
@@ -150,7 +153,7 @@ export function broadcastUserStatus(
     }
   }
 
-  // 3. Находим все активные сокеты собеседников
+  // 3. Находим все активные сокеты собеседников (работает с памятью)
   const recipients = new Set<AuthenticatedSocket>();
   for (const oppId of opponentIds) {
     for (const client of getSocketsByUserId(oppId)) {
@@ -172,8 +175,8 @@ export function broadcastUserStatus(
   }
 
   console.log(
-    `[ConnectionManager] user_status_changed userId=${user.userId} status=${status} ` +
-    `→ уведомлены ${recipients.size} клиентов (${opponentIds.size} собеседников)`
+      `[ConnectionManager] user_status_changed userId=${user.userId} status=${status} ` +
+      `→ уведомлены ${recipients.size} клиентов (${opponentIds.size} собеседников)`
   );
 }
 
@@ -191,8 +194,8 @@ export function sendToClient(client: AuthenticatedSocket, event: OutboundEvent):
     client.ws.send(JSON.stringify(event));
   } catch (err) {
     console.error(
-      `[ConnectionManager] Ошибка отправки клиенту userId=${client.user.userId}:`,
-      err
+        `[ConnectionManager] Ошибка отправки клиенту userId=${client.user.userId}:`,
+        err
     );
   }
 }
@@ -235,7 +238,7 @@ export function startHeartbeat(): void {
       if (!client.isAlive) {
         // Клиент не ответил на предыдущий ping — закрываем соединение
         console.warn(
-          `[Heartbeat] Нет ответа от userId=${client.user.userId}, закрываем соединение`
+            `[Heartbeat] Нет ответа от userId=${client.user.userId}, закрываем соединение`
         );
         ws.terminate();
         continue;
@@ -255,7 +258,7 @@ export function startHeartbeat(): void {
   }, PING_INTERVAL_MS);
 
   console.log(
-    `[Heartbeat] Запущен: интервал=${PING_INTERVAL_MS}мс, таймаут=${PONG_TIMEOUT_MS}мс`
+      `[Heartbeat] Запущен: интервал=${PING_INTERVAL_MS}мс, таймаут=${PONG_TIMEOUT_MS}мс`
   );
 }
 
