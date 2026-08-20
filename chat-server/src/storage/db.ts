@@ -1,252 +1,214 @@
 // ============================================================
 // src/storage/db.ts
-// Лёгкая локальная база данных на SQLite через sql.js (pure WASM)
-// sql.js работает без нативной компиляции на любой платформе
+// Persistence-слой бэкенда, использующий PostgreSQL
+// Взаимодействие осуществляется через библиотеку-драйвер 'pg'
 // ============================================================
 
-import initSqlJs, { Database, SqlValue } from 'sql.js';
-import path from 'path';
-import fs from 'fs';
+import { Pool, QueryResultRow } from 'pg'; // Основные импорты из pg
 import { ChatDto, GroupChatDto, MessageDto } from '../models/types';
 
 // ─────────────────────────────────────────────────────────────
-// Инициализация
+// Инициализация Пула Подключений (Pool)
 // ─────────────────────────────────────────────────────────────
 
-const dbPath = path.resolve(process.env.DB_PATH ?? './data/chat.db');
+// Строка подключения берется из переменной окружения в .env
+const connectionString = process.env.DATABASE_URL;
 
-// Создаём директорию если нет
-const dbDir = path.dirname(dbPath);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+if (!connectionString) {
+  throw new Error('[DB] Ошибка: Переменная окружения DATABASE_URL не задана в .env');
 }
 
-/** Глобальный экземпляр БД (синхронный API sql.js) */
-let db: Database;
+/** * Глобальный экземпляр пула подключений.
+ * Инициализируется один раз при старте приложения.
+ */
+const pool = new Pool({
+  connectionString,
+  // Настройки SSL обязательны для Supabase и большинства облачных хостингов
+  ssl: {
+    // Разрешаем самоподписанные сертификаты (стандарт для бесплатных тарифов)
+    rejectUnauthorized: false
+  },
+  // Максимальное количество одновременных подключений в пуле (настройте под тариф)
+  max: 10,
+  // Тайм-аут подключения (мс)
+  connectionTimeoutMillis: 5000,
+  // Тайм-аут простоя подключения перед закрытием (мс)
+  idleTimeoutMillis: 30000,
+});
 
-/** Периодическое сохранение БД на диск (раз в 5 секунд при наличии изменений) */
-let _isDirty = false;
-
-function markDirty(): void {
-  _isDirty = true;
-}
-
-function persistDb(): void {
-  if (!_isDirty) return;
-  const data = db.export();
-  fs.writeFileSync(dbPath, Buffer.from(data));
-  _isDirty = false;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Асинхронная инициализация (вызывается один раз при старте)
-// ─────────────────────────────────────────────────────────────
-
+/**
+ * Асинхронная инициализация.
+ * Проверяет подключение к БД при старте сервера.
+ */
 export async function initDatabase(): Promise<void> {
-  const SQL = await initSqlJs();
+  try {
+    // Пытаемся взять подключение из пула и выполнить тестовый запрос
+    const client = await pool.connect();
+    console.log('[DB] Успешное подключение к PostgreSQL базе данных.');
 
-  // Загружаем существующую БД или создаём новую
-  if (fs.existsSync(dbPath)) {
-    const fileBuffer = fs.readFileSync(dbPath);
-    db = new SQL.Database(fileBuffer);
-  } else {
-    db = new SQL.Database();
+    // (Опционально) Здесь можно выполнить тестовый запрос для проверки таблиц:
+    // const res = await client.query('SELECT NOW()');
+    // console.log('[DB] Время сервера БД:', res.rows[0]);
+
+    // Всегда возвращаем клиент обратно в пул после использования!
+    client.release();
+
+  } catch (error) {
+    console.error('[DB] Критическая ошибка при инициализации подключения к PostgreSQL:', error);
+    // Останавливаем приложение, если нет подключения к БД
+    process.exit(1);
   }
-
-  // Создаём схему
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chats (
-      id             TEXT PRIMARY KEY,
-      type           TEXT NOT NULL DEFAULT 'direct',
-      participant_ids TEXT NOT NULL,
-      last_message   TEXT NOT NULL DEFAULT '',
-      updated_at_ms  INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS group_chats (
-      id                  TEXT PRIMARY KEY,
-      participant_user_ids TEXT NOT NULL,
-      participant_emails   TEXT NOT NULL,
-      title               TEXT NOT NULL DEFAULT '',
-      description         TEXT NOT NULL DEFAULT '',
-      updated_at_ms       INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS messages (
-      id              TEXT NOT NULL,
-      chat_id         TEXT NOT NULL,
-      sender_id       TEXT NOT NULL,
-      sender_name     TEXT NOT NULL DEFAULT '',
-      text            TEXT NOT NULL DEFAULT '',
-      created_at_ms   INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (id, chat_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS group_messages (
-      id              TEXT NOT NULL,
-      group_id        TEXT NOT NULL,
-      sender_id       TEXT NOT NULL,
-      sender_name     TEXT NOT NULL DEFAULT '',
-      text            TEXT NOT NULL DEFAULT '',
-      created_at_ms   INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (id, group_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS fcm_tokens (
-      user_id   TEXT NOT NULL,
-      token     TEXT NOT NULL,
-      PRIMARY KEY (user_id, token)
-    );
-
-    CREATE TABLE IF NOT EXISTS user_last_seen (
-      user_id       TEXT PRIMARY KEY,
-      last_seen_ms  INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages (chat_id, created_at_ms);
-    CREATE INDEX IF NOT EXISTS idx_group_messages_group_id ON group_messages (group_id, created_at_ms);
-    CREATE INDEX IF NOT EXISTS idx_fcm_user ON fcm_tokens (user_id);
-  `);
-
-  // Сохраняем БД на диск каждые 5 секунд при изменениях
-  setInterval(persistDb, 5000);
-
-  // Сохраняем при завершении процесса
-  process.on('exit', () => persistDb());
-  process.on('SIGTERM', () => persistDb());
-  process.on('SIGINT', () => persistDb());
-
-  console.log(`[DB] SQLite инициализирована: ${dbPath}`);
 }
 
 // ─────────────────────────────────────────────────────────────
-// Вспомогательная функция: getDb() с guard
+// Вспомогательные асинхронные функции запросов
 // ─────────────────────────────────────────────────────────────
 
-function getDb(): Database {
-  if (!db) {
-    throw new Error('[DB] База данных не инициализирована. Вызовите initDatabase() перед использованием.');
-  }
-  return db;
+/** Выполняет любой SQL запрос и возвращает сырой массив строк (QueryResultRow) */
+async function queryAll<T extends QueryResultRow>(sql: string, params: any[] = []): Promise<T[]> {
+  const result = await pool.query<T>(sql, params);
+  return result.rows;
+}
+
+/** Выполняет SELECT и возвращает первую строку или undefined */
+async function queryOne<T extends QueryResultRow>(sql: string, params: any[] = []): Promise<T | undefined> {
+  const rows = await queryAll<T>(sql, params);
+  return rows[0];
+}
+
+/** Выполняет INSERT / UPDATE / DELETE (не возвращает строки, но подтверждает выполнение) */
+async function execute(sql: string, params: any[] = []): Promise<void> {
+  await pool.query(sql, params);
+  // Persist логика (markDirty) здесь больше не нужна
 }
 
 // ─────────────────────────────────────────────────────────────
 // Маппинг строк БД → DTO
 // ─────────────────────────────────────────────────────────────
 
-type AnyRow = Record<string, unknown>;
+/** Утилита для безопасного парсинга JSON строк из БД (SQLite хранил массивы как JSON-строки) */
+function safeJsonParse<T>(jsonString: string, defaultValue: T): T {
+  if (!jsonString) return defaultValue;
+  try {
+    return JSON.parse(jsonString) as T;
+  } catch (e) {
+    console.error(`[DB] Ошибка парсинга JSON: ${jsonString}`, e);
+    return defaultValue;
+  }
+}
+
+// Типизация строк, возвращаемых pg (pg возвращает объект Record<string, any>)
+interface AnyRow extends QueryResultRow {
+  id: string;
+  [key: string]: any;
+}
 
 function rowToChat(row: AnyRow): ChatDto {
   return {
-    id: row['id'] as string,
-    type: row['type'] as 'direct' | 'group',
-    participantIds: JSON.parse(row['participant_ids'] as string) as string[],
-    lastMessage: row['last_message'] as string,
-    updatedAtMillis: row['updated_at_ms'] as number,
+    id: row.id,
+    type: row.type as 'direct' | 'group',
+    // В PostgreSQL мы храним participant_ids как TEXT (JSON-строку), как и в SQLite
+    participantIds: safeJsonParse<string[]>(row.participant_ids, []),
+    lastMessage: row.last_message ?? '',
+    updatedAtMillis: Number(row.updated_at_ms) ?? 0, // Приводим bigint/integer к числу
   };
 }
 
 function rowToGroupChat(row: AnyRow): GroupChatDto {
   return {
-    id: row['id'] as string,
-    participantUserIds: JSON.parse(row['participant_user_ids'] as string) as string[],
-    participantEmails: JSON.parse(row['participant_emails'] as string) as string[],
-    title: row['title'] as string,
-    description: row['description'] as string,
-    updatedAtMillis: row['updated_at_ms'] as number,
+    id: row.id,
+    participantUserIds: safeJsonParse<string[]>(row.participant_user_ids, []),
+    participantEmails: safeJsonParse<string[]>(row.participant_emails, []),
+    title: row.title ?? '',
+    description: row.description ?? '',
+    updatedAtMillis: Number(row.updated_at_ms) ?? 0,
   };
 }
 
 function rowToMessage(row: AnyRow): MessageDto {
   return {
-    id: row['id'] as string,
-    senderId: row['sender_id'] as string,
-    senderName: row['sender_name'] as string,
-    text: row['text'] as string,
-    createdAtMillis: row['created_at_ms'] as number,
+    id: row.id,
+    senderId: row.sender_id,
+    senderName: row.sender_name ?? '',
+    text: row.text ?? '',
+    createdAtMillis: Number(row.created_at_ms) ?? 0,
   };
 }
 
-/** Выполняет SELECT и возвращает массив объектов */
-function queryAll(sql: string, params: SqlValue[] = []): AnyRow[] {
-  const stmt = getDb().prepare(sql);
-  const results: AnyRow[] = [];
-  stmt.bind(params);
-  while (stmt.step()) {
-    results.push(stmt.getAsObject() as AnyRow);
-  }
-  stmt.free();
-  return results;
-}
-
-/** Выполняет SELECT и возвращает первую строку или undefined */
-function queryOne(sql: string, params: SqlValue[] = []): AnyRow | undefined {
-  const rows = queryAll(sql, params);
-  return rows[0];
-}
-
-/** Выполняет INSERT / UPDATE / DELETE */
-function execute(sql: string, params: SqlValue[] = []): void {
-  getDb().run(sql, params);
-  markDirty();
-}
-
 // ─────────────────────────────────────────────────────────────
-// Публичный API — Chats
+// Публичный API — Chats (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export function getChatById(chatId: string): ChatDto | null {
-  const row = queryOne('SELECT * FROM chats WHERE id = ?', [chatId]);
+export async function getChatById(chatId: string): Promise<ChatDto | null> {
+  const row = await queryOne<AnyRow>('SELECT * FROM chats WHERE id = $1', [chatId]);
   return row ? rowToChat(row) : null;
 }
 
-export function getChatsByUserId(userIdentifiers: string | string[]): ChatDto[] {
+export async function getChatsByUserId(userIdentifiers: string | string[]): Promise<ChatDto[]> {
   const idsToMatch = (Array.isArray(userIdentifiers) ? userIdentifiers : [userIdentifiers])
-    .filter(Boolean)
-    .map((id) => id.toLowerCase());
+      .filter(Boolean)
+      .map((id) => id.toLowerCase());
 
-  const all = queryAll("SELECT * FROM chats");
-  return all
-    .filter((row) => {
-      const ids = (JSON.parse(row['participant_ids'] as string) as string[]).map((id) => id.toLowerCase());
-      return ids.some((id) => idsToMatch.includes(id));
-    })
-    .map(rowToChat);
+  // Получаем все чаты
+  const allRows = await queryAll<AnyRow>("SELECT * FROM chats");
+
+  // Фильтруем на стороне бэкенда (как и раньше, т.к. participant_ids — JSON)
+  return allRows
+      .filter((row) => {
+        const participants = safeJsonParse<string[]>(row.participant_ids, []);
+        const lowerParticipants = participants.map((id) => id.toLowerCase());
+        return lowerParticipants.some((id) => idsToMatch.includes(id));
+      })
+      .map(rowToChat);
 }
 
-export function upsertChat(chat: ChatDto): void {
-  execute(
-    `INSERT OR REPLACE INTO chats (id, type, participant_ids, last_message, updated_at_ms)
-     VALUES (?, ?, ?, ?, ?)`,
-    [chat.id, chat.type, JSON.stringify(chat.participantIds), chat.lastMessage, chat.updatedAtMillis]
+export async function upsertChat(chat: ChatDto): Promise<void> {
+  // PostgreSQL синтаксис для "INSERT OR REPLACE" — это ON CONFLICT
+  const sql = `
+    INSERT INTO chats (id, type, participant_ids, last_message, updated_at_ms)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (id) DO UPDATE 
+    SET type = EXCLUDED.type, 
+        participant_ids = EXCLUDED.participant_ids, 
+        last_message = EXCLUDED.last_message, 
+        updated_at_ms = EXCLUDED.updated_at_ms;
+  `;
+  await execute(
+      sql,
+      [chat.id, chat.type, JSON.stringify(chat.participantIds), chat.lastMessage, chat.updatedAtMillis]
   );
 }
 
-export function updateChatLastMessage(chatId: string, lastMessage: string, updatedAtMs: number): void {
-  execute(
-    'UPDATE chats SET last_message = ?, updated_at_ms = ? WHERE id = ?',
-    [lastMessage, updatedAtMs, chatId]
+export async function updateChatLastMessage(chatId: string, lastMessage: string, updatedAtMs: number): Promise<void> {
+  await execute(
+      'UPDATE chats SET last_message = $1, updated_at_ms = $2 WHERE id = $3',
+      [lastMessage, updatedAtMs, chatId]
   );
 }
 
-export function findDirectChat(
-  userAIdentifiers: string | string[],
-  userBIdentifiers: string | string[]
-): ChatDto | null {
+export async function findDirectChat(
+    userAIdentifiers: string | string[],
+    userBIdentifiers: string | string[]
+): Promise<ChatDto | null> {
   const idsA = (Array.isArray(userAIdentifiers) ? userAIdentifiers : [userAIdentifiers])
-    .filter(Boolean)
-    .map((id) => id.toLowerCase());
+      .filter(Boolean)
+      .map((id) => id.toLowerCase());
 
   const idsB = (Array.isArray(userBIdentifiers) ? userBIdentifiers : [userBIdentifiers])
-    .filter(Boolean)
-    .map((id) => id.toLowerCase());
+      .filter(Boolean)
+      .map((id) => id.toLowerCase());
 
-  const candidates = queryAll("SELECT * FROM chats WHERE type = 'direct'");
+  // Получаем все direct чаты
+  const candidates = await queryAll<AnyRow>("SELECT * FROM chats WHERE type = 'direct'");
+
+  // Фильтруем на стороне бэкенда
   for (const row of candidates) {
-    const participants = (JSON.parse(row['participant_ids'] as string) as string[]).map((id) => id.toLowerCase());
-    if (participants.length === 2) {
-      const matchesA = participants.some((p) => idsA.includes(p));
-      const matchesB = participants.some((p) => idsB.includes(p));
+    const participants = safeJsonParse<string[]>(row.participant_ids, []);
+    const lowerParticipants = participants.map((id) => id.toLowerCase());
+
+    if (lowerParticipants.length === 2) {
+      const matchesA = lowerParticipants.some((p) => idsA.includes(p));
+      const matchesB = lowerParticipants.some((p) => idsB.includes(p));
       if (matchesA && matchesB) {
         return rowToChat(row);
       }
@@ -256,127 +218,145 @@ export function findDirectChat(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Messages
+// Messages (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export function getMessages(chatId: string): MessageDto[] {
-  const rows = queryAll(
-    'SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at_ms DESC',
-    [chatId]
+export async function getMessages(chatId: string): Promise<MessageDto[]> {
+  const rows = await queryAll<AnyRow>(
+      'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at_ms DESC',
+      [chatId]
   );
   return rows.map(rowToMessage);
 }
 
-export function insertMessage(chatId: string, message: MessageDto): void {
-  execute(
-    `INSERT OR IGNORE INTO messages (id, chat_id, sender_id, sender_name, text, created_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [message.id, chatId, message.senderId, message.senderName, message.text, message.createdAtMillis]
+export async function insertMessage(chatId: string, message: MessageDto): Promise<void> {
+  // PostgreSQL ON CONFLICT DO NOTHING — это аналог INSERT OR IGNORE
+  const sql = `
+    INSERT INTO messages (id, chat_id, sender_id, sender_name, text, created_at_ms)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (id, chat_id) DO NOTHING;
+  `;
+  await execute(
+      sql,
+      [message.id, chatId, message.senderId, message.senderName, message.text, message.createdAtMillis]
   );
 }
 
-export function deleteMessage(chatId: string, messageId: string): void {
-  execute('DELETE FROM messages WHERE id = ? AND chat_id = ?', [messageId, chatId]);
+export async function deleteMessage(chatId: string, messageId: string): Promise<void> {
+  await execute('DELETE FROM messages WHERE id = $1 AND chat_id = $2', [messageId, chatId]);
 }
 
 // ─────────────────────────────────────────────────────────────
-// Group Chats
+// Group Chats (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export function getGroupChatById(groupId: string): GroupChatDto | null {
-  const row = queryOne('SELECT * FROM group_chats WHERE id = ?', [groupId]);
+export async function getGroupChatById(groupId: string): Promise<GroupChatDto | null> {
+  const row = await queryOne<AnyRow>('SELECT * FROM group_chats WHERE id = $1', [groupId]);
   return row ? rowToGroupChat(row) : null;
 }
 
-export function upsertGroupChat(chat: GroupChatDto): void {
-  execute(
-    `INSERT OR REPLACE INTO group_chats
-       (id, participant_user_ids, participant_emails, title, description, updated_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      chat.id,
-      JSON.stringify(chat.participantUserIds),
-      JSON.stringify(chat.participantEmails),
-      chat.title,
-      chat.description,
-      chat.updatedAtMillis,
-    ]
+export async function upsertGroupChat(chat: GroupChatDto): Promise<void> {
+  const sql = `
+    INSERT INTO group_chats (id, participant_user_ids, participant_emails, title, description, updated_at_ms)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (id) DO UPDATE 
+    SET participant_user_ids = EXCLUDED.participant_user_ids,
+        participant_emails = EXCLUDED.participant_emails,
+        title = EXCLUDED.title,
+        description = EXCLUDED.description,
+        updated_at_ms = EXCLUDED.updated_at_ms;
+  `;
+  await execute(
+      sql,
+      [
+        chat.id,
+        JSON.stringify(chat.participantUserIds),
+        JSON.stringify(chat.participantEmails),
+        chat.title,
+        chat.description,
+        chat.updatedAtMillis,
+      ]
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// Group Messages
+// Group Messages (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export function getGroupMessages(groupId: string): MessageDto[] {
-  const rows = queryAll(
-    'SELECT * FROM group_messages WHERE group_id = ? ORDER BY created_at_ms DESC',
-    [groupId]
+export async function getGroupMessages(groupId: string): Promise<MessageDto[]> {
+  const rows = await queryAll<AnyRow>(
+      'SELECT * FROM group_messages WHERE group_id = $1 ORDER BY created_at_ms DESC',
+      [groupId]
   );
   return rows.map(rowToMessage);
 }
 
-export function insertGroupMessage(groupId: string, message: MessageDto): void {
-  execute(
-    `INSERT OR IGNORE INTO group_messages (id, group_id, sender_id, sender_name, text, created_at_ms)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [message.id, groupId, message.senderId, message.senderName, message.text, message.createdAtMillis]
+export async function insertGroupMessage(groupId: string, message: MessageDto): Promise<void> {
+  const sql = `
+    INSERT INTO group_messages (id, group_id, sender_id, sender_name, text, created_at_ms)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (id, group_id) DO NOTHING;
+  `;
+  await execute(
+      sql,
+      [message.id, groupId, message.senderId, message.senderName, message.text, message.createdAtMillis]
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// FCM Tokens
+// FCM Tokens (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export function upsertFcmToken(userId: string, token: string): void {
-  execute('INSERT OR REPLACE INTO fcm_tokens (user_id, token) VALUES (?, ?)', [userId, token]);
+export async function upsertFcmToken(userId: string, token: string): Promise<void> {
+  const sql = `
+    INSERT INTO fcm_tokens (user_id, token)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id, token) DO NOTHING; -- REPLACE не нужен, т.к. PK составной
+  `;
+  await execute(sql, [userId, token]);
 }
 
-export function getFcmTokens(userIdentifiers: string | string[]): string[] {
+export async function getFcmTokens(userIdentifiers: string | string[]): Promise<string[]> {
   const ids = (Array.isArray(userIdentifiers) ? userIdentifiers : [userIdentifiers])
-    .filter(Boolean)
-    .map((id) => id.toLowerCase());
+      .filter(Boolean)
+      .map((id) => id.toLowerCase());
 
   if (ids.length === 0) return [];
 
-  const allRows = queryAll('SELECT user_id, token FROM fcm_tokens');
+  // Фильтрация токенов (как и раньше, т.к. filterUserId на стороне бэкенда)
+  const allRows = await queryAll<{ user_id: string, token: string }>('SELECT user_id, token FROM fcm_tokens');
+
   const matchedTokens: string[] = [];
   for (const row of allRows) {
-    const rowUserId = (row['user_id'] as string).toLowerCase();
+    const rowUserId = row.user_id.toLowerCase();
     if (ids.includes(rowUserId)) {
-      matchedTokens.push(row['token'] as string);
+      matchedTokens.push(row.token);
     }
   }
   return [...new Set(matchedTokens)];
 }
 
-export function deleteFcmToken(userId: string, token: string): void {
-  execute('DELETE FROM fcm_tokens WHERE user_id = ? AND token = ?', [userId, token]);
+export async function deleteFcmToken(userId: string, token: string): Promise<void> {
+  await execute('DELETE FROM fcm_tokens WHERE user_id = $1 AND token = $2', [userId, token]);
 }
 
 // ─────────────────────────────────────────────────────────────
-// User Last Seen
+// User Last Seen (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Сохраняет или обновляет время последнего появления пользователя.
- * Идентификатор нормализуется (trim + toLowerCase) перед записью.
- */
-export function upsertLastSeen(userId: string, lastSeenMs: number): void {
+export async function upsertLastSeen(userId: string, lastSeenMs: number): Promise<void> {
   const normalized = userId.trim().toLowerCase();
-  execute(
-    'INSERT OR REPLACE INTO user_last_seen (user_id, last_seen_ms) VALUES (?, ?)',
-    [normalized, lastSeenMs]
-  );
+  const sql = `
+    INSERT INTO user_last_seen (user_id, last_seen_ms)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id) DO UPDATE 
+    SET last_seen_ms = EXCLUDED.last_seen_ms;
+  `;
+  await execute(sql, [normalized, lastSeenMs]);
 }
 
-/**
- * Возвращает время последнего появления пользователя в мс.
- * Идентификатор нормализуется перед поиском.
- * Возвращает 0, если запись отсутствует.
- */
-export function getLastSeen(userId: string): number {
+export async function getLastSeen(userId: string): Promise<number> {
   const normalized = userId.trim().toLowerCase();
-  const row = queryOne('SELECT last_seen_ms FROM user_last_seen WHERE user_id = ?', [normalized]);
-  return (row?.['last_seen_ms'] as number | undefined) ?? 0;
+  const row = await queryOne<{ last_seen_ms: any }>('SELECT last_seen_ms FROM user_last_seen WHERE user_id = $1', [normalized]);
+  return row ? Number(row.last_seen_ms) : 0;
 }
