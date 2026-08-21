@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
@@ -9,7 +10,7 @@ import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart'
 import 'package:collab_tasks/features/chats/data/remote/models/ws_typing_dto.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/ws_user_status_dto.dart';
 import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Тип фабрики, создающей [WebSocketChannel] по URI.
@@ -25,18 +26,24 @@ typedef TokenProvider = Future<String?> Function();
 /// Соединение устанавливается лениво при первом обращении и переиспользуется
 /// до явного вызова [dispose] или критической ошибки сети.
 ///
+/// ### Автоматическое переподключение
+/// При разрыве соединения (блокировка экрана, Render idle timeout, потеря сети)
+/// класс автоматически переподключается с экспоненциальным backoff и
+/// переподписывается на все активные топики через `_activeTopicIds`.
+///
+/// При возврате приложения из фона ([AppLifecycleState.resumed]) проверяется
+/// состояние канала и, если он мёртв, немедленно запускается переподключение.
+///
 /// ### Паттерн Completer для Future-методов
 /// Каждый запрос, ожидающий ответа, регистрирует [Completer] в карте
 /// [_pendingCompleters], ключом служит тип ожидаемого ответного события.
-/// Входящие сообщения разбираются в [_handleIncomingMessage] и завершают
-/// соответствующий Completer.
 ///
 /// ### Реактивные потоки сообщений
 /// [watchMessages] / [watchGroupMessages] возвращают [Stream] из
 /// [StreamController.broadcast]. При первой подписке клиент отправляет
 /// `subscribe_topic`, при отмене — `unsubscribe_topic`. Локальный кэш
 /// [_messagesCache] обновляется при получении `new_message` / `message_deleted`.
-class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
+class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatRemoteDataSource {
   final String _baseUrl;
 
   /// Вызывается непосредственно перед установкой нового WebSocket-соединения,
@@ -51,7 +58,11 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     WebSocketChannelFactory? channelFactory,
   }) : _baseUrl = baseUrl,
        _getTokenProvider = getTokenProvider,
-       _channelFactory = channelFactory ?? _defaultChannelFactory;
+       _channelFactory = channelFactory ?? _defaultChannelFactory {
+    // Регистрируемся как observer жизненного цикла приложения.
+    // При переходе в resumed — проверяем/восстанавливаем соединение.
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   // ---------------------------------------------------------------------------
   // Внутреннее состояние
@@ -59,6 +70,9 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _channelSubscription;
+
+  /// Флаг уничтожения объекта — блокирует все переподключения после [dispose].
+  bool _isDisposed = false;
 
   /// Ожидающие Completer'ы: ключ — тип ответного события сервера.
   /// Значение — список, т. к. теоретически возможны параллельные запросы
@@ -74,12 +88,30 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
   /// Счётчик активных слушателей на топик (для отслеживания ref-count).
   final Map<String, int> _topicListenerCount = {};
 
+  /// Активные серверные подписки: key (chatId/groupId) → topicId ('chat:xxx' / 'group:xxx').
+  ///
+  /// Заполняется при первой подписке слушателя на топик, очищается при уходе
+  /// последнего слушателя. Используется при переподключении: после создания
+  /// нового канала все записанные топики переподписываются на сервере,
+  /// чтобы `new_message` / `new_group_message` вновь доставлялись этому клиенту.
+  final Map<String, String> _activeTopicIds = {};
+
   /// Broadcast-поток событий статуса онлайн/офлайн пользователей.
   final StreamController<WsUserStatusDto> _userStatusController =
       StreamController<WsUserStatusDto>.broadcast();
 
   /// Broadcast-поток событий набора текста в прямых чатах.
   final StreamController<WsTypingDto> _typingController = StreamController<WsTypingDto>.broadcast();
+
+  // ---------------------------------------------------------------------------
+  // Переподключение (reconnect + exponential backoff)
+  // ---------------------------------------------------------------------------
+
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+
+  /// Максимальная задержка между попытками переподключения (секунды).
+  static const int _maxReconnectDelaySec = 30;
 
   // ---------------------------------------------------------------------------
   // Публичные реактивные потоки
@@ -325,12 +357,19 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     debugPrint('[WS] Ошибка соединения: $error\n$st');
     _failAllPending(error);
     _resetConnection();
+    if (!_isDisposed && _activeTopicIds.isNotEmpty) {
+      _scheduleReconnect();
+    }
   }
 
   void _handleConnectionDone() {
     debugPrint('[WS] Соединение закрыто сервером.');
     _failAllPending(const WebSocketConnectionException('Соединение с WebSocket-сервером прервано'));
     _resetConnection();
+    // Если есть активные топики — переподключаемся автоматически.
+    if (!_isDisposed && _activeTopicIds.isNotEmpty) {
+      _scheduleReconnect();
+    }
   }
 
   void _failAllPending(Object error) {
@@ -346,6 +385,101 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
     _channelSubscription?.cancel();
     _channelSubscription = null;
     _channel = null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Автоматическое переподключение (reconnect + exponential backoff)
+  // ---------------------------------------------------------------------------
+
+  /// Планирует следующую попытку переподключения с экспоненциальным backoff.
+  ///
+  /// Задержка: 1с → 2с → 4с → 8с → 16с → 30с (далее не растёт).
+  void _scheduleReconnect() {
+    _reconnectTimer?.cancel();
+    if (_isDisposed) return;
+
+    final delaySec = min(_maxReconnectDelaySec, pow(2, _reconnectAttempts).toInt());
+    _reconnectAttempts++;
+
+    debugPrint('[WS] Переподключение через $delaySecс (попытка #$_reconnectAttempts)...');
+
+    _reconnectTimer = Timer(Duration(seconds: delaySec), _reconnect);
+  }
+
+  /// Выполняет одну попытку переподключения.
+  ///
+  /// При успехе:
+  /// - создаёт новый WS-канал
+  /// - переподписывается на все топики из [_activeTopicIds]
+  /// - эмитит текущий кэш в каждый [StreamController], чтобы UI не мигал
+  ///
+  /// При ошибке — планирует следующую попытку через [_scheduleReconnect].
+  Future<void> _reconnect() async {
+    if (_isDisposed) return;
+
+    // Нет активных топиков — переподключаться незачем.
+    if (_activeTopicIds.isEmpty) {
+      _reconnectAttempts = 0;
+      return;
+    }
+
+    try {
+      debugPrint(
+        '[WS] Попытка переподключения #$_reconnectAttempts '
+        '(активных топиков: ${_activeTopicIds.length})',
+      );
+
+      final channel = await _getOrCreateChannel();
+
+      // Переподписываемся на все активные топики одним проходом.
+      // Берём snapshot, чтобы не итерировать изменяемую карту.
+      final snapshot = Map<String, String>.from(_activeTopicIds);
+      for (final entry in snapshot.entries) {
+        channel.sink.add(jsonEncode({'type': 'subscribe_topic', 'topicId': entry.value}));
+        // Сразу эмитим кэш, чтобы UI показал уже загруженные сообщения
+        // пока не придут новые события от сервера.
+        final cached = _messagesCache[entry.key];
+        _topicControllers[entry.key]?.add(List.unmodifiable(cached ?? const []));
+        debugPrint('[WS] Переподписка на топик: ${entry.value}');
+      }
+
+      _reconnectAttempts = 0;
+      debugPrint('[WS] ✅ Переподключение выполнено успешно.');
+    } catch (e) {
+      debugPrint('[WS] Ошибка переподключения: $e');
+      _resetConnection();
+      if (!_isDisposed) _scheduleReconnect();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // AppLifecycleObserver — восстановление при выходе из фона
+  // ---------------------------------------------------------------------------
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _onAppResumed();
+    }
+  }
+
+  /// Вызывается когда приложение возвращается на передний план.
+  ///
+  /// Если канал мёртв (был разорван пока экран был заблокирован) и есть
+  /// активные топики — немедленно сбрасывает backoff и запускает переподключение.
+  void _onAppResumed() {
+    if (_isDisposed) return;
+    debugPrint('[WS] App resumed — проверка состояния WS-соединения...');
+
+    if (_channel == null && _activeTopicIds.isNotEmpty) {
+      debugPrint('[WS] Канал мёртв — немедленное переподключение.');
+      // Сбрасываем задержку: пользователь ждёт, нужно быстро.
+      _reconnectAttempts = 0;
+      _reconnectTimer?.cancel();
+      _scheduleReconnect();
+    } else if (_channel != null) {
+      debugPrint('[WS] Канал существует, соединение актуально.');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -365,19 +499,21 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
         final count = (_topicListenerCount[key] ?? 0) + 1;
         _topicListenerCount[key] = count;
         if (count == 1) {
-          // Первый слушатель — подписываемся на сервере.
+          // Первый слушатель — регистрируем топик для reconnect
+          // и подписываемся на сервере.
+          _activeTopicIds[key] = topicId;
+          _send({'type': 'subscribe_topic', 'topicId': topicId});
+          debugPrint('[WS] Подписка на топик: $topicId');
           // После subscribe сервер пришлёт историю через new_message,
           // но если чат пуст — ничего не придёт и стрим молчал бы вечно.
           // Поэтому через microtask гарантированно эмитим текущее состояние
           // кэша (даже пустой список), чтобы Bloc перешёл из Loading → Loaded.
-          _send({'type': 'subscribe_topic', 'topicId': topicId});
-          debugPrint('[WS] Подписка на топик: $topicId');
           Future.microtask(() {
             final cached = _messagesCache[key];
             _topicControllers[key]?.add(List.unmodifiable(cached ?? []));
           });
         } else {
-          // Повторный слушатель — отдаём кэш если не пустой
+          // Повторный слушатель — отдаём кэш если не пустой.
           final cached = _messagesCache[key];
           if (cached != null && cached.isNotEmpty) {
             _topicControllers[key]?.add(List.unmodifiable(cached));
@@ -388,9 +524,11 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
         final count = (_topicListenerCount[key] ?? 1) - 1;
         if (count <= 0) {
           _topicListenerCount.remove(key);
+          // Снимаем регистрацию топика — при переподключении подписываться не нужно.
+          _activeTopicIds.remove(key);
           _topicControllers.remove(key)?.close();
           _messagesCache.remove(key);
-          // unawaited — fire-and-forget при отписке
+          // unawaited — fire-and-forget при отписке.
           _send({'type': 'unsubscribe_topic', 'topicId': topicId});
           debugPrint('[WS] Отписка от топика: $topicId');
         } else {
@@ -515,12 +653,23 @@ class WebSocketChatRemoteDataSource implements ChatRemoteDataSource {
 
   /// Закрывает WebSocket-соединение и освобождает все ресурсы.
   Future<void> dispose() async {
+    _isDisposed = true;
+
+    // Снимаем observer жизненного цикла.
+    WidgetsBinding.instance.removeObserver(this);
+
+    // Отменяем запланированное переподключение.
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+
     _failAllPending(const WebSocketConnectionException('DataSource был уничтожен'));
+
     for (final controller in _topicControllers.values) {
       await controller.close();
     }
     _topicControllers.clear();
     _topicListenerCount.clear();
+    _activeTopicIds.clear();
     _messagesCache.clear();
 
     await _userStatusController.close();

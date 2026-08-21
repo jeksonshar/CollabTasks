@@ -221,7 +221,7 @@ export function sendError(client: AuthenticatedSocket, message: string): void {
 // Heartbeat (ping/pong)
 // ─────────────────────────────────────────────────────────────
 
-const PING_INTERVAL_MS = parseInt(process.env.PING_INTERVAL_MS ?? '30000', 10);
+const PING_INTERVAL_MS = parseInt(process.env.PING_INTERVAL_MS ?? '20000', 10);
 const PONG_TIMEOUT_MS = parseInt(process.env.PONG_TIMEOUT_MS ?? '10000', 10);
 
 /**
