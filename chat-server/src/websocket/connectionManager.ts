@@ -270,6 +270,7 @@ export function handlePong(ws: WebSocket): void {
   if (client) {
     client.isAlive = true;
   }
+  console.log('[Heartbeat] Received pong from client');
 }
 
 /** Останавливает heartbeat */
