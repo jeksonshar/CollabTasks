@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "en",
   "addTaskTitle": "Add Task",
   "editTaskTitle": "Edit Task",
@@ -294,5 +294,7 @@
     }
   },
 
-  "group_chat_toolbarSabTitle": "Group chat"
+  "group_chat_toolbarSabTitle": "Group chat",
+
+  "chat_connectingToServer": "Server is starting up…"
 }

@@ -1383,6 +1383,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Group chat'**
   String get group_chat_toolbarSabTitle;
+
+  /// No description provided for @chat_connectingToServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is starting up…'**
+  String get chat_connectingToServer;
 }
 
 class _AppLocalizationsDelegate

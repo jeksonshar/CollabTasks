@@ -294,5 +294,7 @@
     }
   },
 
-  "group_chat_toolbarSabTitle": "Групповой чат"
+  "group_chat_toolbarSabTitle": "Групповой чат",
+
+  "chat_connectingToServer": "Сервер загружается…"
 }

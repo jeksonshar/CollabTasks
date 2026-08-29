@@ -704,4 +704,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get group_chat_toolbarSabTitle => 'Group chat';
+
+  @override
+  String get chat_connectingToServer => 'Server is starting up…';
 }

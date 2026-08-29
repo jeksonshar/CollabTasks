@@ -705,4 +705,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get group_chat_toolbarSabTitle => 'Груповий чат';
+
+  @override
+  String get chat_connectingToServer => 'Сервер завантажується…';
 }

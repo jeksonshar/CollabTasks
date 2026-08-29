@@ -44,7 +44,8 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         listener: _onStateChanged,
         listenWhen: (previous, current) =>
             previous.status != current.status ||
-            previous.pendingDirectChat != current.pendingDirectChat,
+            previous.pendingDirectChat != current.pendingDirectChat ||
+            previous.isConnectingToChat != current.isConnectingToChat,
         builder: _buildContent,
       ),
     );
@@ -168,24 +169,29 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
             ),
         ],
       ),
-      body: IndexedStack(
-        index: activeTab,
+      body: Stack(
         children: [
-          ParticipantsTab(
-            state: state,
-            isParticipant: isParticipant,
-            onRefresh: () => _handleRefresh(context),
-            // Вся бизнес-логика (getOrCreate чат + getParticipant) делегирована BLoC
-            onParticipantTap: (participantId) {
-              context.read<GroupDetailsBloc>().add(
-                GroupParticipantChatOpened(
-                  groupId: group.id,
-                  participantCompositeId: participantId,
-                ),
-              );
-            },
+          IndexedStack(
+            index: activeTab,
+            children: [
+              ParticipantsTab(
+                state: state,
+                isParticipant: isParticipant,
+                onRefresh: () => _handleRefresh(context),
+                // Вся бизнес-логика (getOrCreate чат + getParticipant) делегирована BLoC
+                onParticipantTap: (participantId) {
+                  context.read<GroupDetailsBloc>().add(
+                    GroupParticipantChatOpened(
+                      groupId: group.id,
+                      participantCompositeId: participantId,
+                    ),
+                  );
+                },
+              ),
+              TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
+            ],
           ),
-          TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
+          if (state.isConnectingToChat) _buildConnectingOverlay(context, localization),
         ],
       ),
       floatingActionButton: (isParticipant && activeTab == 1)
@@ -211,6 +217,36 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
               ],
             )
           : null,
+    );
+  }
+
+  /// Полноэкранный оверлей-лоадер, отображаемый во время холодного старта
+  /// WebSocket-сервера (Render free tier может запускаться до 60 секунд).
+  Widget _buildConnectingOverlay(BuildContext context, AppLocalizations localization) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Colors.black45,
+        child: Center(
+          child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    localization.chat_connectingToServer,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

@@ -292,5 +292,7 @@
     }
   },
 
-  "group_chat_toolbarSabTitle": "Груповий чат"
+  "group_chat_toolbarSabTitle": "Груповий чат",
+
+  "chat_connectingToServer": "Сервер завантажується…"
 }
