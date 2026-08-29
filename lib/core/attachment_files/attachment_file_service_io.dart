@@ -6,7 +6,7 @@ import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
-// import 'package:open_filex/open_filex.dart';
+import 'package:open_file/open_file.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -65,7 +65,7 @@ Future<void> openAttachment(TaskAttachment attachment) async {
   final path = attachment.localPath;
   if (path == null) return;
 
-  // await OpenFilex.open(path);
+  await OpenFile.open(path);
 }
 
 Future<String?> tryReadTextAttachment(TaskAttachment attachment) async {
