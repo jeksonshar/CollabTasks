@@ -6,7 +6,7 @@ import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:collab_tasks/features/tasks/domain/repositories/task_repository.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:open_filex/open_filex.dart';
+// import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -22,20 +22,20 @@ Future<String?> attachmentsDirectory() async {
 }
 
 Future<List<TaskAttachment>> pickAttachmentFiles(String? attachmentsDirPath) async {
-  final result = await FilePicker.platform.pickFiles(
-    allowMultiple: true,
+  final files = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: documentAttachmentExtensions,
-    withData: false,
   );
 
-  if (result == null) return [];
+  if (files.isEmpty) return [];
 
   final newItems = <TaskAttachment>[];
 
-  for (final file in result.files) {
+  for (final file in files) {
     final originalName = file.name;
-    final ext = (file.extension ?? p.extension(originalName).replaceFirst('.', '')).toLowerCase();
+    final rawExt = p.extension(originalName).replaceFirst('.', '');
+    final ext = rawExt.isNotEmpty ? rawExt.toLowerCase() : '';
+
     final uniqueName = '${DateTime.now().microsecondsSinceEpoch}_$originalName'.replaceAll(
       '/',
       '_',
@@ -65,7 +65,7 @@ Future<void> openAttachment(TaskAttachment attachment) async {
   final path = attachment.localPath;
   if (path == null) return;
 
-  await OpenFilex.open(path);
+  // await OpenFilex.open(path);
 }
 
 Future<String?> tryReadTextAttachment(TaskAttachment attachment) async {
@@ -94,13 +94,14 @@ Future<bool> downloadAttachmentFile(TaskAttachment attachment, TaskRepository re
       return false;
     }
 
-    final outputPath = await FilePicker.platform.saveFile(
+    // В v12 saveFile() вызвается статически и возвращает Uri?
+    final Uri? outputFile = await FilePicker.saveFile(
       dialogTitle: 'Сохранить файл',
       fileName: attachment.name,
       bytes: bytes,
     );
 
-    return outputPath != null;
+    return outputFile != null;
   } catch (e) {
     debugPrint('Ошибка при сохранении файла: $e');
     return false;

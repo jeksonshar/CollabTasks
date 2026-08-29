@@ -37,12 +37,19 @@ class _EditGroupDialogState extends State<EditGroupDialog> {
   }
 
   Future<void> _pickAvatar() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
-    final file = result?.files.single;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null) return;
+    final List<PlatformFile> files = await FilePicker.pickFiles(
+      type: FileType.image,
+    );
 
-    final extension = file.extension?.toLowerCase();
+    if (files.isEmpty) return;
+
+    final file = files.first;
+    final bytes = await file.readAsBytes();
+
+    final extension = file.name.contains('.')
+        ? file.name.split('.').last.toLowerCase()
+        : '';
+
     final mime = switch (extension) {
       'jpg' || 'jpeg' => 'image/jpeg',
       'gif' => 'image/gif',

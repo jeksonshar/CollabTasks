@@ -14,27 +14,27 @@ Future<String?> attachmentsDirectory() async {
 }
 
 Future<List<TaskAttachment>> pickAttachmentFiles(String? attachmentsDirPath) async {
-  final result = await FilePicker.platform.pickFiles(
-    allowMultiple: true,
+  final files = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: documentAttachmentExtensions,
-    withData: true,
   );
 
-  if (result == null) return [];
+  if (files.isEmpty) return [];
 
   final newItems = <TaskAttachment>[];
 
-  for (final file in result.files) {
+  for (final file in files) {
     final originalName = file.name;
-    final ext = (file.extension ?? p.extension(originalName).replaceFirst('.', '')).toLowerCase();
+    final rawExt = p.extension(originalName).replaceFirst('.', '');
+    final ext = rawExt.isNotEmpty ? rawExt.toLowerCase() : '';
+
     final uniqueName = '${DateTime.now().microsecondsSinceEpoch}_$originalName'.replaceAll(
       '/',
       '_',
     );
 
-    final bytes = file.bytes;
-    if (bytes == null) continue;
+    // В v12 считывание байтов выполняется через readAsBytes()
+    final bytes = await file.readAsBytes();
 
     newItems.add(
       TaskAttachment(

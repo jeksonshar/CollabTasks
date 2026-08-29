@@ -11,6 +11,8 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+/x_implemented/
+.run/xcross_ios_device.run.xml
 
 # IntelliJ related
 *.iml
