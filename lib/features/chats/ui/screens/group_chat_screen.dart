@@ -162,7 +162,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
         itemBuilder: (context, index) {
           final message = messages[index];
           final isMe = message.senderId == state.currentUserId;
-          return MessageBubble(message: message, isMe: isMe, isGroupChat: true);
+          return MessageBubble(
+            key: ValueKey(message.id),
+            message: message,
+            isMe: isMe,
+            isGroupChat: true,
+          );
         },
       );
     }

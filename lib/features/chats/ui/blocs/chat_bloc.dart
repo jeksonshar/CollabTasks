@@ -98,12 +98,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   void _onMessagesUpdated(MessagesUpdated event, Emitter<ChatState> emit) {
+    final sortedMessages = List<MessageEntity>.from(event.messages)
+      ..sort((a, b) {
+        final cmp = b.createdAtMillis.compareTo(a.createdAtMillis);
+        if (cmp != 0) return cmp;
+        return b.id.compareTo(a.id);
+      });
     if (state is ChatLoaded) {
-      emit((state as ChatLoaded).copyWith(messages: event.messages));
+      emit((state as ChatLoaded).copyWith(messages: sortedMessages));
     } else {
       emit(
         ChatLoaded(
-          messages: event.messages,
+          messages: sortedMessages,
           opponentEmail: _opponentEmail,
           currentUserId: _currentUserEmail,
         ),

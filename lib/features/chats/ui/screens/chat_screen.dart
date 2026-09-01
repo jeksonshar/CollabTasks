@@ -245,12 +245,14 @@ Widget _buildBody(BuildContext context, ChatState state, String chatId) {
     }
 
     return ListView.builder(
+      key: ValueKey('chat_list_$chatId'),
       reverse: true,
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
         final isMe = message.senderId == state.currentUserId;
         return MessageBubble(
+          key: ValueKey(message.id),
           message: message,
           isMe: isMe,
           isGroupChat: false,

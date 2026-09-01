@@ -134,12 +134,9 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
   // При подписке на чат — сразу отдаём историю сообщений и статус участников
   if (topicId.startsWith('chat:')) {
     const chatId = topicId.slice(5);
-    // Добавлен await для db.getMessages
     const messages = await db.getMessages(chatId);
-    // Отдаём все сообщения как серию new_message событий
-    for (const message of messages.slice().reverse()) {
-      sendToClient(client, { type: 'new_message', chatId, message });
-    }
+    // Отдаём всю историю одним атомарным событием (устраняет дёрганье UI)
+    sendToClient(client, { type: 'messages_history', chatId, messages });
 
     const clientIdentifiers = [
       client.user.userId.trim().toLowerCase(),
@@ -160,7 +157,6 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
     }
 
     // 2. Отправляем актуальный статус собеседников вошедшему пользователю
-    // Добавлен await для db.getChatById
     const chat = await db.getChatById(chatId);
     if (chat && chat.type === 'direct') {
       for (const participantId of chat.participantIds) {
@@ -169,7 +165,6 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
 
         // Пользователь онлайн в этом чате, если он сейчас подписан на данный топик
         const online = isUserSubscribed(normParticipant, topicId);
-        // Добавлен await для db.getLastSeen
         const lastSeenMs = online ? undefined : await db.getLastSeen(normParticipant);
 
         sendToClient(client, {
@@ -182,11 +177,9 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
     }
   } else if (topicId.startsWith('group:')) {
     const groupId = topicId.slice(6);
-    // Добавлен await для db.getGroupMessages
     const messages = await db.getGroupMessages(groupId);
-    for (const message of messages.slice().reverse()) {
-      sendToClient(client, { type: 'new_group_message', groupId, message });
-    }
+    // Отдаём всю историю одним атомарным событием
+    sendToClient(client, { type: 'group_messages_history', groupId, messages });
   }
 }
 

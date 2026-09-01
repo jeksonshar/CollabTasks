@@ -221,6 +221,10 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
       case 'new_group_message':
         _handleNewMessage(data);
 
+      case 'messages_history':
+      case 'group_messages_history':
+        _handleMessagesHistory(data);
+
       case 'message_deleted':
       case 'group_message_deleted':
         _handleMessageDeleted(data);
@@ -329,6 +333,38 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
     _messagesCache[topicKey] = current;
     _topicControllers[topicKey]?.add(List.unmodifiable(current));
+  }
+
+  /// Обрабатывает входящее событие `messages_history` / `group_messages_history`.
+  /// Атомарно заполняет кэш всей историей за один раз, предотвращая дёрганье UI.
+  void _handleMessagesHistory(Map<String, dynamic> data) {
+    final rawMessages = data['messages'] as List<dynamic>?;
+    final topicKey = (data['chatId'] ?? data['groupId']) as String?;
+
+    if (rawMessages == null || topicKey == null) {
+      debugPrint('[WS] messages_history / group_messages_history: отсутствуют обязательные поля');
+      return;
+    }
+
+    final parsedMessages = <MessageDto>[];
+    for (final raw in rawMessages) {
+      if (raw is Map<String, dynamic>) {
+        parsedMessages.add(MessageDto.fromFirestore(raw, raw['id'] as String? ?? ''));
+      }
+    }
+
+    // Сортировка: новейшие сначала, при совпадении timestamp — по id
+    parsedMessages.sort((a, b) {
+      final cmp = b.createdAtMillis.compareTo(a.createdAtMillis);
+      if (cmp != 0) return cmp;
+      return b.id.compareTo(a.id);
+    });
+
+    _messagesCache[topicKey] = parsedMessages;
+    _topicControllers[topicKey]?.add(List.unmodifiable(parsedMessages));
+    debugPrint(
+      '[WS] Получена история сообщений для топика $topicKey: ${parsedMessages.length} шт.',
+    );
   }
 
   void _handleMessageDeleted(Map<String, dynamic> data) {
@@ -529,18 +565,18 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
           _activeTopicIds[key] = topicId;
           _send({'type': 'subscribe_topic', 'topicId': topicId});
           debugPrint('[WS] Подписка на топик: $topicId');
-          // После subscribe сервер пришлёт историю через new_message,
-          // но если чат пуст — ничего не придёт и стрим молчал бы вечно.
-          // Поэтому через microtask гарантированно эмитим текущее состояние
-          // кэша (даже пустой список), чтобы Bloc перешёл из Loading → Loaded.
-          Future.microtask(() {
-            final cached = _messagesCache[key];
-            _topicControllers[key]?.add(List.unmodifiable(cached ?? []));
-          });
-        } else {
-          // Повторный слушатель — отдаём кэш если не пустой.
+
+          // Если в кэше уже есть данные от предыдущего открытия, сразу отдаём их
           final cached = _messagesCache[key];
-          if (cached != null && cached.isNotEmpty) {
+          if (cached != null) {
+            Future.microtask(() {
+              _topicControllers[key]?.add(List.unmodifiable(cached));
+            });
+          }
+        } else {
+          // Повторный слушатель — отдаём кэш если он инициализирован
+          final cached = _messagesCache[key];
+          if (cached != null) {
             _topicControllers[key]?.add(List.unmodifiable(cached));
           }
         }

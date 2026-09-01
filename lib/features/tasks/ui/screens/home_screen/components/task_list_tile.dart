@@ -189,7 +189,11 @@ class _TaskListTileState extends State<TaskListTile> {
                 transitionBuilder: (child, animation) {
                   return FadeTransition(
                     opacity: animation,
-                    child: SizeTransition(sizeFactor: animation, axisAlignment: -1, child: child),
+                    child: SizeTransition(
+                      sizeFactor: animation,
+                      alignment: Alignment.topCenter,
+                      child: child,
+                    ),
                   );
                 },
                 child: _isExpanded

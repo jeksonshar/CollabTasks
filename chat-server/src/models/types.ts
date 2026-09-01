@@ -215,10 +215,24 @@ export interface TypingOutbound {
   isTyping: boolean;
 }
 
+export interface MessagesHistoryOutbound {
+  type: 'messages_history';
+  chatId: string;
+  messages: MessageDto[];
+}
+
+export interface GroupMessagesHistoryOutbound {
+  type: 'group_messages_history';
+  groupId: string;
+  messages: MessageDto[];
+}
+
 /** Объединение всех исходящих событий */
 export type OutboundEvent =
   | NewMessageOutbound
   | NewGroupMessageOutbound
+  | MessagesHistoryOutbound
+  | GroupMessagesHistoryOutbound
   | ChatListOutbound
   | DirectChatCreatedOutbound
   | ChatByIdOutbound
