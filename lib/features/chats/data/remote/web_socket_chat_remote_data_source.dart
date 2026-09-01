@@ -590,8 +590,14 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   @override
   Future<List<ChatDto>> getChats(String userId) async {
+    _clearPendingForType('chat_list');
+    final future = _enqueue<List<ChatDto>>('chat_list');
     await _send({'type': 'get_chats', 'userId': userId});
-    return _enqueue<List<ChatDto>>('chat_list');
+    return future.timeout(
+      const Duration(seconds: 120),
+      onTimeout: () =>
+          throw const WebSocketConnectionException('Превышено время ожидания списка чатов (120 с)'),
+    );
   }
 
   @override
@@ -619,14 +625,25 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   @override
   Future<ChatDto?> getChatById(String chatId) async {
+    final future = _enqueue<ChatDto?>('chat_by_id');
     await _send({'type': 'get_chat_by_id', 'chatId': chatId});
-    return _enqueue<ChatDto?>('chat_by_id');
+    return future.timeout(
+      const Duration(seconds: 120),
+      onTimeout: () =>
+          throw const WebSocketConnectionException('Превышено время ожидания данных чата (120 с)'),
+    );
   }
 
   @override
   Future<GroupChatDto?> getGroupChatById(String chatId) async {
+    final future = _enqueue<GroupChatDto?>('group_chat_by_id');
     await _send({'type': 'get_group_chat_by_id', 'chatId': chatId});
-    final serverChat = await _enqueue<GroupChatDto?>('group_chat_by_id');
+    final serverChat = await future.timeout(
+      const Duration(seconds: 120),
+      onTimeout: () => throw const WebSocketConnectionException(
+        'Превышено время ожидания данных группового чата (120 с)',
+      ),
+    );
     if (serverChat != null && serverChat.title.isNotEmpty) {
       return serverChat;
     }

@@ -232,24 +232,26 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
   /// WebSocket-сервера (Render free tier может запускаться до 60 секунд).
   Widget _buildConnectingOverlay(BuildContext context, AppLocalizations localization) {
     return Positioned.fill(
-      child: ColoredBox(
-        color: Colors.black45,
-        child: Center(
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(
-                    localization.chat_connectingToServer,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+      child: AbsorbPointer(
+        child: ColoredBox(
+          color: Colors.black45,
+          child: Center(
+            child: Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      localization.chat_connectingToServer,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

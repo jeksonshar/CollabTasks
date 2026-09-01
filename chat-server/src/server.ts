@@ -10,11 +10,12 @@ import WebSocket, { WebSocketServer } from 'ws';
 
 import { authenticateRequest } from './middleware/authMiddleware';
 import {
+  AuthenticatedSocket,
   addConnection,
   removeConnection,
   startHeartbeat,
   handlePong,
-  broadcastUserStatus, // Тепер async
+  broadcastUserStatus,
 } from './websocket/connectionManager';
 import { unsubscribeAll } from './websocket/subscriptionManager';
 import { handleEvent } from './controllers/chatController';
@@ -82,45 +83,71 @@ async function main(): Promise<void> {
   // Обработка новых WS-подключений
   // ─────────────────────────────────────────────────────────────
 
-  wss.on('connection', async (ws: WebSocket, req: http.IncomingMessage) => {
+  wss.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
     console.log(
         `[Server] Новое WS-подключение от ${req.socket.remoteAddress ?? 'unknown'}`
     );
 
-    // ── 1. Аутентификация через JWT токен (выбранного провайдера) ──
-    let user;
-    try {
-      user = await authenticateRequest(req);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.warn(`[Server] Отклонено подключение: ${message}`);
-      ws.send(JSON.stringify({ type: 'error', message }));
-      ws.close(1008, 'Unauthorized'); // 1008 = Policy Violation
-      return;
-    }
+    let client: AuthenticatedSocket | null = null;
+    let isClosed = false;
+    const messageBuffer: WebSocket.RawData[] = [];
 
-    // ── 2. Регистрация аутентифицированного клиента (в памяти) ──
-    const client = addConnection(ws, user);
-
-    // ── 3. Рассылаем user_status_changed (online) всем контактам (direct-чатам) ──
-    // !!! ВАЖНО: Функция broadcastUserStatus теперь async, добавляем await !!!
-    await broadcastUserStatus(user, 'online');
-
-    // ── 4. Heartbeat: помечаем живым при получении pong (в памяти) ──
+    // ── 1. Немедленно регистрируем heartbeat, ошибки и закрытие ──
     ws.on('pong', () => {
       handlePong(ws);
     });
 
-    // ── 5. Входящие сообщения ──
-    ws.on('message', async (rawData: WebSocket.RawData) => {
-      let event: InboundEvent;
+    ws.on('error', (err: Error) => {
+      console.error('[Server] Ошибка сокета:', err.message);
+    });
 
-      // Парсим JSON
+    ws.on('close', async (code: number, reason: Buffer) => {
+      isClosed = true;
+      if (!client) {
+        console.log(`[Server] Неаутентифицированный WS закрыт: code=${code}`);
+        return;
+      }
+
+      const { user } = client;
+      console.log(
+          `[Server] WS закрыт: userId=${user.userId} ` +
+          `code=${code} reason=${reason.toString() || '—'}`
+      );
+
+      unsubscribeAll(client);
+
+      // Сохраняем lastSeen в PostgreSQL и рассылаем offline-статус
+      const lastSeenMs = Date.now();
+      const dbPromises: Promise<void>[] = [];
+      dbPromises.push(upsertLastSeen(user.userId, lastSeenMs));
+      if (user.email) {
+        dbPromises.push(upsertLastSeen(user.email, lastSeenMs));
+      }
+
+      try {
+        await Promise.all(dbPromises);
+      } catch (err) {
+        console.error(`[Server] Ошибка сохранения lastSeen для userId=${user.userId}:`, err);
+      }
+
+      removeConnection(ws);
+
+      // Рассылаем offline-статус в фоне
+      void broadcastUserStatus(user, 'offline', lastSeenMs).catch((err) => {
+        console.error(`[Server] Ошибка рассылки offline-статуса для userId=${user.userId}:`, err);
+      });
+    });
+
+    // ── 2. Функция обработки входящего сообщения ──
+    const processMessage = async (rawData: WebSocket.RawData) => {
+      if (!client) return;
+
+      let event: InboundEvent;
       try {
         const text = rawData.toString('utf8');
         event = JSON.parse(text) as InboundEvent;
       } catch {
-        console.warn(`[Server] Невалидный JSON от userId=${user.userId}`);
+        console.warn(`[Server] Невалидный JSON от userId=${client.user.userId}`);
         ws.send(JSON.stringify({ type: 'error', message: 'Невалидный JSON формат' }));
         return;
       }
@@ -133,13 +160,11 @@ async function main(): Promise<void> {
         return;
       }
 
-      // Диспетчеризируем событие в контроллер
-      // В контроллере все методы тоже асинхронные, вызываются с await.
       try {
         await handleEvent(client, event);
       } catch (err) {
         console.error(
-            `[Server] Необработанная ошибка при обработке события от userId=${user.userId}:`,
+            `[Server] Необработанная ошибка при обработке события от userId=${client.user.userId}:`,
             err
         );
         ws.send(
@@ -149,43 +174,53 @@ async function main(): Promise<void> {
             })
         );
       }
+    };
+
+    // ── 3. Немедленно вешаем слушатель сообщений (буферизует до завершения аутентификации) ──
+    ws.on('message', async (rawData: WebSocket.RawData) => {
+      if (!client) {
+        messageBuffer.push(rawData);
+        return;
+      }
+      await processMessage(rawData);
     });
 
-    // ── 6. Обработка закрытия соединения ──
-    ws.on('close', async (code: number, reason: Buffer) => {
-      console.log(
-          `[Server] WS закрыт: userId=${user.userId} ` +
-          `code=${code} reason=${reason.toString() || '—'}`
-      );
-
-      unsubscribeAll(client);
-
-      // Сохраняем lastSeen в PostgreSQL и рассылаем offline-статус до удаления сокета
-      const lastSeenMs = Date.now();
-      // !!! ВАЖНО: Функции стали async, добавляем Promise.all и await !!!
-      const dbPromises: Promise<void>[] = [];
-      dbPromises.push(upsertLastSeen(user.userId, lastSeenMs));
-      if (user.email) {
-        dbPromises.push(upsertLastSeen(user.email, lastSeenMs));
+    // ── 4. Асинхронная аутентификация и регистрация клиента ──
+    (async () => {
+      let user;
+      try {
+        user = await authenticateRequest(req);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`[Server] Отклонено подключение: ${message}`);
+        ws.send(JSON.stringify({ type: 'error', message }));
+        ws.close(1008, 'Unauthorized');
+        return;
       }
 
-      // Ожидаем сохранения времени выхода
-      await Promise.all(dbPromises);
+      if (isClosed || ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
 
-      removeConnection(ws);
+      client = addConnection(ws, user);
+      console.log(`[Server] ✅ Авторизован: userId=${user.userId} email=${user.email}`);
 
-      // notify neighbours: уведомляем контакты в direct-чатах о переходе в offline
-      // !!! ВАЖНО: Функция broadcastUserStatus теперь async, добавляем await !!!
-      await broadcastUserStatus(user, 'offline', lastSeenMs);
+      // Рассылаем online-статус в фоне, не блокируя очередь сообщений
+      void broadcastUserStatus(user, 'online').catch((err) => {
+        console.error(`[Server] Ошибка рассылки online-статуса для userId=${user.userId}:`, err);
+      });
+
+      // Обрабатываем накопившиеся во время рукопожатия сообщения
+      while (messageBuffer.length > 0) {
+        const bufferedData = messageBuffer.shift();
+        if (bufferedData) {
+          await processMessage(bufferedData);
+        }
+      }
+    })().catch((err) => {
+      console.error('[Server] Ошибка во время инициализации подключения:', err);
+      ws.close(1011, 'Internal error during authentication');
     });
-
-    // ── 7. Обработка ошибок сокета ──
-    ws.on('error', (err: Error) => {
-      console.error(`[Server] Ошибка сокета userId=${user.userId}:`, err.message);
-      // close-событие будет вызвано автоматически после ошибки
-    });
-
-    console.log(`[Server] ✅ Авторизован: userId=${user.userId} email=${user.email}`);
   });
 
   // ─────────────────────────────────────────────────────────────
