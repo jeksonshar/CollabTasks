@@ -233,11 +233,28 @@ async function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: stri
 }
 
 // ─────────────────────────────────────────────────────────────
+// Монотонный серверный генератор времени сообщений
+// Гарантирует строгий хронологический порядок даже при быстрой отправке
+// и исключает рассинхронизацию часов между клиентами.
+// ─────────────────────────────────────────────────────────────
+
+let lastServerTimestamp = 0;
+
+function nextServerTimestamp(): number {
+  const now = Date.now();
+  if (now > lastServerTimestamp) {
+    lastServerTimestamp = now;
+  } else {
+    lastServerTimestamp += 1;
+  }
+  return lastServerTimestamp;
+}
+
+// ─────────────────────────────────────────────────────────────
 // send_message
 // Зеркало: sendMessage(chatId, message)
 // ─────────────────────────────────────────────────────────────
 
-// Функция уже была async, добавлены await внутри
 async function handleSendMessage(
     client: AuthenticatedSocket,
     chatId: string,
@@ -248,16 +265,23 @@ async function handleSendMessage(
     return;
   }
 
-  // 1. Сохраняем сообщение в БД (добавлен await)
-  await db.insertMessage(chatId, message);
+  // Присваиваем монотонное серверное время
+  const serverTimestamp = nextServerTimestamp();
+  const normalizedMessage: MessageDto = {
+    ...message,
+    createdAtMillis: serverTimestamp,
+  };
 
-  // 2. Обновляем lastMessage у чата (добавлен await)
-  await db.updateChatLastMessage(chatId, message.text, message.createdAtMillis);
+  // 1. Сохраняем сообщение в БД
+  await db.insertMessage(chatId, normalizedMessage);
+
+  // 2. Обновляем lastMessage у чата
+  await db.updateChatLastMessage(chatId, normalizedMessage.text, serverTimestamp);
 
   // 3. Рассылаем всем подписчикам топика "chat:<chatId>"
   const topicId = chatTopicKey(chatId);
   const subscribers = getSubscribers(topicId);
-  const outboundEvent = { type: 'new_message' as const, chatId, message };
+  const outboundEvent = { type: 'new_message' as const, chatId, message: normalizedMessage };
 
   for (const subscriber of subscribers) {
     sendToClient(subscriber, outboundEvent);
@@ -265,19 +289,17 @@ async function handleSendMessage(
 
   console.log(
       `[ChatController] Сообщение в чате ${chatId} от ${client.user.userId} ` +
-      `→ доставлено ${subscribers.length} подписчикам`
+      `→ доставлено ${subscribers.length} подписчикам (ts=${serverTimestamp})`
   );
 
   // 4. FCM для offline-получателей
-  // Добавлен await для db.getChatById
   const chat = await db.getChatById(chatId);
   if (chat) {
-    // sendDirectChatPushNotification уже async и вызывается с await
     await sendDirectChatPushNotification(
         chatId,
-        message.senderId,
-        message.senderName,
-        message.text,
+        normalizedMessage.senderId,
+        normalizedMessage.senderName,
+        normalizedMessage.text,
         chat.participantIds
     );
   }
@@ -288,7 +310,6 @@ async function handleSendMessage(
 // Зеркало: sendGroupMessage(groupId, message)
 // ─────────────────────────────────────────────────────────────
 
-// Функция уже была async, добавлены await внутри
 async function handleSendGroupMessage(
     client: AuthenticatedSocket,
     groupId: string,
@@ -299,13 +320,20 @@ async function handleSendGroupMessage(
     return;
   }
 
-  // 1. Сохраняем сообщение в БД (добавлен await)
-  await db.insertGroupMessage(groupId, message);
+  // Присваиваем монотонное серверное время
+  const serverTimestamp = nextServerTimestamp();
+  const normalizedMessage: MessageDto = {
+    ...message,
+    createdAtMillis: serverTimestamp,
+  };
+
+  // 1. Сохраняем сообщение в БД
+  await db.insertGroupMessage(groupId, normalizedMessage);
 
   // 2. Рассылаем всем подписчикам топика "group:<groupId>"
   const topicId = groupTopicKey(groupId);
   const subscribers = getSubscribers(topicId);
-  const outboundEvent = { type: 'new_group_message' as const, groupId, message };
+  const outboundEvent = { type: 'new_group_message' as const, groupId, message: normalizedMessage };
 
   for (const subscriber of subscribers) {
     sendToClient(subscriber, outboundEvent);
@@ -313,23 +341,21 @@ async function handleSendGroupMessage(
 
   console.log(
       `[ChatController] Сообщение в группе ${groupId} от ${client.user.userId} ` +
-      `→ доставлено ${subscribers.length} подписчикам`
+      `→ доставлено ${subscribers.length} подписчикам (ts=${serverTimestamp})`
   );
 
   // 3. FCM для участников группы
-  // Добавлен await для db.getGroupChatById
   const groupChat = await db.getGroupChatById(groupId);
   if (groupChat) {
     const allParticipants = [
       ...(groupChat.participantUserIds ?? []),
       ...(groupChat.participantEmails ?? []),
     ];
-    // sendGroupChatPushNotification уже async и вызывается с await
     await sendGroupChatPushNotification(
         groupId,
-        message.senderId,
-        message.senderName,
-        message.text,
+        normalizedMessage.senderId,
+        normalizedMessage.senderName,
+        normalizedMessage.text,
         allParticipants
     );
   }

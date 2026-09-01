@@ -313,15 +313,22 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     final dto = MessageDto.fromFirestore(msgMap, msgMap['id'] as String? ?? '');
 
     final current = List<MessageDto>.from(_messagesCache[topicKey] ?? []);
-    // Дедупликация по id
-    if (!current.any((m) => m.id == dto.id)) {
-      current
-        ..insert(0, dto)
-        // Сортировка: новейшие сначала
-        ..sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
-      _messagesCache[topicKey] = current;
-      _topicControllers[topicKey]?.add(List.unmodifiable(current));
+    final existingIndex = current.indexWhere((m) => m.id == dto.id);
+    if (existingIndex >= 0) {
+      current[existingIndex] = dto;
+    } else {
+      current.insert(0, dto);
     }
+
+    // Сортировка: новейшие сначала, при совпадении timestamp — по id (стабильный порядок)
+    current.sort((a, b) {
+      final cmp = b.createdAtMillis.compareTo(a.createdAtMillis);
+      if (cmp != 0) return cmp;
+      return b.id.compareTo(a.id);
+    });
+
+    _messagesCache[topicKey] = current;
+    _topicControllers[topicKey]?.add(List.unmodifiable(current));
   }
 
   void _handleMessageDeleted(Map<String, dynamic> data) {

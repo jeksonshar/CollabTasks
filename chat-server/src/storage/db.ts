@@ -223,7 +223,7 @@ export async function findDirectChat(
 
 export async function getMessages(chatId: string): Promise<MessageDto[]> {
   const rows = await queryAll<AnyRow>(
-      'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at_ms DESC',
+      'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at_ms DESC, id DESC',
       [chatId]
   );
   return rows.map(rowToMessage);
@@ -285,7 +285,7 @@ export async function upsertGroupChat(chat: GroupChatDto): Promise<void> {
 
 export async function getGroupMessages(groupId: string): Promise<MessageDto[]> {
   const rows = await queryAll<AnyRow>(
-      'SELECT * FROM group_messages WHERE group_id = $1 ORDER BY created_at_ms DESC',
+      'SELECT * FROM group_messages WHERE group_id = $1 ORDER BY created_at_ms DESC, id DESC',
       [groupId]
   );
   return rows.map(rowToMessage);
