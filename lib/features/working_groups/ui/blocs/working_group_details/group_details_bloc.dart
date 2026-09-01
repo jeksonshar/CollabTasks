@@ -252,21 +252,14 @@ class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
     GroupParticipantChatOpened event,
     Emitter<GroupDetailsState> emit,
   ) async {
-    emit(state.copyWith(isConnectingToChat: true));
     try {
       final result = await _getOrCreateDirectChatUseCase(
         groupId: event.groupId,
         participantCompositeId: event.participantCompositeId,
       );
-      emit(state.copyWith(isConnectingToChat: false, pendingDirectChat: result));
+      emit(state.copyWith(pendingDirectChat: result));
     } catch (error) {
-      emit(
-        state.copyWith(
-          isConnectingToChat: false,
-          status: GroupDetailsStatus.error,
-          errorMessage: error.toString(),
-        ),
-      );
+      emit(state.copyWith(status: GroupDetailsStatus.error, errorMessage: error.toString()));
     }
   }
 }

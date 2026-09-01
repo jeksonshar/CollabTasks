@@ -278,6 +278,24 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     if (queue.isEmpty) _pendingCompleters.remove(responseType);
   }
 
+  /// Отменяет **все** ожидающие Completers указанного типа.
+  ///
+  /// Вызывать перед регистрацией нового запроса того же типа, чтобы
+  /// не накапливать «мёртвые» [Completer]'ы из предыдущих сессий.
+  /// DataSource — синглтон, поэтому без явной очистки устаревший
+  /// Completer остаётся в очереди и «съедает» следующий ответ сервера.
+  void _clearPendingForType(String responseType) {
+    final queue = _pendingCompleters.remove(responseType);
+    if (queue == null) return;
+    const error = WebSocketConnectionException('Запрос отменён: начат новый запрос того же типа');
+    for (final request in queue) {
+      request.completeError(error);
+    }
+    debugPrint(
+      '[WS] Очищены устаревшие Completer\'ы для типа: $responseType (${queue.length} шт.)',
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Обработка событий реального времени
   // ---------------------------------------------------------------------------
@@ -578,8 +596,25 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   @override
   Future<String> getOrCreateDirectChat(String targetUserId) async {
+    // 1. Очищаем устаревшие Completers от прошлых сессий.
+    //    DataSource — синглтон: без очистки старый Completer «съедает» ответ
+    //    нового запроса и новый зависает навсегда.
+    _clearPendingForType('direct_chat_created');
+
+    // 2. Регистрируем Completer ДО отправки сообщения, чтобы не потерять
+    //    ответ, который может прийти немедленно после reconnect.
+    final future = _enqueue<String>('direct_chat_created');
+
     await _send({'type': 'get_or_create_direct_chat', 'targetUserId': targetUserId});
-    return _enqueue<String>('direct_chat_created');
+
+    // 3. Таймаут 120 с: гарантирует завершение Future при любом исходе.
+    //    Render free-tier cold start занимает до 60 с — берём с запасом.
+    return future.timeout(
+      const Duration(seconds: 120),
+      onTimeout: () => throw const WebSocketConnectionException(
+        'Превышено время ожидания ответа от сервера (120 с)',
+      ),
+    );
   }
 
   @override
