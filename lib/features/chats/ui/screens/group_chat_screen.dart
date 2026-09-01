@@ -3,6 +3,7 @@ import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
+import 'package:collab_tasks/features/chats/ui/screens/components/chat_date_separator.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_bubble.dart';
 import 'package:collab_tasks/features/chats/ui/screens/components/message_input_field.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
@@ -162,16 +163,43 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
         itemBuilder: (context, index) {
           final message = messages[index];
           final isMe = message.senderId == state.currentUserId;
-          return MessageBubble(
+          final messageDate = DateTime.fromMillisecondsSinceEpoch(
+            message.createdAtMillis,
+          ).toLocal();
+
+          final isFirstMessageOfDay =
+              index == messages.length - 1 ||
+              !_isSameDay(
+                messageDate,
+                DateTime.fromMillisecondsSinceEpoch(messages[index + 1].createdAtMillis).toLocal(),
+              );
+
+          final bubble = MessageBubble(
             key: ValueKey(message.id),
             message: message,
             isMe: isMe,
             isGroupChat: true,
           );
+
+          if (isFirstMessageOfDay) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ChatDateSeparator(date: messageDate),
+                bubble,
+              ],
+            );
+          }
+
+          return bubble;
         },
       );
     }
 
     return const SizedBox.shrink();
   }
+}
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
