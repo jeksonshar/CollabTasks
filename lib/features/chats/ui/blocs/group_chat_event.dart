@@ -25,3 +25,7 @@ class SendGroupMessageEvent extends GroupChatEvent {
   @override
   List<Object?> get props => [groupChatId, textMessage];
 }
+
+class LoadMoreGroupMessagesEvent extends GroupChatEvent {
+  const LoadMoreGroupMessagesEvent();
+}

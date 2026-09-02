@@ -79,3 +79,8 @@ class TypingStatusUpdated extends ChatEvent {
   @override
   List<Object?> get props => [typingStatus];
 }
+
+/// Событие подгрузки следующей страницы более старых сообщений.
+class LoadMoreMessages extends ChatEvent {
+  const LoadMoreMessages();
+}

@@ -1,4 +1,5 @@
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
+import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
@@ -25,13 +26,23 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBindingObserver {
   late final ChatNotificationService _notificationService;
+  late final ScrollController _scrollController;
   ChatBloc? _chatBloc;
 
   @override
   void initState() {
     super.initState();
     _notificationService = getIt<ChatNotificationService>();
+    _scrollController = ScrollController()..addListener(_onScroll);
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - scrollThreshold) {
+      _chatBloc?.add(const LoadMoreMessages());
+    }
   }
 
   @override
@@ -59,6 +70,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
     if (_notificationService.activeChatId == widget.chatId) {
       _notificationService.activeChatId = null;
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -209,104 +221,120 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
       ],
     );
   }
-}
 
-Widget _buildSubtitleIndicator(Color color) {
-  return Container(
-    width: 6,
-    height: 6,
-    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  );
-}
-
-Widget _buildBody(BuildContext context, ChatState state, String chatId) {
-  if (state is ChatLoading) {
-    return const Center(child: CircularProgressIndicator());
-  }
-
-  if (state is ChatError) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          state.message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.red),
-        ),
-      ),
+  Widget _buildSubtitleIndicator(Color color) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
-  if (state is ChatLoaded) {
-    final messages = state.messages;
-    final localization = AppLocalizations.of(context)!;
-
-    if (messages.isEmpty) {
-      return Center(child: Text(localization.direct_chat_emptyMessagesTitle));
+  Widget _buildBody(BuildContext context, ChatState state, String chatId) {
+    if (state is ChatLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return ListView.builder(
-      key: ValueKey('chat_list_$chatId'),
-      reverse: true,
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        final isMe = message.senderId == state.currentUserId;
-        final messageDate = DateTime.fromMillisecondsSinceEpoch(message.createdAtMillis).toLocal();
+    if (state is ChatError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            state.message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
 
-        final isFirstMessageOfDay =
-            index == messages.length - 1 ||
-            !_isSameDay(
-              messageDate,
-              DateTime.fromMillisecondsSinceEpoch(messages[index + 1].createdAtMillis).toLocal(),
+    if (state is ChatLoaded) {
+      final messages = state.messages;
+      final localization = AppLocalizations.of(context)!;
+
+      if (messages.isEmpty) {
+        return Center(child: Text(localization.direct_chat_emptyMessagesTitle));
+      }
+
+      return ListView.builder(
+        key: ValueKey('chat_list_$chatId'),
+        controller: _scrollController,
+        reverse: true,
+        itemCount: messages.length + (state.isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == messages.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             );
+          }
 
-        final bubble = MessageBubble(
-          key: ValueKey(message.id),
-          message: message,
-          isMe: isMe,
-          isGroupChat: false,
-          onDelete: isMe
-              ? () {
-                  showDialog(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: Text(localization.direct_chat_deleteMessageConfirmationTitle),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: Text(localization.direct_chat_deleteMessageCancelBtn),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            context.read<ChatBloc>().add(DeleteMessageEvent(chatId, message.id));
-                            Navigator.pop(dialogContext);
-                          },
-                          child: Text(localization.direct_chat_deleteMessageConfirmBtn),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-              : null,
-        );
+          final message = messages[index];
+          final isMe = message.senderId == state.currentUserId;
+          final messageDate = DateTime.fromMillisecondsSinceEpoch(
+            message.createdAtMillis,
+          ).toLocal();
 
-        if (isFirstMessageOfDay) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ChatDateSeparator(date: messageDate),
-              bubble,
-            ],
+          final isFirstMessageOfDay =
+              index == messages.length - 1 ||
+              !_isSameDay(
+                messageDate,
+                DateTime.fromMillisecondsSinceEpoch(messages[index + 1].createdAtMillis).toLocal(),
+              );
+
+          final bubble = MessageBubble(
+            key: ValueKey(message.id),
+            message: message,
+            isMe: isMe,
+            isGroupChat: false,
+            onDelete: isMe
+                ? () {
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: Text(localization.direct_chat_deleteMessageConfirmationTitle),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: Text(localization.direct_chat_deleteMessageCancelBtn),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              context.read<ChatBloc>().add(DeleteMessageEvent(chatId, message.id));
+                              Navigator.pop(dialogContext);
+                            },
+                            child: Text(localization.direct_chat_deleteMessageConfirmBtn),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                : null,
           );
-        }
 
-        return bubble;
-      },
-    );
+          if (isFirstMessageOfDay) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ChatDateSeparator(date: messageDate),
+                bubble,
+              ],
+            );
+          }
+
+          return bubble;
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
   }
-
-  return const SizedBox.shrink();
 }
 
 bool _isSameDay(DateTime a, DateTime b) {

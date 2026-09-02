@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/features/chats/data/mappers/chat_ws_mappers.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/message_dto.dart';
@@ -101,6 +102,36 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> deleteMessage(String chatId, String messageId) {
     return _remoteDataSource.deleteMessage(chatId, messageId);
+  }
+
+  @override
+  Future<bool> loadMoreMessages(
+    String chatId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  }) {
+    return _remoteDataSource.loadMoreMessages(
+      chatId,
+      beforeCreatedAtMillis: beforeCreatedAtMillis,
+      beforeId: beforeId,
+      limit: limit,
+    );
+  }
+
+  @override
+  Future<bool> loadMoreGroupMessages(
+    String groupId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  }) {
+    return _remoteDataSource.loadMoreGroupMessages(
+      groupId,
+      beforeCreatedAtMillis: beforeCreatedAtMillis,
+      beforeId: beforeId,
+      limit: limit,
+    );
   }
 
   // ---------------------------------------------------------------------------

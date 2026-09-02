@@ -102,6 +102,16 @@ export async function handleEvent(
       await handleUpsertGroupChat(client, event.chat);
       break;
 
+    case 'load_more_messages':
+      await handleLoadMoreMessages(
+          client,
+          event.topicId,
+          event.beforeCreatedAtMillis,
+          event.beforeId,
+          event.limit
+      );
+      break;
+
     case 'typing':
       //typing не лезет в БД, оставляем синхронным
       handleTyping(client, event.chatId, event.isTyping);
@@ -134,9 +144,10 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
   // При подписке на чат — сразу отдаём историю сообщений и статус участников
   if (topicId.startsWith('chat:')) {
     const chatId = topicId.slice(5);
-    const messages = await db.getMessages(chatId);
-    // Отдаём всю историю одним атомарным событием (устраняет дёрганье UI)
-    sendToClient(client, { type: 'messages_history', chatId, messages });
+    // Загрузка первых сообщений для direct и group чатов, дефолтное количество должно соответствовать defaultLimitOnPage в chats_paging_constants.dart
+    const { messages, hasMore } = await db.getMessages(chatId, 30);
+    // Отдаём первую страницу истории одним атомарным событием (устраняет дёрганье UI)
+    sendToClient(client, { type: 'messages_history', chatId, messages, hasMore });
 
     const clientIdentifiers = [
       client.user.userId.trim().toLowerCase(),
@@ -177,9 +188,52 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
     }
   } else if (topicId.startsWith('group:')) {
     const groupId = topicId.slice(6);
-    const messages = await db.getGroupMessages(groupId);
-    // Отдаём всю историю одним атомарным событием
-    sendToClient(client, { type: 'group_messages_history', groupId, messages });
+    const { messages, hasMore } = await db.getGroupMessages(groupId, 30);
+    // Отдаём первую страницу истории одним атомарным событием
+    sendToClient(client, { type: 'group_messages_history', groupId, messages, hasMore });
+  }
+}
+
+async function handleLoadMoreMessages(
+    client: AuthenticatedSocket,
+    topicId: string,
+    beforeCreatedAtMillis: number,
+    beforeId: string,
+    limit: number = 30
+): Promise<void> {
+  if (!topicId) {
+    sendError(client, 'load_more_messages: topicId обязателен');
+    return;
+  }
+
+  if (topicId.startsWith('chat:')) {
+    const chatId = topicId.slice(5);
+    const { messages, hasMore } = await db.getMessages(
+        chatId,
+        limit,
+        beforeCreatedAtMillis,
+        beforeId
+    );
+    sendToClient(client, {
+      type: 'messages_page',
+      topicId,
+      messages,
+      hasMore,
+    });
+  } else if (topicId.startsWith('group:')) {
+    const groupId = topicId.slice(6);
+    const { messages, hasMore } = await db.getGroupMessages(
+        groupId,
+        limit,
+        beforeCreatedAtMillis,
+        beforeId
+    );
+    sendToClient(client, {
+      type: 'messages_page',
+      topicId,
+      messages,
+      hasMore,
+    });
   }
 }
 

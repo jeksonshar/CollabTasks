@@ -1,4 +1,5 @@
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
+import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
@@ -22,11 +23,22 @@ class GroupChatScreen extends StatefulWidget {
 
 class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
   late final ChatNotificationService _notificationService;
+  late final ScrollController _scrollController;
+  GroupChatBloc? _groupChatBloc;
 
   @override
   void initState() {
     super.initState();
     _notificationService = getIt<ChatNotificationService>();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - scrollThreshold) {
+      _groupChatBloc?.add(const LoadMoreGroupMessagesEvent());
+    }
   }
 
   @override
@@ -46,6 +58,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
     if (_notificationService.activeGroupId == widget.groupId) {
       _notificationService.activeGroupId = null;
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -80,7 +93,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
     final localizations = AppLocalizations.of(context)!;
 
     return BlocProvider<GroupChatBloc>(
-      create: (_) => getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(widget.groupId)),
+      create: (_) {
+        final bloc = getIt<GroupChatBloc>()..add(LoadGroupMessagesEvent(widget.groupId));
+        _groupChatBloc = bloc;
+        return bloc;
+      },
       child: BlocBuilder<GroupChatBloc, GroupChatState>(
         builder: (context, state) {
           String title = '';
@@ -158,9 +175,23 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
       }
 
       return ListView.builder(
+        controller: _scrollController,
         reverse: true,
-        itemCount: messages.length,
+        itemCount: messages.length + (state.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == messages.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
+
           final message = messages[index];
           final isMe = message.senderId == state.currentUserId;
           final messageDate = DateTime.fromMillisecondsSinceEpoch(

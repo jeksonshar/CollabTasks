@@ -28,6 +28,8 @@ import 'package:collab_tasks/features/chats/domain/use_cases/delete_message_use_
 import 'package:collab_tasks/features/chats/domain/use_cases/get_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_group_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/load_more_group_messages_use_case.dart';
+import 'package:collab_tasks/features/chats/domain/use_cases/load_more_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_message_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/send_typing_status_use_case.dart';
@@ -232,6 +234,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => WatchUserStatusUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => WatchTypingStatusUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(() => SendTypingStatusUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => LoadMoreMessagesUseCase(getIt<ChatRepository>()))
+    ..registerLazySingleton(() => LoadMoreGroupMessagesUseCase(getIt<ChatRepository>()))
     ..registerLazySingleton(
       () => GetOrCreateDirectChatUseCase(
         chatRepository: getIt<ChatRepository>(),
@@ -373,6 +377,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         watchUserStatusUseCase: getIt<WatchUserStatusUseCase>(),
         watchTypingStatusUseCase: getIt<WatchTypingStatusUseCase>(),
         sendTypingStatusUseCase: getIt<SendTypingStatusUseCase>(),
+        loadMoreMessagesUseCase: getIt<LoadMoreMessagesUseCase>(),
       ),
     )
     ..registerFactory<GroupChatBloc>(
@@ -381,6 +386,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         sendGroupMessageUseCase: getIt<SendGroupMessageUseCase>(),
         getGroupChatUseCase: getIt<GetGroupChatUseCase>(),
         getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
+        loadMoreGroupMessagesUseCase: getIt<LoadMoreGroupMessagesUseCase>(),
       ),
     );
 }

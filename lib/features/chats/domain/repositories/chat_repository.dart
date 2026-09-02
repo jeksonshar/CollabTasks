@@ -1,3 +1,4 @@
+import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/features/chats/domain/models/chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/group_chat_entity.dart';
 import 'package:collab_tasks/features/chats/domain/models/message_entity.dart';
@@ -26,6 +27,20 @@ abstract class ChatRepository {
   Future<GroupChatEntity?> getGroupChatById(String chatId);
 
   Future<void> deleteMessage(String chatId, String messageId);
+
+  Future<bool> loadMoreMessages(
+    String chatId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  });
+
+  Future<bool> loadMoreGroupMessages(
+    String groupId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  });
 
   Stream<UserStatusEntity> watchUserStatus(String userId);
 

@@ -221,12 +221,54 @@ export async function findDirectChat(
 // Messages (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export async function getMessages(chatId: string): Promise<MessageDto[]> {
-  const rows = await queryAll<AnyRow>(
-      'SELECT * FROM messages WHERE chat_id = $1 ORDER BY created_at_ms DESC, id DESC',
-      [chatId]
-  );
-  return rows.map(rowToMessage);
+export interface PaginatedMessages {
+  messages: MessageDto[];
+  hasMore: boolean;
+}
+
+export async function getMessages(
+    chatId: string,
+    limit: number = 30, // количество должно соответствовать значению limitOnPage в chats_paging_constants.dart
+    beforeCreatedAtMillis?: number,
+    beforeId?: string
+): Promise<PaginatedMessages> {
+  const fetchLimit = limit + 1;
+  let rows: AnyRow[];
+
+  if (beforeCreatedAtMillis !== undefined && beforeCreatedAtMillis > 0) {
+    if (beforeId) {
+      rows = await queryAll<AnyRow>(
+          `SELECT * FROM messages 
+           WHERE chat_id = $1 AND (created_at_ms < $2 OR (created_at_ms = $2 AND id < $3))
+           ORDER BY created_at_ms DESC, id DESC 
+           LIMIT $4`,
+          [chatId, beforeCreatedAtMillis, beforeId, fetchLimit]
+      );
+    } else {
+      rows = await queryAll<AnyRow>(
+          `SELECT * FROM messages 
+           WHERE chat_id = $1 AND created_at_ms < $2
+           ORDER BY created_at_ms DESC, id DESC 
+           LIMIT $3`,
+          [chatId, beforeCreatedAtMillis, fetchLimit]
+      );
+    }
+  } else {
+    rows = await queryAll<AnyRow>(
+        `SELECT * FROM messages 
+         WHERE chat_id = $1 
+         ORDER BY created_at_ms DESC, id DESC 
+         LIMIT $2`,
+        [chatId, fetchLimit]
+    );
+  }
+
+  const hasMore = rows.length > limit;
+  const resultRows = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    messages: resultRows.map(rowToMessage),
+    hasMore,
+  };
 }
 
 export async function insertMessage(chatId: string, message: MessageDto): Promise<void> {
@@ -283,12 +325,49 @@ export async function upsertGroupChat(chat: GroupChatDto): Promise<void> {
 // Group Messages (ВСЕ ФУНКЦИИ ASYNC)
 // ─────────────────────────────────────────────────────────────
 
-export async function getGroupMessages(groupId: string): Promise<MessageDto[]> {
-  const rows = await queryAll<AnyRow>(
-      'SELECT * FROM group_messages WHERE group_id = $1 ORDER BY created_at_ms DESC, id DESC',
-      [groupId]
-  );
-  return rows.map(rowToMessage);
+export async function getGroupMessages(
+    groupId: string,
+    limit: number = 30,
+    beforeCreatedAtMillis?: number,
+    beforeId?: string
+): Promise<PaginatedMessages> {
+  const fetchLimit = limit + 1;
+  let rows: AnyRow[];
+
+  if (beforeCreatedAtMillis !== undefined && beforeCreatedAtMillis > 0) {
+    if (beforeId) {
+      rows = await queryAll<AnyRow>(
+          `SELECT * FROM group_messages 
+           WHERE group_id = $1 AND (created_at_ms < $2 OR (created_at_ms = $2 AND id < $3))
+           ORDER BY created_at_ms DESC, id DESC 
+           LIMIT $4`,
+          [groupId, beforeCreatedAtMillis, beforeId, fetchLimit]
+      );
+    } else {
+      rows = await queryAll<AnyRow>(
+          `SELECT * FROM group_messages 
+           WHERE group_id = $1 AND created_at_ms < $2
+           ORDER BY created_at_ms DESC, id DESC 
+           LIMIT $3`,
+          [groupId, beforeCreatedAtMillis, fetchLimit]
+      );
+    }
+  } else {
+    rows = await queryAll<AnyRow>(
+        `SELECT * FROM group_messages 
+         WHERE group_id = $1 
+         ORDER BY created_at_ms DESC, id DESC 
+         LIMIT $2`,
+        [groupId, fetchLimit]
+    );
+  }
+
+  const hasMore = rows.length > limit;
+  const resultRows = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    messages: resultRows.map(rowToMessage),
+    hasMore,
+  };
 }
 
 export async function insertGroupMessage(groupId: string, message: MessageDto): Promise<void> {

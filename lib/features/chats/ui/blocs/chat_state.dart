@@ -23,6 +23,8 @@ class ChatLoaded extends ChatState {
   final String currentUserId;
   final UserStatusEntity? opponentStatus;
   final bool isOpponentTyping;
+  final bool hasMore;
+  final bool isLoadingMore;
 
   const ChatLoaded({
     required this.messages,
@@ -30,6 +32,8 @@ class ChatLoaded extends ChatState {
     required this.currentUserId,
     this.opponentStatus,
     this.isOpponentTyping = false,
+    this.hasMore = true,
+    this.isLoadingMore = false,
   });
 
   ChatLoaded copyWith({
@@ -38,6 +42,8 @@ class ChatLoaded extends ChatState {
     String? currentUserId,
     UserStatusEntity? opponentStatus,
     bool? isOpponentTyping,
+    bool? hasMore,
+    bool? isLoadingMore,
   }) {
     return ChatLoaded(
       messages: messages ?? this.messages,
@@ -45,6 +51,8 @@ class ChatLoaded extends ChatState {
       currentUserId: currentUserId ?? this.currentUserId,
       opponentStatus: opponentStatus ?? this.opponentStatus,
       isOpponentTyping: isOpponentTyping ?? this.isOpponentTyping,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 
@@ -55,6 +63,8 @@ class ChatLoaded extends ChatState {
     currentUserId,
     opponentStatus,
     isOpponentTyping,
+    hasMore,
+    isLoadingMore,
   ];
 }
 

@@ -117,6 +117,14 @@ export interface UpsertGroupChatEvent {
   chat: GroupChatDto;
 }
 
+export interface LoadMoreMessagesEvent {
+  type: 'load_more_messages';
+  topicId: string;
+  beforeCreatedAtMillis: number;
+  beforeId: string;
+  limit?: number;
+}
+
 /**
  * Клиент уведомляет сервер о том, что пользователь печатает / перестал печатать.
  * Сервер транслирует событие другим участникам прямого чата.
@@ -142,6 +150,7 @@ export type InboundEvent =
   | SyncFcmTokenEvent
   | RemoveFcmTokenEvent
   | UpsertGroupChatEvent
+  | LoadMoreMessagesEvent
   | TypingEvent;
 
 // ─────────────────────────────────────────────────────────────
@@ -219,12 +228,21 @@ export interface MessagesHistoryOutbound {
   type: 'messages_history';
   chatId: string;
   messages: MessageDto[];
+  hasMore: boolean;
 }
 
 export interface GroupMessagesHistoryOutbound {
   type: 'group_messages_history';
   groupId: string;
   messages: MessageDto[];
+  hasMore: boolean;
+}
+
+export interface MessagesPageOutbound {
+  type: 'messages_page';
+  topicId: string;
+  messages: MessageDto[];
+  hasMore: boolean;
 }
 
 /** Объединение всех исходящих событий */
@@ -233,6 +251,7 @@ export type OutboundEvent =
   | NewGroupMessageOutbound
   | MessagesHistoryOutbound
   | GroupMessagesHistoryOutbound
+  | MessagesPageOutbound
   | ChatListOutbound
   | DirectChatCreatedOutbound
   | ChatByIdOutbound

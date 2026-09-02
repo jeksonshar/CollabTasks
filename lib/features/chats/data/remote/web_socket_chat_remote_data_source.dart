@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/models/chat_dto.dart';
@@ -81,6 +82,9 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   /// Кэш сообщений: ключ — chatId или groupId.
   final Map<String, List<MessageDto>> _messagesCache = {};
+
+  /// Кэш флага наличия более старых сообщений: ключ — chatId или groupId.
+  final Map<String, bool> _hasMoreCache = {};
 
   /// StreamController'ы для активных подписок на топики.
   final Map<String, StreamController<List<MessageDto>>> _topicControllers = {};
@@ -225,6 +229,9 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
       case 'group_messages_history':
         _handleMessagesHistory(data);
 
+      case 'messages_page':
+        _handleMessagesPage(data);
+
       case 'message_deleted':
       case 'group_message_deleted':
         _handleMessageDeleted(data);
@@ -340,11 +347,14 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   void _handleMessagesHistory(Map<String, dynamic> data) {
     final rawMessages = data['messages'] as List<dynamic>?;
     final topicKey = (data['chatId'] ?? data['groupId']) as String?;
+    final hasMore = data['hasMore'] as bool? ?? false;
 
     if (rawMessages == null || topicKey == null) {
       debugPrint('[WS] messages_history / group_messages_history: отсутствуют обязательные поля');
       return;
     }
+
+    _hasMoreCache[topicKey] = hasMore;
 
     final parsedMessages = <MessageDto>[];
     for (final raw in rawMessages) {
@@ -363,8 +373,50 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     _messagesCache[topicKey] = parsedMessages;
     _topicControllers[topicKey]?.add(List.unmodifiable(parsedMessages));
     debugPrint(
-      '[WS] Получена история сообщений для топика $topicKey: ${parsedMessages.length} шт.',
+      '[WS] Получена история сообщений для топика $topicKey: ${parsedMessages.length} шт., hasMore: $hasMore',
     );
+  }
+
+  /// Обрабатывает входящую страницу старых сообщений `messages_page` при пагинации.
+  void _handleMessagesPage(Map<String, dynamic> data) {
+    final topicId = data['topicId'] as String? ?? '';
+    final topicKey = topicId.startsWith('chat:')
+        ? topicId.substring(5)
+        : (topicId.startsWith('group:') ? topicId.substring(6) : topicId);
+
+    final rawMessages = data['messages'] as List<dynamic>? ?? [];
+    final hasMore = data['hasMore'] as bool? ?? false;
+    _hasMoreCache[topicKey] = hasMore;
+
+    final parsedMessages = <MessageDto>[];
+    for (final raw in rawMessages) {
+      if (raw is Map<String, dynamic>) {
+        parsedMessages.add(MessageDto.fromFirestore(raw, raw['id'] as String? ?? ''));
+      }
+    }
+
+    final current = List<MessageDto>.from(_messagesCache[topicKey] ?? []);
+    final existingIds = current.map((m) => m.id).toSet();
+    for (final msg in parsedMessages) {
+      if (!existingIds.contains(msg.id)) {
+        current.add(msg);
+      }
+    }
+
+    // Сортировка: новейшие сначала, при совпадении timestamp — по id
+    current.sort((a, b) {
+      final cmp = b.createdAtMillis.compareTo(a.createdAtMillis);
+      if (cmp != 0) return cmp;
+      return b.id.compareTo(a.id);
+    });
+
+    _messagesCache[topicKey] = current;
+    _topicControllers[topicKey]?.add(List.unmodifiable(current));
+    debugPrint(
+      '[WS] Подгружена страница сообщений для топика $topicKey: ${parsedMessages.length} шт., всего в кэше: ${current.length}, hasMore: $hasMore',
+    );
+
+    _resolveFirst<bool>('messages_page', () => hasMore);
   }
 
   void _handleMessageDeleted(Map<String, dynamic> data) {
@@ -723,6 +775,60 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     await _send({'type': 'delete_message', 'chatId': chatId, 'messageId': messageId});
   }
 
+  @override
+  Future<bool> loadMoreMessages(
+    String chatId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  }) async {
+    final future = _enqueue<bool>('messages_page');
+    await _send({
+      'type': 'load_more_messages',
+      'topicId': 'chat:$chatId',
+      'beforeCreatedAtMillis': beforeCreatedAtMillis,
+      'beforeId': beforeId,
+      'limit': limit,
+    });
+    return future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _failFirst('messages_page', TimeoutException('[WS] Таймаут loadMoreMessages ($chatId)'));
+        return false;
+      },
+    );
+  }
+
+  @override
+  Future<bool> loadMoreGroupMessages(
+    String groupId, {
+    required int beforeCreatedAtMillis,
+    required String beforeId,
+    int limit = limitOnPage,
+  }) async {
+    final future = _enqueue<bool>('messages_page');
+    await _send({
+      'type': 'load_more_messages',
+      'topicId': 'group:$groupId',
+      'beforeCreatedAtMillis': beforeCreatedAtMillis,
+      'beforeId': beforeId,
+      'limit': limit,
+    });
+    return future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        _failFirst(
+          'messages_page',
+          TimeoutException('[WS] Таймаут loadMoreGroupMessages ($groupId)'),
+        );
+        return false;
+      },
+    );
+  }
+
+  /// Проверяет, есть ли ещё более старые сообщения на сервере для данного топика.
+  bool hasMoreMessages(String topicKey) => _hasMoreCache[topicKey] ?? true;
+
   // ---------------------------------------------------------------------------
   // Утилиты
   // ---------------------------------------------------------------------------
@@ -766,6 +872,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     _topicListenerCount.clear();
     _activeTopicIds.clear();
     _messagesCache.clear();
+    _hasMoreCache.clear();
 
     await _userStatusController.close();
     await _typingController.close();
