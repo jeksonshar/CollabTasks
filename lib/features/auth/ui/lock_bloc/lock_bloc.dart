@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/core/utils/auth_biometric_constants.dart';
 import 'package:collab_tasks/features/auth/data/services/biometric_secure_storage.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/authenticate_with_biometric_use_case.dart';
@@ -12,7 +14,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Manages biometric lock/unlock lifecycle:
 /// - Cold start lock check
-/// - Warm start (resume) lock check with inactivity timeout
+/// - Foreground inactivity timer ([kInactivityTimeout] of no touch/interaction)
+/// - Background / screen-lock inactivity timer ([kInactivityTimeout] elapsed since last activity)
 /// - Privacy screen overlay when backgrounded
 /// - Biometric toggle from Settings
 /// - Post-login biometric enrollment offer
@@ -34,10 +37,13 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     on<LockCheckRequested>(_onCheckRequested);
     on<LockAppPaused>(_onAppPaused);
     on<LockAppResumed>(_onAppResumed);
+    on<LockUserInteractionOccurred>(_onUserInteractionOccurred);
+    on<LockAuthStatusChanged>(_onAuthStatusChanged);
     on<LockAuthenticateRequested>(_onAuthenticateRequested);
     on<LockSignInWithPasswordRequested>(_onSignInWithPasswordRequested);
     on<LockBiometricToggled>(_onBiometricToggled);
     on<LockBiometricOfferResponded>(_onBiometricOfferResponded);
+    on<_LockTimeoutExpired>(_onTimeoutExpired);
     on<_LockResetRequested>((_, emit) => emit(const LockState()));
   }
 
@@ -48,8 +54,14 @@ class LockBloc extends Bloc<LockEvent, LockState> {
   final ClearBiometricDataUseCase _clearData;
   final String _authReason;
 
-  /// Timestamp when the app was put in background.
-  DateTime? _backgroundedAt;
+  /// Timer that fires when the user has not touched the screen for [kInactivityTimeout].
+  Timer? _inactivityTimer;
+
+  /// Timestamp of the last user interaction or resume.
+  DateTime? _lastActivityTime;
+
+  /// Throttling helper for user pointer interactions.
+  DateTime? _lastInteractionProcessedAt;
 
   /// Tracks whether the biometric dialog is currently presented.
   /// Prevents lifecycle pause/resume loops from re-triggering biometric checks.
@@ -84,6 +96,10 @@ class LockBloc extends Bloc<LockEvent, LockState> {
 
     emit(state.copyWith(isBiometricAvailable: isAvailable, isBiometricEnabled: isEnabled));
 
+    debugPrint(
+      'LockBloc._onCheckRequested: available=$isAvailable, enabled=$isEnabled, timeout=${kInactivityTimeout.inSeconds}s',
+    );
+
     final shouldLock = isEnabled && isAvailable;
     if (!shouldLock) {
       emit(state.copyWith(status: LockStatus.idle));
@@ -101,17 +117,17 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     add(const LockAuthenticateRequested());
   }
 
-  /// App went to background.
+  /// App went to background or screen was locked.
   void _onAppPaused(LockAppPaused event, Emitter<LockState> emit) {
-    // If biometric prompt is currently active, the pause is caused by the OS
-    // system dialog taking window focus — ignore it so we don't disrupt auth.
     if (_isAuthenticating) {
       debugPrint('LockBloc._onAppPaused: ignoring pause during active biometric auth');
       return;
     }
 
-    _backgroundedAt = DateTime.now();
-    debugPrint('LockBloc._onAppPaused: app backgrounded at $_backgroundedAt');
+    _inactivityTimer?.cancel();
+    _inactivityTimer = null;
+    _lastActivityTime = DateTime.now();
+    debugPrint('LockBloc._onAppPaused: app paused/hidden/inactive at $_lastActivityTime');
     emit(state.copyWith(status: LockStatus.privacyScreen));
   }
 
@@ -139,29 +155,70 @@ class LockBloc extends Bloc<LockEvent, LockState> {
       return;
     }
 
-    // 4. If app wasn't properly backgrounded, restore idle
-    if (_backgroundedAt == null) {
-      debugPrint('LockBloc._onAppResumed: no background timestamp, staying idle');
-      if (state.status == LockStatus.privacyScreen) {
-        emit(state.copyWith(status: LockStatus.idle));
-      }
-      return;
-    }
-
-    // 5. Check inactivity timeout
-    final elapsed = DateTime.now().difference(_backgroundedAt!);
-    _backgroundedAt = null;
-    debugPrint('LockBloc._onAppResumed: elapsed inactivity=$elapsed');
+    // 4. Calculate inactivity elapsed since last activity
+    final now = DateTime.now();
+    final elapsed = _lastActivityTime != null ? now.difference(_lastActivityTime!) : Duration.zero;
+    debugPrint(
+      'LockBloc._onAppResumed: elapsed inactivity=${elapsed.inSeconds}s / required=${kInactivityTimeout.inSeconds}s '
+      '(enabled=${state.isBiometricEnabled}, available=${state.isBiometricAvailable})',
+    );
 
     final shouldLock =
         state.isBiometricEnabled && state.isBiometricAvailable && elapsed >= kInactivityTimeout;
 
     if (shouldLock) {
-      debugPrint('LockBloc._onAppResumed: inactivity exceeded 5m, locking app');
+      debugPrint(
+        'LockBloc._onAppResumed: inactivity exceeded (${elapsed.inSeconds}s >= ${kInactivityTimeout.inSeconds}s), locking app',
+      );
       emit(state.copyWith(status: LockStatus.locked, authenticationFailed: false));
       add(const LockAuthenticateRequested());
     } else {
       emit(state.copyWith(status: LockStatus.idle));
+      _lastActivityTime = now;
+      _resetInactivityTimer();
+    }
+  }
+
+  /// Dispatched when the user taps or interacts with the screen.
+  void _onUserInteractionOccurred(LockUserInteractionOccurred event, Emitter<LockState> emit) {
+    final now = DateTime.now();
+    // Throttle interaction events to at most once every 2 seconds
+    if (_lastInteractionProcessedAt != null &&
+        now.difference(_lastInteractionProcessedAt!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastInteractionProcessedAt = now;
+    _lastActivityTime = now;
+    _resetInactivityTimer();
+  }
+
+  /// Synchronizes authentication status from AuthBloc.
+  void _onAuthStatusChanged(LockAuthStatusChanged event, Emitter<LockState> emit) {
+    debugPrint('LockBloc._onAuthStatusChanged: isAuthenticated=${event.isAuthenticated}');
+    if (event.isAuthenticated) {
+      _lastActivityTime = DateTime.now();
+      _resetInactivityTimer();
+    } else {
+      _inactivityTimer?.cancel();
+      _inactivityTimer = null;
+    }
+  }
+
+  /// Foreground inactivity timer fired.
+  void _onTimeoutExpired(_LockTimeoutExpired event, Emitter<LockState> emit) {
+    debugPrint(
+      'LockBloc._onTimeoutExpired: checking lock conditions '
+      '(enabled=${state.isBiometricEnabled}, available=${state.isBiometricAvailable}, status=${state.status})',
+    );
+    if (!state.isBiometricEnabled || !state.isBiometricAvailable) {
+      return;
+    }
+    if (state.status == LockStatus.idle) {
+      debugPrint(
+        'LockBloc._onTimeoutExpired: LOCKING app due to ${kInactivityTimeout.inSeconds}s foreground inactivity!',
+      );
+      emit(state.copyWith(status: LockStatus.locked, authenticationFailed: false));
+      add(const LockAuthenticateRequested());
     }
   }
 
@@ -180,9 +237,10 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     debugPrint('LockBloc._onAuthenticateRequested: result=$success');
 
     if (success) {
+      _lastActivityTime = DateTime.now();
       emit(state.copyWith(status: LockStatus.idle, authenticationFailed: false));
+      _resetInactivityTimer();
     } else {
-      // Keep locked, show retry + password buttons
       emit(state.copyWith(status: LockStatus.locked, authenticationFailed: true));
     }
   }
@@ -199,6 +257,8 @@ class LockBloc extends Bloc<LockEvent, LockState> {
       try {
         await _setEnabled(value: false);
         debugPrint('LockBloc._onBiometricToggled: disabled biometrics');
+        _inactivityTimer?.cancel();
+        _inactivityTimer = null;
         emit(state.copyWith(isBiometricEnabled: false));
       } catch (e, st) {
         debugPrint('LockBloc._onBiometricToggled disable error: $e\n$st');
@@ -218,7 +278,9 @@ class LockBloc extends Bloc<LockEvent, LockState> {
       try {
         await _setEnabled(value: true);
         debugPrint('LockBloc._onBiometricToggled: saved isBiometricEnabled=true');
+        _lastActivityTime = DateTime.now();
         emit(state.copyWith(isBiometricEnabled: true, status: LockStatus.idle));
+        _resetInactivityTimer();
       } on BiometricKeysInvalidatedException {
         emit(state.copyWith(isBiometricEnabled: false, status: LockStatus.idle));
       }
@@ -246,7 +308,9 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     if (success) {
       try {
         await _setEnabled(value: true);
+        _lastActivityTime = DateTime.now();
         emit(state.copyWith(isBiometricEnabled: true, status: LockStatus.idle));
+        _resetInactivityTimer();
       } on BiometricKeysInvalidatedException {
         emit(state.copyWith(isBiometricEnabled: false, status: LockStatus.idle));
       }
@@ -255,15 +319,51 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     }
   }
 
+  /// Starts or resets the inactivity countdown using [kInactivityTimeout].
+  void _resetInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = null;
+
+    final shouldTrack =
+        state.isBiometricEnabled && state.isBiometricAvailable && state.status == LockStatus.idle;
+
+    debugPrint(
+      'LockBloc._resetInactivityTimer: shouldTrack=$shouldTrack '
+      '(enabled=${state.isBiometricEnabled}, available=${state.isBiometricAvailable}, status=${state.status}, timeout=${kInactivityTimeout.inSeconds}s)',
+    );
+
+    if (!shouldTrack) return;
+
+    _inactivityTimer = Timer(kInactivityTimeout, () {
+      debugPrint(
+        'LockBloc: Timer expired after ${kInactivityTimeout.inSeconds}s! Emitting _LockTimeoutExpired',
+      );
+      add(const _LockTimeoutExpired());
+    });
+  }
+
   /// Called externally (e.g. from AppAuthGate after handling requiresLogout)
   /// to clear biometric data and reset lock state.
   Future<void> clearAndReset() async {
     await _clearData();
-    _backgroundedAt = null;
+    _inactivityTimer?.cancel();
+    _inactivityTimer = null;
+    _lastActivityTime = null;
     _isAuthenticating = false;
     _lastAuthenticatedAt = null;
     add(const _LockResetRequested());
   }
+
+  @override
+  Future<void> close() {
+    _inactivityTimer?.cancel();
+    return super.close();
+  }
+}
+
+/// Internal event fired when the foreground inactivity timer expires.
+class _LockTimeoutExpired extends LockEvent {
+  const _LockTimeoutExpired();
 }
 
 /// Internal event for resetting LockBloc state after logout.

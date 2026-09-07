@@ -12,7 +12,7 @@ class LockCheckRequested extends LockEvent {
   const LockCheckRequested();
 }
 
-/// Dispatched when the app enters background (paused or hidden).
+/// Dispatched when the app enters background (paused, hidden, or inactive).
 class LockAppPaused extends LockEvent {
   const LockAppPaused();
 }
@@ -20,6 +20,22 @@ class LockAppPaused extends LockEvent {
 /// Dispatched when the app returns to foreground (resumed).
 class LockAppResumed extends LockEvent {
   const LockAppResumed();
+}
+
+/// Dispatched when the user taps or interacts with the screen.
+/// Resets the 5-minute foreground inactivity timer.
+class LockUserInteractionOccurred extends LockEvent {
+  const LockUserInteractionOccurred();
+}
+
+/// Dispatched when the authentication status changes (login / logout).
+class LockAuthStatusChanged extends LockEvent {
+  const LockAuthStatusChanged({required this.isAuthenticated});
+
+  final bool isAuthenticated;
+
+  @override
+  List<Object?> get props => [isAuthenticated];
 }
 
 /// Dispatched when the user taps "Unlock" on [LockScreenWidget].

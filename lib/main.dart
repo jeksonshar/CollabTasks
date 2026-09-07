@@ -107,6 +107,15 @@ class MyApp extends StatelessWidget {
                 supportedLocales: AppLocalizations.supportedLocales,
                 navigatorObservers: [routeObserver],
                 home: const AppAuthGate(),
+                builder: (context, child) {
+                  return Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (_) {
+                      context.read<LockBloc>().add(const LockUserInteractionOccurred());
+                    },
+                    child: child ?? const SizedBox.shrink(),
+                  );
+                },
               );
             },
           );
@@ -129,10 +138,13 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Perform cold-start lock check after the first frame
+    // Perform cold-start lock check and sync auth status after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<LockBloc>().add(const LockCheckRequested());
+        final isAuth = context.read<AuthBloc>().state.status == AuthStatus.authenticated;
+        context.read<LockBloc>()
+          ..add(LockAuthStatusChanged(isAuthenticated: isAuth))
+          ..add(const LockCheckRequested());
       }
     });
   }
@@ -149,6 +161,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
+      case AppLifecycleState.inactive:
         if (mounted) {
           context.read<LockBloc>().add(const LockAppPaused());
         }
@@ -156,7 +169,6 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
         if (mounted) {
           context.read<LockBloc>().add(const LockAppResumed());
         }
-      case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
         break;
     }
@@ -166,16 +178,18 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // When unauthenticated after being authenticated → clear the nav stack
+        // Sync auth status with LockBloc and handle logout cleanup
         BlocListener<AuthBloc, AuthState>(
-          listenWhen: (previous, current) =>
-              current.status == AuthStatus.unauthenticated &&
-              previous.status == AuthStatus.authenticated,
+          listenWhen: (previous, current) => previous.status != current.status,
           listener: (context, state) {
-            debugPrint('AppAuthGate: popUntil called (unauthenticated)');
-            globalNavigatorKey.currentState?.popUntil((route) => false);
-            // Also reset LockBloc to idle after logout
-            context.read<LockBloc>().clearAndReset();
+            final isAuth = state.status == AuthStatus.authenticated;
+            context.read<LockBloc>().add(LockAuthStatusChanged(isAuthenticated: isAuth));
+
+            if (state.status == AuthStatus.unauthenticated) {
+              debugPrint('AppAuthGate: popUntil called (unauthenticated)');
+              globalNavigatorKey.currentState?.popUntil((route) => false);
+              context.read<LockBloc>().clearAndReset();
+            }
           },
         ),
         // When login succeeds and device supports biometrics → offer setup
