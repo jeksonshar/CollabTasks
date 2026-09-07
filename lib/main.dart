@@ -187,7 +187,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
 
             if (state.status == AuthStatus.unauthenticated) {
               debugPrint('AppAuthGate: popUntil called (unauthenticated)');
-              globalNavigatorKey.currentState?.popUntil((route) => false);
+              globalNavigatorKey.currentState?.popUntil((route) => route.isFirst);
               context.read<LockBloc>().clearAndReset();
             }
           },
