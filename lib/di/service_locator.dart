@@ -6,19 +6,27 @@ import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
 import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
+import 'package:collab_tasks/features/auth/data/services/biometric_secure_storage.dart';
+import 'package:collab_tasks/features/auth/data/services/biometric_service.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/auth_repository.dart';
 import 'package:collab_tasks/features/auth/domain/repositories/cognito_auth_repository.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/authenticate_with_biometric_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/check_biometric_availability_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/clear_biometric_data_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/get_biometric_enabled_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/get_current_user_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/resend_sign_up_code_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/reset_password_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/set_biometric_enabled_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
+import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_bloc.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/web_socket_chat_remote_data_source.dart';
@@ -127,6 +135,13 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton<TaskNotificationService>(() => getIt<TaskNotificationsManager>())
     ..registerLazySingleton<AppDatabase>(() => AppDatabase())
+    ..registerLazySingleton<BiometricService>(() => BiometricService())
+    ..registerLazySingleton<BiometricSecureStorage>(() => BiometricSecureStorage())
+    ..registerLazySingleton(() => CheckBiometricAvailabilityUseCase(getIt()))
+    ..registerLazySingleton(() => AuthenticateWithBiometricUseCase(getIt()))
+    ..registerLazySingleton(() => GetBiometricEnabledUseCase(getIt()))
+    ..registerLazySingleton(() => SetBiometricEnabledUseCase(getIt()))
+    ..registerLazySingleton(() => ClearBiometricDataUseCase(getIt()))
     ..registerLazySingleton<TasksLocalDataSource>(() => DriftTasksLocalDataSource(getIt()))
     ..registerLazySingleton<WorkingGroupsLocalDataSource>(
       () => DriftWorkingGroupsLocalDataSource(getIt()),
@@ -311,11 +326,26 @@ void setupLocator(SharedPreferences sharedPreferences) {
         notificationService: getIt(),
         workingGroupsRepository: getIt(),
         chatRemoteDataSource: getIt<ChatRemoteDataSource>(),
+        clearBiometricDataUseCase: getIt(),
+        checkBiometricAvailabilityUseCase: getIt(),
+        getBiometricEnabledUseCase: getIt(),
         // Безопасный проброс: если сервис зарегистрирован в GetIt (при Firebase), он прилетит в Блок.
         // Если выбран AWS Amplify — передастся null.
         chatNotificationService: getIt.isRegistered<ChatNotificationService>()
             ? getIt<ChatNotificationService>()
             : null,
+      ),
+    )
+    ..registerFactory(
+      () => LockBloc(
+        checkBiometricAvailabilityUseCase: getIt(),
+        authenticateWithBiometricUseCase: getIt(),
+        getBiometricEnabledUseCase: getIt(),
+        setBiometricEnabledUseCase: getIt(),
+        clearBiometricDataUseCase: getIt(),
+        // Reason string is injected at the top-level app widget via L10n;
+        // DI provides an English fallback, runtime value is set per-locale in main.dart.
+        biometricAuthReason: 'Authenticate to access CollabTasks',
       ),
     )
     ..registerFactory(() => ConfirmationDialogBloc())

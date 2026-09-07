@@ -296,5 +296,16 @@
 
   "group_chat_toolbarSabTitle": "Group chat",
 
-  "chat_connectingToServer": "Server is starting up…"
+  "chat_connectingToServer": "Server is starting up…",
+
+  "biometricLockTitle": "App is locked",
+  "biometricUnlockButton": "Unlock",
+  "biometricLoginWithPassword": "Sign in with password",
+  "biometricAuthReason": "Authenticate to access CollabTasks",
+  "biometricOfferTitle": "Enable biometric authentication?",
+  "biometricOfferDescription": "Use Face ID or fingerprint to quickly unlock the app",
+  "biometricOfferEnable": "Enable",
+  "biometricOfferSkip": "Skip",
+  "biometricSettingsTitle": "Biometric authentication",
+  "biometricSettingsSubtitle": "Use Face ID / fingerprint to unlock"
 }

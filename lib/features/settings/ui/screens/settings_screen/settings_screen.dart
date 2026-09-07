@@ -2,6 +2,8 @@ import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_state.dart';
+import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_bloc.dart';
+import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_event.dart';
 import 'package:collab_tasks/features/auth/ui/profile_screen/profile_screen.dart';
 import 'package:collab_tasks/features/settings/domain/models/theme_preference.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
@@ -24,6 +26,7 @@ class SettingsScreen extends StatelessWidget {
         context.watch<LocaleCubit>().state?.languageCode ??
         Localizations.localeOf(context).languageCode;
     final themeState = context.watch<ThemeBloc>().state;
+    final lockState = context.watch<LockBloc>().state;
 
     return Scaffold(
       appBar: AppBar(title: Text(localization.settings), centerTitle: false),
@@ -98,6 +101,21 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          // Biometric toggle — only shown if the device has enrolled biometrics
+          if (lockState.isBiometricAvailable) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: SwitchListTile(
+                secondary: const Icon(Icons.fingerprint),
+                title: Text(localization.biometricSettingsTitle),
+                subtitle: Text(localization.biometricSettingsSubtitle),
+                value: lockState.isBiometricEnabled,
+                onChanged: (enabled) {
+                  context.read<LockBloc>().add(LockBiometricToggled(enabled: enabled));
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: () => _onLogoutPressed(context, authState),

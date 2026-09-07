@@ -294,5 +294,16 @@
 
   "group_chat_toolbarSabTitle": "Груповий чат",
 
-  "chat_connectingToServer": "Сервер завантажується…"
+  "chat_connectingToServer": "Сервер завантажується…",
+
+  "biometricLockTitle": "Додаток заблоковано",
+  "biometricUnlockButton": "Розблокувати",
+  "biometricLoginWithPassword": "Увійти за паролем",
+  "biometricAuthReason": "Підтвердіть особу для доступу до CollabTasks",
+  "biometricOfferTitle": "Увімкнути біометричну аутентифікацію?",
+  "biometricOfferDescription": "Використовуйте Face ID або відбиток пальця для швидкого розблокування",
+  "biometricOfferEnable": "Увімкнути",
+  "biometricOfferSkip": "Пропустити",
+  "biometricSettingsTitle": "Біометрична аутентифікація",
+  "biometricSettingsSubtitle": "Використовувати Face ID / відбиток для розблокування"
 }

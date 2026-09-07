@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Required for local_auth biometric authentication -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
     <queries>
         <intent>
@@ -20,7 +23,8 @@
     <application
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:label="CollabTasks">
+        android:label="CollabTasks"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:clearTaskOnLaunch="true"

@@ -707,4 +707,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chat_connectingToServer => 'Server is starting up…';
+
+  @override
+  String get biometricLockTitle => 'App is locked';
+
+  @override
+  String get biometricUnlockButton => 'Unlock';
+
+  @override
+  String get biometricLoginWithPassword => 'Sign in with password';
+
+  @override
+  String get biometricAuthReason => 'Authenticate to access CollabTasks';
+
+  @override
+  String get biometricOfferTitle => 'Enable biometric authentication?';
+
+  @override
+  String get biometricOfferDescription =>
+      'Use Face ID or fingerprint to quickly unlock the app';
+
+  @override
+  String get biometricOfferEnable => 'Enable';
+
+  @override
+  String get biometricOfferSkip => 'Skip';
+
+  @override
+  String get biometricSettingsTitle => 'Biometric authentication';
+
+  @override
+  String get biometricSettingsSubtitle => 'Use Face ID / fingerprint to unlock';
 }

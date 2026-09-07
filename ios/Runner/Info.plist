@@ -54,5 +54,8 @@
     <true/>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
+    <!-- Required for local_auth Face ID usage -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>CollabTasks uses Face ID to securely unlock the app.</string>
 </dict>
 </plist>

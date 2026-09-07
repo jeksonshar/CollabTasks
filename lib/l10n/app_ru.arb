@@ -296,5 +296,16 @@
 
   "group_chat_toolbarSabTitle": "Групповой чат",
 
-  "chat_connectingToServer": "Сервер загружается…"
+  "chat_connectingToServer": "Сервер загружается…",
+
+  "biometricLockTitle": "Приложение заблокировано",
+  "biometricUnlockButton": "Разблокировать",
+  "biometricLoginWithPassword": "Войти по паролю",
+  "biometricAuthReason": "Подтвердите личность для доступа к CollabTasks",
+  "biometricOfferTitle": "Включить биометрическую аутентификацию?",
+  "biometricOfferDescription": "Используйте Face ID или отпечаток пальца для быстрой разблокировки",
+  "biometricOfferEnable": "Включить",
+  "biometricOfferSkip": "Пропустить",
+  "biometricSettingsTitle": "Биометрическая аутентификация",
+  "biometricSettingsSubtitle": "Использовать Face ID / отпечаток для разблокировки"
 }

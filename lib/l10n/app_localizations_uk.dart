@@ -708,4 +708,37 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get chat_connectingToServer => 'Сервер завантажується…';
+
+  @override
+  String get biometricLockTitle => 'Додаток заблоковано';
+
+  @override
+  String get biometricUnlockButton => 'Розблокувати';
+
+  @override
+  String get biometricLoginWithPassword => 'Увійти за паролем';
+
+  @override
+  String get biometricAuthReason =>
+      'Підтвердіть особу для доступу до CollabTasks';
+
+  @override
+  String get biometricOfferTitle => 'Увімкнути біометричну аутентифікацію?';
+
+  @override
+  String get biometricOfferDescription =>
+      'Використовуйте Face ID або відбиток пальця для швидкого розблокування';
+
+  @override
+  String get biometricOfferEnable => 'Увімкнути';
+
+  @override
+  String get biometricOfferSkip => 'Пропустити';
+
+  @override
+  String get biometricSettingsTitle => 'Біометрична аутентифікація';
+
+  @override
+  String get biometricSettingsSubtitle =>
+      'Використовувати Face ID / відбиток для розблокування';
 }

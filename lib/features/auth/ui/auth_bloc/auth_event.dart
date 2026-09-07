@@ -85,3 +85,8 @@ class AuthLogOutRequested extends AuthEvent {
 class AuthErrorCleared extends AuthEvent {
   const AuthErrorCleared();
 }
+
+/// Dispatched after [BiometricOfferDialog] is shown to reset [AuthState.offerBiometricSetup].
+class AuthBiometricOfferAcknowledged extends AuthEvent {
+  const AuthBiometricOfferAcknowledged();
+}

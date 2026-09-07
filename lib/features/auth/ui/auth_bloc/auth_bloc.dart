@@ -1,13 +1,15 @@
 import 'dart:async';
 
-// Импортируем наш сервис уведомлений чата
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/features/auth/domain/failures/failure.dart';
 import 'package:collab_tasks/features/auth/domain/result/result.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/check_biometric_availability_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/clear_biometric_data_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_reset_password_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/confirm_sign_up_use_case.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/get_biometric_enabled_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/log_out_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/login_with_email_use_case.dart';
 import 'package:collab_tasks/features/auth/domain/usecases/register_with_email_use_case.dart';
@@ -42,6 +44,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required TaskNotificationService notificationService,
     required WorkingGroupsRepository workingGroupsRepository,
     required ChatRemoteDataSource chatRemoteDataSource,
+    required ClearBiometricDataUseCase clearBiometricDataUseCase,
+    required CheckBiometricAvailabilityUseCase checkBiometricAvailabilityUseCase,
+    required GetBiometricEnabledUseCase getBiometricEnabledUseCase,
     ChatNotificationService? chatNotificationService,
   }) : _registerWithEmailUseCase = registerWithEmailUseCase,
        _loginWithEmailUseCase = loginWithEmailUseCase,
@@ -56,6 +61,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _workingGroupsRepository = workingGroupsRepository,
        _chatRemoteDataSource = chatRemoteDataSource,
        _chatNotificationService = chatNotificationService,
+       _clearBiometricDataUseCase = clearBiometricDataUseCase,
+       _checkBiometricAvailabilityUseCase = checkBiometricAvailabilityUseCase,
+       _getBiometricEnabledUseCase = getBiometricEnabledUseCase,
        super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
     on<AuthRegisterRequested>(_onRegisterRequested);
@@ -67,6 +75,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthResendSignUpCodeRequested>(_onResendSignUpCodeRequested);
     on<AuthLogOutRequested>(_onLogOutRequested);
     on<AuthErrorCleared>(_onErrorCleared);
+    on<AuthBiometricOfferAcknowledged>(_onBiometricOfferAcknowledged);
   }
 
   final RegisterWithEmailUseCase _registerWithEmailUseCase;
@@ -81,6 +90,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final TaskNotificationService _notificationService;
   final ChatRemoteDataSource _chatRemoteDataSource;
   final ChatNotificationService? _chatNotificationService;
+  final ClearBiometricDataUseCase _clearBiometricDataUseCase;
+  final CheckBiometricAvailabilityUseCase _checkBiometricAvailabilityUseCase;
+  final GetBiometricEnabledUseCase _getBiometricEnabledUseCase;
 
   Future<void> _onSubscriptionStarted(
     AuthSubscriptionStarted event,
@@ -109,6 +121,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             requiresResetPasswordConfirmation: false,
             clearPendingResetPasswordEmail: true,
             passwordResetConfirmed: false,
+            offerBiometricSetup: false,
           );
         }
 
@@ -168,7 +181,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     final result = await _loginWithEmailUseCase(email: event.email, password: event.password);
 
-    _handleAuthResult(result, emit, attemptedEmail: event.email);
+    await _handleAuthResultWithBiometricOffer(result, emit, attemptedEmail: event.email);
   }
 
   Future<void> _onGoogleSignInRequested(
@@ -177,7 +190,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(state.copyWith(status: AuthStatus.loadingFormSubmit, clearFailure: true));
     final result = await _signInWithGoogleUseCase();
-    _handleAuthResult(result, emit);
+    await _handleAuthResultWithBiometricOffer(result, emit);
   }
 
   Future<void> _onResetPasswordRequested(
@@ -390,6 +403,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     }
 
+    // Очищаем биометрические данные при выходе
+    try {
+      await _clearBiometricDataUseCase();
+    } catch (e) {
+      debugPrint('Failed to clear biometric data on logout: $e');
+    }
+
     _workingGroupsRepository.clearSubscriptions();
 
     final result = await _logOutUseCase();
@@ -417,6 +437,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onErrorCleared(AuthErrorCleared event, Emitter<AuthState> emit) {
     emit(state.copyWith(clearFailure: true));
   }
+
+  void _onBiometricOfferAcknowledged(
+    AuthBiometricOfferAcknowledged event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(state.copyWith(offerBiometricSetup: false));
+  }
+
+  // ────────────────────────────────────────────────
+  // Helpers
+  // ────────────────────────────────────────────────
 
   void _handleAuthResult(
     Result<AuthUser, Failure> result,
@@ -483,6 +514,36 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             passwordResetConfirmed: false,
           ),
         );
+    }
+  }
+
+  /// Like [_handleAuthResult] but additionally checks whether to offer
+  /// biometric setup after a successful login.
+  Future<void> _handleAuthResultWithBiometricOffer(
+    Result<AuthUser, Failure> result,
+    Emitter<AuthState> emit, {
+    String? attemptedEmail,
+  }) async {
+    if (result is FailureResult<AuthUser, Failure>) {
+      _handleAuthResult(result, emit, attemptedEmail: attemptedEmail);
+      return;
+    }
+
+    // Success path: check biometric availability and flag
+    try {
+      final isAvailable = await _checkBiometricAvailabilityUseCase();
+      if (isAvailable) {
+        final isEnabled = await _getBiometricEnabledUseCase();
+        if (isEnabled == null) {
+          // Never set — offer biometric setup after the session is established
+          // The watchAuthState stream will set authenticated, then we flag offerBiometricSetup
+          // We use a small delay via addError pattern: instead we store a pending offer flag.
+          // The flag will be read from state by the BlocListener AFTER authenticated is emitted.
+          emit(state.copyWith(offerBiometricSetup: true));
+        }
+      }
+    } catch (e, st) {
+      debugPrint('AuthBloc: failed to check biometric availability: $e\n$st');
     }
   }
 }

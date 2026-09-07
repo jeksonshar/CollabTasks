@@ -705,4 +705,37 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get chat_connectingToServer => 'Сервер загружается…';
+
+  @override
+  String get biometricLockTitle => 'Приложение заблокировано';
+
+  @override
+  String get biometricUnlockButton => 'Разблокировать';
+
+  @override
+  String get biometricLoginWithPassword => 'Войти по паролю';
+
+  @override
+  String get biometricAuthReason =>
+      'Подтвердите личность для доступа к CollabTasks';
+
+  @override
+  String get biometricOfferTitle => 'Включить биометрическую аутентификацию?';
+
+  @override
+  String get biometricOfferDescription =>
+      'Используйте Face ID или отпечаток пальца для быстрой разблокировки';
+
+  @override
+  String get biometricOfferEnable => 'Включить';
+
+  @override
+  String get biometricOfferSkip => 'Пропустить';
+
+  @override
+  String get biometricSettingsTitle => 'Биометрическая аутентификация';
+
+  @override
+  String get biometricSettingsSubtitle =>
+      'Использовать Face ID / отпечаток для разблокировки';
 }

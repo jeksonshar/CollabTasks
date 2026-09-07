@@ -1389,6 +1389,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server is starting up…'**
   String get chat_connectingToServer;
+
+  /// No description provided for @biometricLockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App is locked'**
+  String get biometricLockTitle;
+
+  /// No description provided for @biometricUnlockButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get biometricUnlockButton;
+
+  /// No description provided for @biometricLoginWithPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with password'**
+  String get biometricLoginWithPassword;
+
+  /// No description provided for @biometricAuthReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticate to access CollabTasks'**
+  String get biometricAuthReason;
+
+  /// No description provided for @biometricOfferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable biometric authentication?'**
+  String get biometricOfferTitle;
+
+  /// No description provided for @biometricOfferDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Face ID or fingerprint to quickly unlock the app'**
+  String get biometricOfferDescription;
+
+  /// No description provided for @biometricOfferEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get biometricOfferEnable;
+
+  /// No description provided for @biometricOfferSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get biometricOfferSkip;
+
+  /// No description provided for @biometricSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric authentication'**
+  String get biometricSettingsTitle;
+
+  /// No description provided for @biometricSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Face ID / fingerprint to unlock'**
+  String get biometricSettingsSubtitle;
 }
 
 class _AppLocalizationsDelegate

@@ -26,6 +26,7 @@ class AuthState extends Equatable {
     this.requiresResetPasswordConfirmation = false,
     this.pendingResetPasswordEmail,
     this.passwordResetConfirmed = false,
+    this.offerBiometricSetup = false,
   });
 
   final AuthStatus status;
@@ -40,6 +41,11 @@ class AuthState extends Equatable {
   final bool requiresResetPasswordConfirmation;
   final String? pendingResetPasswordEmail;
   final bool passwordResetConfirmed;
+
+  /// `true` for exactly one emission after a successful login on a device that
+  /// supports biometrics but has not yet configured biometric login.
+  /// Consumed by a BlocListener in [AppAuthGate] which shows [BiometricOfferDialog].
+  final bool offerBiometricSetup;
 
   AuthState copyWith({
     AuthStatus? status,
@@ -57,6 +63,7 @@ class AuthState extends Equatable {
     String? pendingResetPasswordEmail,
     bool clearPendingResetPasswordEmail = false,
     bool? passwordResetConfirmed,
+    bool? offerBiometricSetup,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -76,6 +83,7 @@ class AuthState extends Equatable {
           ? null
           : pendingResetPasswordEmail ?? this.pendingResetPasswordEmail,
       passwordResetConfirmed: passwordResetConfirmed ?? this.passwordResetConfirmed,
+      offerBiometricSetup: offerBiometricSetup ?? this.offerBiometricSetup,
     );
   }
 
@@ -93,5 +101,6 @@ class AuthState extends Equatable {
     requiresResetPasswordConfirmation,
     pendingResetPasswordEmail,
     passwordResetConfirmed,
+    offerBiometricSetup,
   ];
 }

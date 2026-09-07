@@ -55,6 +55,11 @@ dependencies:
   get_it: ^9.2.1
   #  provider: ^6.1.5+1
 
+  # Biometric authentication
+  local_auth: ^2.3.0
+  # Secure encrypted storage for biometric flag
+  flutter_secure_storage: ^11.0.0
+
   #  Working with file
   file_picker: ^12.0.0
   open_file: ^4.0.0
