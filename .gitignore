@@ -13,6 +13,7 @@
 migrate_working_dir/
 /x_implemented/
 .run/xcross_ios_device.run.xml
+/linux/flutter/generated*
 
 # IntelliJ related
 *.iml
