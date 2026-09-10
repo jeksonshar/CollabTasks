@@ -34,7 +34,7 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
 
     // Дожидаемся окончания отрисовки первого кадра
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && getIt.isRegistered<ChatNotificationService>()) {
         // Достаем сервис из GetIt и проверяем наличие сохраненного chatId
         getIt<ChatNotificationService>().checkPendingNotification();
       }

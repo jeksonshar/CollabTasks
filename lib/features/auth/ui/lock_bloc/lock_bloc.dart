@@ -126,6 +126,24 @@ class LockBloc extends Bloc<LockEvent, LockState> {
 
     _inactivityTimer?.cancel();
     _inactivityTimer = null;
+
+    // A real pause/background event resets the dialog dismissal debounce timer
+    // so any subsequent resume will be recognized as reopening the app from background.
+    _lastAuthenticatedAt = null;
+
+    if (!state.isBiometricEnabled || !state.isBiometricAvailable) {
+      return;
+    }
+
+    // If the app is already locked, authenticating, or in the middle of requiresLogout,
+    // we MUST NOT overwrite the state with privacyScreen!
+    if (state.status == LockStatus.locked ||
+        state.status == LockStatus.authenticating ||
+        state.status == LockStatus.requiresLogout) {
+      debugPrint('LockBloc._onAppPaused: app is already in state ${state.status}, preserving');
+      return;
+    }
+
     _lastActivityTime = DateTime.now();
     debugPrint('LockBloc._onAppPaused: app paused/hidden/inactive at $_lastActivityTime');
     emit(state.copyWith(status: LockStatus.privacyScreen));
@@ -133,29 +151,43 @@ class LockBloc extends Bloc<LockEvent, LockState> {
 
   /// App returned to foreground.
   Future<void> _onAppResumed(LockAppResumed event, Emitter<LockState> emit) async {
-    // 1. If currently in the middle of authenticating, ignore resume event
-    if (_isAuthenticating) {
-      debugPrint('LockBloc._onAppResumed: ignoring resume during active biometric auth');
-      return;
-    }
-
-    // 2. If authentication just completed within 3 seconds, this resume is the dialog closing
-    if (_lastAuthenticatedAt != null &&
-        DateTime.now().difference(_lastAuthenticatedAt!) < const Duration(seconds: 3)) {
-      debugPrint('LockBloc._onAppResumed: ignoring resume right after biometric completion');
-      if (state.status == LockStatus.privacyScreen) {
+    // 1. If biometric is disabled or unavailable, ensure idle
+    if (!state.isBiometricEnabled || !state.isBiometricAvailable) {
+      if (state.status != LockStatus.idle) {
         emit(state.copyWith(status: LockStatus.idle));
       }
       return;
     }
 
-    // 3. If already locked, keep locked (clear privacy screen if needed)
-    if (state.status == LockStatus.locked || state.status == LockStatus.authenticating) {
-      debugPrint('LockBloc._onAppResumed: app already locked, maintaining lock');
+    // 2. If currently in the middle of authenticating, ignore resume event
+    if (_isAuthenticating) {
+      debugPrint('LockBloc._onAppResumed: ignoring resume during active biometric auth');
       return;
     }
 
-    // 4. Calculate inactivity elapsed since last activity
+    // 3. If in requiresLogout, maintain state
+    if (state.status == LockStatus.requiresLogout) {
+      debugPrint('LockBloc._onAppResumed: logout in progress, maintaining state');
+      return;
+    }
+
+    // 4. If authentication just completed within 2 seconds, this resume is the dialog closing
+    if (_lastAuthenticatedAt != null &&
+        DateTime.now().difference(_lastAuthenticatedAt!) < const Duration(seconds: 2)) {
+      debugPrint('LockBloc._onAppResumed: ignoring resume right after biometric completion');
+      return;
+    }
+
+    // 5. If already locked, keep locked AND request biometric prompt
+    if (state.status == LockStatus.locked || state.status == LockStatus.authenticating) {
+      debugPrint(
+        'LockBloc._onAppResumed: app already locked, maintaining lock and requesting auth',
+      );
+      add(const LockAuthenticateRequested());
+      return;
+    }
+
+    // 6. Calculate inactivity elapsed since last activity
     final now = DateTime.now();
     final elapsed = _lastActivityTime != null ? now.difference(_lastActivityTime!) : Duration.zero;
     debugPrint(
@@ -163,8 +195,7 @@ class LockBloc extends Bloc<LockEvent, LockState> {
       '(enabled=${state.isBiometricEnabled}, available=${state.isBiometricAvailable})',
     );
 
-    final shouldLock =
-        state.isBiometricEnabled && state.isBiometricAvailable && elapsed >= kInactivityTimeout;
+    final shouldLock = elapsed >= kInactivityTimeout;
 
     if (shouldLock) {
       debugPrint(
@@ -181,6 +212,8 @@ class LockBloc extends Bloc<LockEvent, LockState> {
 
   /// Dispatched when the user taps or interacts with the screen.
   void _onUserInteractionOccurred(LockUserInteractionOccurred event, Emitter<LockState> emit) {
+    if (state.status != LockStatus.idle) return;
+
     final now = DateTime.now();
     // Throttle interaction events to at most once every 2 seconds
     if (_lastInteractionProcessedAt != null &&
