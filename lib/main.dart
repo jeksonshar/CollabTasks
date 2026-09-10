@@ -155,14 +155,21 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  AppLifecycleState? _lastLifecycleState;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    final previous = _lastLifecycleState;
+    _lastLifecycleState = state;
+
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.inactive:
-        if (mounted) {
+        // Only dispatch pause when transitioning away from resumed/active state.
+        // Prevents re-dispatching pause during intermediate resume steps (paused -> hidden -> inactive -> resumed).
+        if (mounted && (previous == null || previous == AppLifecycleState.resumed)) {
           context.read<LockBloc>().add(const LockAppPaused());
         }
       case AppLifecycleState.resumed:

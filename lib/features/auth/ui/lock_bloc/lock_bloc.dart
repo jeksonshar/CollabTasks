@@ -27,12 +27,14 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     required SetBiometricEnabledUseCase setBiometricEnabledUseCase,
     required ClearBiometricDataUseCase clearBiometricDataUseCase,
     required String biometricAuthReason,
+    DateTime Function()? nowProvider,
   }) : _checkAvailability = checkBiometricAvailabilityUseCase,
        _authenticate = authenticateWithBiometricUseCase,
        _getEnabled = getBiometricEnabledUseCase,
        _setEnabled = setBiometricEnabledUseCase,
        _clearData = clearBiometricDataUseCase,
        _authReason = biometricAuthReason,
+       _now = nowProvider ?? DateTime.now,
        super(const LockState()) {
     on<LockCheckRequested>(_onCheckRequested);
     on<LockAppPaused>(_onAppPaused);
@@ -46,6 +48,8 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     on<_LockTimeoutExpired>(_onTimeoutExpired);
     on<_LockResetRequested>((_, emit) => emit(const LockState()));
   }
+
+  final DateTime Function() _now;
 
   final CheckBiometricAvailabilityUseCase _checkAvailability;
   final AuthenticateWithBiometricUseCase _authenticate;
@@ -135,17 +139,20 @@ class LockBloc extends Bloc<LockEvent, LockState> {
       return;
     }
 
-    // If the app is already locked, authenticating, or in the middle of requiresLogout,
-    // we MUST NOT overwrite the state with privacyScreen!
-    if (state.status == LockStatus.locked ||
+    // If the app is already in privacyScreen, locked, authenticating, or in the middle of requiresLogout,
+    // we MUST NOT overwrite the state with privacyScreen or modify the last activity timestamp!
+    if (state.status == LockStatus.privacyScreen ||
+        state.status == LockStatus.locked ||
         state.status == LockStatus.authenticating ||
         state.status == LockStatus.requiresLogout) {
       debugPrint('LockBloc._onAppPaused: app is already in state ${state.status}, preserving');
       return;
     }
 
-    _lastActivityTime = DateTime.now();
-    debugPrint('LockBloc._onAppPaused: app paused/hidden/inactive at $_lastActivityTime');
+    _lastActivityTime ??= _now();
+    debugPrint(
+      'LockBloc._onAppPaused: app entered background/privacyScreen, last activity was at $_lastActivityTime',
+    );
     emit(state.copyWith(status: LockStatus.privacyScreen));
   }
 
@@ -173,7 +180,7 @@ class LockBloc extends Bloc<LockEvent, LockState> {
 
     // 4. If authentication just completed within 2 seconds, this resume is the dialog closing
     if (_lastAuthenticatedAt != null &&
-        DateTime.now().difference(_lastAuthenticatedAt!) < const Duration(seconds: 2)) {
+        _now().difference(_lastAuthenticatedAt!) < const Duration(seconds: 2)) {
       debugPrint('LockBloc._onAppResumed: ignoring resume right after biometric completion');
       return;
     }
@@ -188,7 +195,7 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     }
 
     // 6. Calculate inactivity elapsed since last activity
-    final now = DateTime.now();
+    final now = _now();
     final elapsed = _lastActivityTime != null ? now.difference(_lastActivityTime!) : Duration.zero;
     debugPrint(
       'LockBloc._onAppResumed: elapsed inactivity=${elapsed.inSeconds}s / required=${kInactivityTimeout.inSeconds}s '
@@ -214,7 +221,7 @@ class LockBloc extends Bloc<LockEvent, LockState> {
   void _onUserInteractionOccurred(LockUserInteractionOccurred event, Emitter<LockState> emit) {
     if (state.status != LockStatus.idle) return;
 
-    final now = DateTime.now();
+    final now = _now();
     // Throttle interaction events to at most once every 2 seconds
     if (_lastInteractionProcessedAt != null &&
         now.difference(_lastInteractionProcessedAt!) < const Duration(seconds: 2)) {
@@ -229,7 +236,7 @@ class LockBloc extends Bloc<LockEvent, LockState> {
   void _onAuthStatusChanged(LockAuthStatusChanged event, Emitter<LockState> emit) {
     debugPrint('LockBloc._onAuthStatusChanged: isAuthenticated=${event.isAuthenticated}');
     if (event.isAuthenticated) {
-      _lastActivityTime = DateTime.now();
+      _lastActivityTime = _now();
       _resetInactivityTimer();
     } else {
       _inactivityTimer?.cancel();
@@ -266,11 +273,11 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     debugPrint('LockBloc._onAuthenticateRequested: triggering biometric prompt...');
     final success = await _authenticate(localizedReason: _authReason);
     _isAuthenticating = false;
-    _lastAuthenticatedAt = DateTime.now();
+    _lastAuthenticatedAt = _now();
     debugPrint('LockBloc._onAuthenticateRequested: result=$success');
 
     if (success) {
-      _lastActivityTime = DateTime.now();
+      _lastActivityTime = _now();
       emit(state.copyWith(status: LockStatus.idle, authenticationFailed: false));
       _resetInactivityTimer();
     } else {
@@ -304,14 +311,14 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     debugPrint('LockBloc._onBiometricToggled: prompting biometric confirmation...');
     final success = await _authenticate(localizedReason: _authReason);
     _isAuthenticating = false;
-    _lastAuthenticatedAt = DateTime.now();
+    _lastAuthenticatedAt = _now();
     debugPrint('LockBloc._onBiometricToggled: biometric confirmation success=$success');
 
     if (success) {
       try {
         await _setEnabled(value: true);
         debugPrint('LockBloc._onBiometricToggled: saved isBiometricEnabled=true');
-        _lastActivityTime = DateTime.now();
+        _lastActivityTime = _now();
         emit(state.copyWith(isBiometricEnabled: true, status: LockStatus.idle));
         _resetInactivityTimer();
       } on BiometricKeysInvalidatedException {
@@ -336,12 +343,12 @@ class LockBloc extends Bloc<LockEvent, LockState> {
     _isAuthenticating = true;
     final success = await _authenticate(localizedReason: _authReason);
     _isAuthenticating = false;
-    _lastAuthenticatedAt = DateTime.now();
+    _lastAuthenticatedAt = _now();
 
     if (success) {
       try {
         await _setEnabled(value: true);
-        _lastActivityTime = DateTime.now();
+        _lastActivityTime = _now();
         emit(state.copyWith(isBiometricEnabled: true, status: LockStatus.idle));
         _resetInactivityTimer();
       } on BiometricKeysInvalidatedException {
