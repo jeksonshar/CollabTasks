@@ -45,6 +45,7 @@ class BiometricService {
         options: const AuthenticationOptions(
           biometricOnly: false, // allow device PIN as fallback
           stickyAuth: true,
+          sensitiveTransaction: false,
         ),
       );
       debugPrint('BiometricService.authenticate: completed with result: $result');
