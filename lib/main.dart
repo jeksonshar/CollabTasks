@@ -113,7 +113,20 @@ class MyApp extends StatelessWidget {
                     onPointerDown: (_) {
                       context.read<LockBloc>().add(const LockUserInteractionOccurred());
                     },
-                    child: child ?? const SizedBox.shrink(),
+                    child: BlocBuilder<LockBloc, lock.LockState>(
+                      builder: (context, lockState) {
+                        return Stack(
+                          children: [
+                            child ?? const SizedBox.shrink(),
+                            if (lockState.status == lock.LockStatus.privacyScreen)
+                              const Positioned.fill(child: PrivacyScreenWidget())
+                            else if (lockState.status == lock.LockStatus.locked ||
+                                lockState.status == lock.LockStatus.authenticating)
+                              const Positioned.fill(child: LockScreenWidget()),
+                          ],
+                        );
+                      },
+                    ),
                   );
                 },
               );
@@ -224,7 +237,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
-          final Widget mainContent = switch (authState.status) {
+          return switch (authState.status) {
             AuthStatus.initial || AuthStatus.loadingBeforeStart => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
@@ -233,22 +246,6 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
             AuthStatus.loadingFormSubmit ||
             AuthStatus.failure => const AuthScreen(),
           };
-
-          // Overlay the lock / privacy screen on top of the main content
-          return BlocBuilder<LockBloc, lock.LockState>(
-            builder: (context, lockState) {
-              return Stack(
-                children: [
-                  mainContent,
-                  if (lockState.status == lock.LockStatus.privacyScreen)
-                    const PrivacyScreenWidget()
-                  else if (lockState.status == lock.LockStatus.locked ||
-                      lockState.status == lock.LockStatus.authenticating)
-                    const LockScreenWidget(),
-                ],
-              );
-            },
-          );
         },
       ),
     );

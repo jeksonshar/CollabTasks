@@ -13,8 +13,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// - Tap "Sign in with password" to logout and return to the auth screen.
 ///
 /// All interactions dispatch events to [LockBloc]; no business logic lives here.
-class LockScreenWidget extends StatelessWidget {
+class LockScreenWidget extends StatefulWidget {
   const LockScreenWidget({super.key});
+
+  @override
+  State<LockScreenWidget> createState() => _LockScreenWidgetState();
+}
+
+class _LockScreenWidgetState extends State<LockScreenWidget> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +43,7 @@ class LockScreenWidget extends StatelessWidget {
         SystemNavigator.pop();
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: Center(
             child: Padding(
