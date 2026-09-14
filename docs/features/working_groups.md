@@ -14,3 +14,5 @@
 - **Leave validation:** LeaveWorkingGroupUseCase checks active, non-completed assigned group tasks for the current user through
   WorkingGroupsRepository before calling `leaveGroup`. If such tasks exist, it throws `HasActiveTasksFailure`; GroupDetailsBloc maps it to
   `leaveRejectedWithActiveTasks`, and the UI shows a localized SnackBar.
+- **Participant Actions:** Each participant item (except the current user) provides a three-dots popup menu (`PopupMenuButton<ParticipantAction>`) with options: direct chat, audio call (stub), and video call (stub). Tapping the item directly continues to open direct chat.
+

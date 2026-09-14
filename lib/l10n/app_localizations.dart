@@ -1198,6 +1198,24 @@ abstract class AppLocalizations {
   /// **'You'**
   String get group_details_ifParticipantYou;
 
+  /// No description provided for @group_details_participantOpenDirectChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Open direct chat'**
+  String get group_details_participantOpenDirectChat;
+
+  /// No description provided for @group_details_participantAudioCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio call'**
+  String get group_details_participantAudioCall;
+
+  /// No description provided for @group_details_participantVideoCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Video call'**
+  String get group_details_participantVideoCall;
+
   /// No description provided for @group_details_taskBtnSegmentAll.
   ///
   /// In en, this message translates to:
@@ -1383,6 +1401,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Group chat'**
   String get group_chat_toolbarSabTitle;
+
+  /// No description provided for @group_chat_audioCallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group audio call'**
+  String get group_chat_audioCallTitle;
+
+  /// No description provided for @group_chat_videoCallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Group video call'**
+  String get group_chat_videoCallTitle;
 
   /// No description provided for @chat_connectingToServer.
   ///

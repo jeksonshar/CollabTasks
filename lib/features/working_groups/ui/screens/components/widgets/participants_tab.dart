@@ -6,19 +6,25 @@ import 'package:flutter/material.dart';
 
 import 'participant_avatar.dart';
 
+enum ParticipantAction { directChat, audioCall, videoCall }
+
 class ParticipantsTab extends StatelessWidget {
   const ParticipantsTab({
     super.key,
     required this.state,
     required this.isParticipant,
     required this.onRefresh,
-    required this.onParticipantTap,
+    required this.onDirectChatTap,
+    this.onAudioCallTap,
+    this.onVideoCallTap,
   });
 
   final GroupDetailsState state;
   final bool isParticipant;
   final RefreshCallback onRefresh;
-  final Function(String) onParticipantTap;
+  final ValueChanged<String> onDirectChatTap;
+  final ValueChanged<String>? onAudioCallTap;
+  final ValueChanged<String>? onVideoCallTap;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +71,36 @@ class ParticipantsTab extends StatelessWidget {
                   title: Text(participant.name),
                   subtitle: isMe ? Text(localization.group_details_ifParticipantYou) : null,
                   // Передаем id наверх при тапе:
-                  onTap: isMe ? null : () => onParticipantTap(participant.id),
+                  onTap: isMe ? null : () => onDirectChatTap(participant.id),
+                  trailing: isMe
+                      ? null
+                      : PopupMenuButton<ParticipantAction>(
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (action) {
+                            switch (action) {
+                              case ParticipantAction.directChat:
+                                onDirectChatTap(participant.id);
+                              case ParticipantAction.audioCall:
+                                onAudioCallTap?.call(participant.id);
+                              case ParticipantAction.videoCall:
+                                onVideoCallTap?.call(participant.id);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: ParticipantAction.directChat,
+                              child: Text(localization.group_details_participantOpenDirectChat),
+                            ),
+                            PopupMenuItem(
+                              value: ParticipantAction.audioCall,
+                              child: Text(localization.group_details_participantAudioCall),
+                            ),
+                            PopupMenuItem(
+                              value: ParticipantAction.videoCall,
+                              child: Text(localization.group_details_participantVideoCall),
+                            ),
+                          ],
+                        ),
                 );
               }, childCount: participants.length),
             ),

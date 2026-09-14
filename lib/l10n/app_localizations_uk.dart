@@ -604,6 +604,16 @@ class AppLocalizationsUk extends AppLocalizations {
   String get group_details_ifParticipantYou => 'Ви';
 
   @override
+  String get group_details_participantOpenDirectChat =>
+      'Выдкрити особистий чат';
+
+  @override
+  String get group_details_participantAudioCall => 'Аудіодзвінок';
+
+  @override
+  String get group_details_participantVideoCall => 'Відеодзвінок';
+
+  @override
   String get group_details_taskBtnSegmentAll => 'All';
 
   @override
@@ -705,6 +715,12 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get group_chat_toolbarSabTitle => 'Груповий чат';
+
+  @override
+  String get group_chat_audioCallTitle => 'Груповий аудіодзвінок';
+
+  @override
+  String get group_chat_videoCallTitle => 'Груповий відеодзвінок';
 
   @override
   String get chat_connectingToServer => 'Сервер завантажується…';

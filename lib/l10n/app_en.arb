@@ -245,6 +245,9 @@
   "group_details_emptyParticipantsTitle": "Participants not yet synchronized",
   "group_details_titleWhenNoPartisipant": "Participants",
   "group_details_ifParticipantYou": "You",
+  "group_details_participantOpenDirectChat": "Open direct chat",
+  "group_details_participantAudioCall": "Audio call",
+  "group_details_participantVideoCall": "Video call",
   "group_details_taskBtnSegmentAll": "All",
   "group_details_taskBtnSegmentAccessible": "Accessible",
   "group_details_taskBtnSegmentMy": "My",
@@ -295,6 +298,8 @@
   },
 
   "group_chat_toolbarSabTitle": "Group chat",
+  "group_chat_audioCallTitle": "Group audio call",
+  "group_chat_videoCallTitle": "Group video call",
 
   "chat_connectingToServer": "Server is starting up…",
 

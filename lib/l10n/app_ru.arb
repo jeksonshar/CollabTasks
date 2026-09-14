@@ -245,6 +245,9 @@
   "group_details_emptyParticipantsTitle": "Участники еще не синхронизированы",
   "group_details_titleWhenNoPartisipant": "Участники",
   "group_details_ifParticipantYou": "Вы",
+  "group_details_participantOpenDirectChat": "Открыть личный чат",
+  "group_details_participantAudioCall": "Аудиозвонок",
+  "group_details_participantVideoCall": "Видеозвонок",
   "group_details_taskBtnSegmentAll": "Все",
   "group_details_taskBtnSegmentAccessible": "Доступные",
   "group_details_taskBtnSegmentMy": "Мои",
@@ -295,6 +298,8 @@
   },
 
   "group_chat_toolbarSabTitle": "Групповой чат",
+  "group_chat_audioCallTitle": "Групповой аудио звонок",
+  "group_chat_videoCallTitle": "Групповой видео звонок",
 
   "chat_connectingToServer": "Сервер загружается…",
 

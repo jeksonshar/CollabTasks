@@ -605,6 +605,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get group_details_ifParticipantYou => 'You';
 
   @override
+  String get group_details_participantOpenDirectChat => 'Open direct chat';
+
+  @override
+  String get group_details_participantAudioCall => 'Audio call';
+
+  @override
+  String get group_details_participantVideoCall => 'Video call';
+
+  @override
   String get group_details_taskBtnSegmentAll => 'All';
 
   @override
@@ -704,6 +713,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get group_chat_toolbarSabTitle => 'Group chat';
+
+  @override
+  String get group_chat_audioCallTitle => 'Group audio call';
+
+  @override
+  String get group_chat_videoCallTitle => 'Group video call';
 
   @override
   String get chat_connectingToServer => 'Server is starting up…';

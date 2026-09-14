@@ -602,6 +602,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get group_details_ifParticipantYou => 'Вы';
 
   @override
+  String get group_details_participantOpenDirectChat => 'Открыть личный чат';
+
+  @override
+  String get group_details_participantAudioCall => 'Аудиозвонок';
+
+  @override
+  String get group_details_participantVideoCall => 'Видеозвонок';
+
+  @override
   String get group_details_taskBtnSegmentAll => 'Все';
 
   @override
@@ -702,6 +711,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get group_chat_toolbarSabTitle => 'Групповой чат';
+
+  @override
+  String get group_chat_audioCallTitle => 'Групповой аудио звонок';
+
+  @override
+  String get group_chat_videoCallTitle => 'Групповой видео звонок';
 
   @override
   String get chat_connectingToServer => 'Сервер загружается…';

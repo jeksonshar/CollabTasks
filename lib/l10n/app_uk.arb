@@ -245,6 +245,9 @@
   "group_details_emptyParticipantsTitle": "Учасники ще не синхронізовані",
   "group_details_titleWhenNoPartisipant": "Учасники",
   "group_details_ifParticipantYou": "Ви",
+  "group_details_participantOpenDirectChat": "Выдкрити особистий чат",
+  "group_details_participantAudioCall": "Аудіодзвінок",
+  "group_details_participantVideoCall": "Відеодзвінок",
   "group_details_taskBtnSegmentMy": "Мої",
   "group_details_taskListEmptyTitle": "Завдань немає",
   "group_details_taskFree": "Вільно",
@@ -293,6 +296,8 @@
   },
 
   "group_chat_toolbarSabTitle": "Груповий чат",
+  "group_chat_audioCallTitle": "Груповий аудіодзвінок",
+  "group_chat_videoCallTitle": "Груповий відеодзвінок",
 
   "chat_connectingToServer": "Сервер завантажується…",
 
