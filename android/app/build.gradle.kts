@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.example.collab_tasks"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
