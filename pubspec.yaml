@@ -103,6 +103,10 @@ dependencies:
   #  surfing the net
   dio: ^5.9.2
 
+  #  RTC
+  agora_rtc_engine: ^6.6.4
+  permission_handler: ^13.0.2
+
 dev_dependencies:
   drift_dev: ^2.31.0
   build_runner: ^2.13.1
@@ -174,5 +178,6 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-#dependency_overrides:
+dependency_overrides:
+  permission_handler_android: 12.1.0 # для отключения ошибки agora_rtc_engine is currently compiled against android-31.
 #  analyzer: ^10.0.0 # use it if you use riverpod, riverpod_annotation, riverpod_generator, build_runner, custom_lint, riverpod_lint,

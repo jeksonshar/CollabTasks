@@ -2,6 +2,11 @@ import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
+import 'package:collab_tasks/features/calls/ui/screens/audio_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_state.dart';
@@ -140,6 +145,63 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                   ],
                 ],
               ),
+              actions: [
+                if (state is ChatLoaded) ...[
+                  IconButton(
+                    icon: const Icon(Icons.videocam),
+                    tooltip: 'Video Call',
+                    onPressed: () {
+                      final callerId = state.currentUserId;
+                      final calleeId = state.opponentEmail;
+                      final opponentName = widget.opponentName ?? state.opponentEmail;
+
+                      getIt<CallsBloc>().add(
+                        StartCallRequested(
+                          callerId: callerId,
+                          callerName: 'Me',
+                          calleeIds: [calleeId],
+                          type: CallType.video,
+                        ),
+                      );
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => VideoCallScreen(
+                            callId: widget.chatId,
+                            opponentName: opponentName,
+                            opponentId: calleeId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.phone),
+                    tooltip: 'Audio Call',
+                    onPressed: () {
+                      final callerId = state.currentUserId;
+                      final calleeId = state.opponentEmail;
+                      final opponentName = widget.opponentName ?? state.opponentEmail;
+
+                      getIt<CallsBloc>().add(
+                        StartCallRequested(
+                          callerId: callerId,
+                          callerName: 'Me',
+                          calleeIds: [calleeId],
+                          type: CallType.audio,
+                        ),
+                      );
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AudioCallScreen(callId: widget.chatId, opponentName: opponentName),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
             ),
             body: Column(
               children: [

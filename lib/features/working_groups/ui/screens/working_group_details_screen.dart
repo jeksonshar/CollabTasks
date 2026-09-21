@@ -204,7 +204,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   );
                 },
                 onAudioCallTap: (participantId) {
-                  // TODO реализовать переход
+                  // TODO реализовать переход или убрать отсюда, запуск из чата
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
@@ -212,7 +212,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                     );
                 },
                 onVideoCallTap: (participantId) {
-                  // TODO реализовать переход
+                  // TODO реализовать переход или убрать отсюда, запуск из чата
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
@@ -302,7 +302,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     String? groupName,
   ) async {
     if (context.mounted) {
-      // TODO добавить переход
+      // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupAudioCall
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text('Переход на экран группового аудио звонка')));
@@ -315,7 +315,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     String? groupName,
   ) async {
     if (context.mounted) {
-      // TODO добавить переход
+      // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupВидеоCall
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text('Переход на экран группового видео звонка')));

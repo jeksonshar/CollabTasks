@@ -18,6 +18,9 @@ import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_state.dart' as lock
 import 'package:collab_tasks/features/auth/ui/lock_screen/biometric_offer_dialog.dart';
 import 'package:collab_tasks/features/auth/ui/lock_screen/lock_screen_widget.dart';
 import 'package:collab_tasks/features/auth/ui/lock_screen/privacy_screen_widget.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/features/calls/ui/dialogs/incoming_call_dialog.dart';
 import 'package:collab_tasks/features/settings/domain/models/theme_preference.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.dart';
@@ -82,6 +85,7 @@ class MyApp extends StatelessWidget {
           create: (_) => getIt<AuthBloc>()..add(const AuthSubscriptionStarted()),
         ),
         BlocProvider<LockBloc>(create: (_) => getIt<LockBloc>()),
+        BlocProvider<CallsBloc>(create: (_) => getIt<CallsBloc>()),
       ],
       child: BlocBuilder<LocaleCubit, Locale?>(
         builder: (context, locale) {
@@ -232,6 +236,18 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
               previous.status != lock.LockStatus.requiresLogout,
           listener: (context, state) {
             context.read<AuthBloc>().add(const AuthLogOutRequested());
+          },
+        ),
+        // When an incoming call arrives → show incoming call dialog
+        BlocListener<CallsBloc, CallsState>(
+          listenWhen: (previous, current) =>
+              previous.status != current.status &&
+              current.status == CallsStatus.ringingIncoming &&
+              current.activeCall != null,
+          listener: (context, state) {
+            final authState = context.read<AuthBloc>().state;
+            final currentUserId = authState.user?.id ?? '';
+            IncomingCallDialog.show(context, call: state.activeCall!, currentUserId: currentUserId);
           },
         ),
       ],

@@ -1,0 +1,410 @@
+import 'dart:async';
+
+import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/cancel_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/end_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/get_call_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/join_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/leave_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class CallsBloc extends Bloc<CallsEvent, CallsState> {
+  final StartCallUseCase _startCallUseCase;
+  final AcceptCallUseCase _acceptCallUseCase;
+  final RejectCallUseCase _rejectCallUseCase;
+  final EndCallUseCase _endCallUseCase;
+  final CancelCallUseCase _cancelCallUseCase;
+  final LeaveCallUseCase _leaveCallUseCase;
+  final InviteParticipantUseCase _inviteParticipantUseCase;
+  final RequestCallPermissionsUseCase _requestCallPermissionsUseCase;
+  final GetCallSessionUseCase _getCallSessionUseCase;
+  final WatchActiveCallUseCase _watchActiveCallUseCase;
+  final JoinRtcSessionUseCase _joinRtcSessionUseCase;
+  final LeaveRtcSessionUseCase _leaveRtcSessionUseCase;
+  final ToggleMicrophoneUseCase _toggleMicrophoneUseCase;
+  final ToggleCameraUseCase _toggleCameraUseCase;
+  final SwitchCameraUseCase _switchCameraUseCase;
+  final WatchRtcConnectionStateUseCase _watchRtcConnectionStateUseCase;
+  final WatchRtcParticipantMediaStatesUseCase _watchRtcParticipantMediaStatesUseCase;
+
+  StreamSubscription? _activeCallSubscription;
+  StreamSubscription? _rtcConnectionStateSubscription;
+  StreamSubscription? _participantMediaStatesSubscription;
+
+  CallsBloc({
+    required StartCallUseCase startCallUseCase,
+    required AcceptCallUseCase acceptCallUseCase,
+    required RejectCallUseCase rejectCallUseCase,
+    required EndCallUseCase endCallUseCase,
+    required CancelCallUseCase cancelCallUseCase,
+    required LeaveCallUseCase leaveCallUseCase,
+    required InviteParticipantUseCase inviteParticipantUseCase,
+    required RequestCallPermissionsUseCase requestCallPermissionsUseCase,
+    required GetCallSessionUseCase getCallSessionUseCase,
+    required WatchActiveCallUseCase watchActiveCallUseCase,
+    required JoinRtcSessionUseCase joinRtcSessionUseCase,
+    required LeaveRtcSessionUseCase leaveRtcSessionUseCase,
+    required ToggleMicrophoneUseCase toggleMicrophoneUseCase,
+    required ToggleCameraUseCase toggleCameraUseCase,
+    required SwitchCameraUseCase switchCameraUseCase,
+    required WatchRtcConnectionStateUseCase watchRtcConnectionStateUseCase,
+    required WatchRtcParticipantMediaStatesUseCase watchRtcParticipantMediaStatesUseCase,
+  }) : _startCallUseCase = startCallUseCase,
+       _acceptCallUseCase = acceptCallUseCase,
+       _rejectCallUseCase = rejectCallUseCase,
+       _endCallUseCase = endCallUseCase,
+       _cancelCallUseCase = cancelCallUseCase,
+       _leaveCallUseCase = leaveCallUseCase,
+       _inviteParticipantUseCase = inviteParticipantUseCase,
+       _requestCallPermissionsUseCase = requestCallPermissionsUseCase,
+       _getCallSessionUseCase = getCallSessionUseCase,
+       _watchActiveCallUseCase = watchActiveCallUseCase,
+       _joinRtcSessionUseCase = joinRtcSessionUseCase,
+       _leaveRtcSessionUseCase = leaveRtcSessionUseCase,
+       _toggleMicrophoneUseCase = toggleMicrophoneUseCase,
+       _toggleCameraUseCase = toggleCameraUseCase,
+       _switchCameraUseCase = switchCameraUseCase,
+       _watchRtcConnectionStateUseCase = watchRtcConnectionStateUseCase,
+       _watchRtcParticipantMediaStatesUseCase = watchRtcParticipantMediaStatesUseCase,
+       super(const CallsState()) {
+    on<StartCallRequested>(_onStartCall);
+    on<IncomingCallDetected>(_onIncomingCallDetected);
+    on<AcceptCallRequested>(_onAcceptCall);
+    on<RejectCallRequested>(_onRejectCall);
+    on<EndCallRequested>(_onEndCall);
+    on<CancelCallRequested>(_onCancelCall);
+    on<LeaveCallRequested>(_onLeaveCall);
+    on<InviteParticipantRequested>(_onInviteParticipant);
+    on<AppLifecycleChanged>(_onAppLifecycleChanged);
+    on<ToggleMicrophoneRequested>(_onToggleMicrophone);
+    on<ToggleCameraRequested>(_onToggleCamera);
+    on<SwitchCameraRequested>(_onSwitchCamera);
+    on<ActiveCallUpdated>(_onActiveCallUpdated);
+    on<RtcConnectionStateChanged>(_onRtcConnectionStateChanged);
+    on<ParticipantMediaStatesUpdated>(_onParticipantMediaStatesUpdated);
+  }
+
+  Future<void> _onStartCall(StartCallRequested event, Emitter<CallsState> emit) async {
+    try {
+      final permissionsGranted = await _requestCallPermissionsUseCase(type: event.type);
+      if (!permissionsGranted) {
+        emit(
+          state.copyWith(
+            status: CallsStatus.error,
+            errorMessage: () => event.type == CallType.video
+                ? 'Camera and microphone permissions are required for video calls'
+                : 'Microphone permission is required for calls',
+          ),
+        );
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          status: CallsStatus.ringingOutgoing,
+          currentUserId: () => event.callerId,
+          isCameraEnabled: event.type == CallType.video,
+          errorMessage: () => null,
+        ),
+      );
+
+      final call = await _startCallUseCase(
+        callerId: event.callerId,
+        callerName: event.callerName,
+        callerAvatarUrl: event.callerAvatarUrl,
+        calleeIds: event.calleeIds,
+        type: event.type,
+        isGroup: event.isGroup,
+        groupId: event.groupId,
+      );
+
+      emit(state.copyWith(activeCall: () => call));
+
+      await _subscribeToActiveCall(call.id);
+    } catch (e) {
+      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+    }
+  }
+
+  void _onIncomingCallDetected(IncomingCallDetected event, Emitter<CallsState> emit) {
+    if (state.status != CallsStatus.idle) return;
+
+    emit(
+      state.copyWith(
+        status: CallsStatus.ringingIncoming,
+        activeCall: () => event.call,
+        errorMessage: () => null,
+      ),
+    );
+
+    _subscribeToActiveCall(event.call.id);
+  }
+
+  Future<void> _onAcceptCall(AcceptCallRequested event, Emitter<CallsState> emit) async {
+    try {
+      final callType = state.activeCall?.type ?? CallType.audio;
+      final permissionsGranted = await _requestCallPermissionsUseCase(type: callType);
+      if (!permissionsGranted) {
+        emit(
+          state.copyWith(
+            status: CallsStatus.error,
+            errorMessage: () => callType == CallType.video
+                ? 'Camera and microphone permissions are required for video calls'
+                : 'Microphone permission is required for calls',
+          ),
+        );
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          currentUserId: () => event.userId,
+          status: CallsStatus.active,
+          isCameraEnabled: callType == CallType.video,
+        ),
+      );
+
+      await _acceptCallUseCase(callId: event.callId, userId: event.userId);
+
+      final session = await _getCallSessionUseCase(callId: event.callId, userId: event.userId);
+
+      emit(state.copyWith(session: () => session));
+
+      await _joinRtcSession(session);
+    } catch (e) {
+      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+    }
+  }
+
+  Future<void> _onRejectCall(RejectCallRequested event, Emitter<CallsState> emit) async {
+    try {
+      await _rejectCallUseCase(callId: event.callId, userId: event.userId);
+    } catch (e) {
+      // Ignored on reject
+    } finally {
+      await _cleanup();
+      emit(const CallsState());
+    }
+  }
+
+  Future<void> _onEndCall(EndCallRequested event, Emitter<CallsState> emit) async {
+    final callId = event.callId ?? state.activeCall?.id;
+    emit(state.copyWith(status: CallsStatus.terminating));
+
+    if (callId != null) {
+      try {
+        await _endCallUseCase(callId);
+      } catch (e) {
+        // Ignored on end
+      }
+    }
+
+    await _cleanup();
+    emit(const CallsState());
+  }
+
+  Future<void> _onCancelCall(CancelCallRequested event, Emitter<CallsState> emit) async {
+    final callId = event.callId ?? state.activeCall?.id;
+    emit(state.copyWith(status: CallsStatus.terminating));
+
+    if (callId != null) {
+      try {
+        await _cancelCallUseCase(callId);
+      } catch (_) {}
+    }
+
+    await _cleanup();
+    emit(const CallsState());
+  }
+
+  Future<void> _onLeaveCall(LeaveCallRequested event, Emitter<CallsState> emit) async {
+    final callId = state.activeCall?.id;
+    final userId = state.currentUserId;
+    emit(state.copyWith(status: CallsStatus.terminating));
+
+    if (callId != null && userId != null) {
+      try {
+        await _leaveCallUseCase(callId: callId, userId: userId);
+      } catch (_) {}
+    }
+
+    await _cleanup();
+    emit(const CallsState());
+  }
+
+  Future<void> _onInviteParticipant(
+    InviteParticipantRequested event,
+    Emitter<CallsState> emit,
+  ) async {
+    final callId = state.activeCall?.id;
+    if (callId != null) {
+      try {
+        await _inviteParticipantUseCase(
+          callId: callId,
+          userId: event.userId,
+          displayName: event.displayName,
+          avatarUrl: event.avatarUrl,
+        );
+      } catch (e) {
+        emit(
+          state.copyWith(
+            status: CallsStatus.error,
+            errorMessage: () => 'Failed to invite participant: $e',
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _onAppLifecycleChanged(AppLifecycleChanged event, Emitter<CallsState> emit) async {
+    if (state.status != CallsStatus.active) return;
+
+    switch (event.lifecycleState) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        if (state.isCameraEnabled && state.activeCall?.type == CallType.video) {
+          await _toggleCameraUseCase(false);
+          emit(state.copyWith(isCameraEnabled: false));
+        }
+        break;
+      case AppLifecycleState.resumed:
+        if (!state.isCameraEnabled && state.activeCall?.type == CallType.video) {
+          await _toggleCameraUseCase(true);
+          emit(state.copyWith(isCameraEnabled: true));
+        }
+        break;
+      case AppLifecycleState.detached:
+        add(const EndCallRequested());
+        break;
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+
+  Future<void> _onToggleMicrophone(
+    ToggleMicrophoneRequested event,
+    Emitter<CallsState> emit,
+  ) async {
+    final newMuted = !state.isMicrophoneMuted;
+    await _toggleMicrophoneUseCase(newMuted);
+    emit(state.copyWith(isMicrophoneMuted: newMuted));
+  }
+
+  Future<void> _onToggleCamera(ToggleCameraRequested event, Emitter<CallsState> emit) async {
+    final newEnabled = !state.isCameraEnabled;
+    await _toggleCameraUseCase(newEnabled);
+    emit(state.copyWith(isCameraEnabled: newEnabled));
+  }
+
+  Future<void> _onSwitchCamera(SwitchCameraRequested event, Emitter<CallsState> emit) async {
+    await _switchCameraUseCase();
+  }
+
+  Future<void> _onActiveCallUpdated(ActiveCallUpdated event, Emitter<CallsState> emit) async {
+    final call = event.call;
+    if (call == null) {
+      await _cleanup();
+      emit(const CallsState());
+      return;
+    }
+
+    emit(state.copyWith(activeCall: () => call));
+
+    // Caller scenario: callee accepted -> transition from ringing to active & join RTC
+    if (state.status == CallsStatus.ringingOutgoing && call.status == CallStatus.active) {
+      final userId = state.currentUserId ?? call.callerId;
+      try {
+        final session = await _getCallSessionUseCase(callId: call.id, userId: userId);
+        emit(
+          state.copyWith(
+            status: CallsStatus.active,
+            session: () => session,
+            isCameraEnabled: call.type == CallType.video,
+          ),
+        );
+        await _joinRtcSession(session);
+      } catch (e) {
+        emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+      }
+    } else if (call.status == CallStatus.ended ||
+        call.status == CallStatus.rejected ||
+        call.status == CallStatus.cancelled) {
+      await _cleanup();
+      emit(const CallsState());
+    }
+  }
+
+  void _onRtcConnectionStateChanged(RtcConnectionStateChanged event, Emitter<CallsState> emit) {
+    emit(state.copyWith(rtcConnectionState: event.state));
+  }
+
+  void _onParticipantMediaStatesUpdated(
+    ParticipantMediaStatesUpdated event,
+    Emitter<CallsState> emit,
+  ) {
+    emit(state.copyWith(participantMediaStates: event.mediaStates));
+  }
+
+  Future<void> _subscribeToActiveCall(String callId) async {
+    await _activeCallSubscription?.cancel();
+    _activeCallSubscription = _watchActiveCallUseCase(callId).listen(
+      (call) => add(ActiveCallUpdated(call)),
+      onError: (_) => add(const ActiveCallUpdated(null)),
+    );
+  }
+
+  Future<void> _joinRtcSession(CallSession session) async {
+    await _subscribeToRtcStreams();
+    await _joinRtcSessionUseCase(session);
+  }
+
+  Future<void> _subscribeToRtcStreams() async {
+    await _rtcConnectionStateSubscription?.cancel();
+    _rtcConnectionStateSubscription = _watchRtcConnectionStateUseCase().listen(
+      (rtcState) => add(RtcConnectionStateChanged(rtcState)),
+    );
+
+    await _participantMediaStatesSubscription?.cancel();
+    _participantMediaStatesSubscription = _watchRtcParticipantMediaStatesUseCase().listen(
+      (mediaStates) => add(ParticipantMediaStatesUpdated(mediaStates)),
+    );
+  }
+
+  Future<void> _cleanup() async {
+    await _activeCallSubscription?.cancel();
+    _activeCallSubscription = null;
+
+    await _rtcConnectionStateSubscription?.cancel();
+    _rtcConnectionStateSubscription = null;
+
+    await _participantMediaStatesSubscription?.cancel();
+    _participantMediaStatesSubscription = null;
+
+    try {
+      await _leaveRtcSessionUseCase();
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> close() async {
+    await _cleanup();
+    return super.close();
+  }
+}

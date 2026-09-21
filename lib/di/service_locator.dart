@@ -1,6 +1,7 @@
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collab_tasks/core/config/rtc_config.dart';
 import 'package:collab_tasks/core/config/websocket_config.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
@@ -27,6 +28,36 @@ import 'package:collab_tasks/features/auth/domain/usecases/sign_in_with_google_u
 import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_bloc.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_config.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_rtc_service.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_video_view_factory.dart';
+import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_repository.dart';
+import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
+import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dart';
+import 'package:collab_tasks/features/calls/data/services/call_permissions_service_impl.dart';
+import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
+import 'package:collab_tasks/features/calls/domain/services/call_permissions_service.dart';
+import 'package:collab_tasks/features/calls/domain/services/rtc_service.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/cancel_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/end_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/get_call_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/join_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/leave_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
+import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/firebase_chat_remote_data_source.dart';
 import 'package:collab_tasks/features/chats/data/remote/web_socket_chat_remote_data_source.dart';
@@ -417,6 +448,63 @@ void setupLocator(SharedPreferences sharedPreferences) {
         getGroupChatUseCase: getIt<GetGroupChatUseCase>(),
         getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
         loadMoreGroupMessagesUseCase: getIt<LoadMoreGroupMessagesUseCase>(),
+      ),
+    )
+    ..registerLazySingleton<CallRepository>(() => InMemoryCallRepository())
+    ..registerLazySingleton<CallPermissionsService>(() => const CallPermissionsServiceImpl())
+    ..registerLazySingleton<RtcService>(
+      () => switch (rtcBackend) {
+        RtcBackend.agora => AgoraRtcService(appId: AgoraConfig.appId),
+        RtcBackend.fake => FakeRtcService(),
+        RtcBackend.liveKit => throw UnimplementedError('LiveKit RtcService is not implemented yet'),
+      },
+    )
+    ..registerLazySingleton<RtcVideoViewFactory>(
+      () => switch (rtcBackend) {
+        RtcBackend.agora => AgoraVideoViewFactory(getIt<RtcService>() as AgoraRtcService),
+        RtcBackend.fake => const FakeVideoViewFactory(),
+        RtcBackend.liveKit => throw UnimplementedError(
+          'LiveKit VideoViewFactory is not implemented yet',
+        ),
+      },
+    )
+    ..registerLazySingleton(() => StartCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => AcceptCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => RejectCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => EndCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => CancelCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => LeaveCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => InviteParticipantUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => RequestCallPermissionsUseCase(getIt<CallPermissionsService>()))
+    ..registerLazySingleton(() => GetCallSessionUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => WatchActiveCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => WatchIncomingCallsUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => JoinRtcSessionUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => LeaveRtcSessionUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => ToggleMicrophoneUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => ToggleCameraUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => SwitchCameraUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => WatchRtcConnectionStateUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => WatchRtcParticipantMediaStatesUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(
+      () => CallsBloc(
+        startCallUseCase: getIt(),
+        acceptCallUseCase: getIt(),
+        rejectCallUseCase: getIt(),
+        endCallUseCase: getIt(),
+        cancelCallUseCase: getIt(),
+        leaveCallUseCase: getIt(),
+        inviteParticipantUseCase: getIt(),
+        requestCallPermissionsUseCase: getIt(),
+        getCallSessionUseCase: getIt(),
+        watchActiveCallUseCase: getIt(),
+        joinRtcSessionUseCase: getIt(),
+        leaveRtcSessionUseCase: getIt(),
+        toggleMicrophoneUseCase: getIt(),
+        toggleCameraUseCase: getIt(),
+        switchCameraUseCase: getIt(),
+        watchRtcConnectionStateUseCase: getIt(),
+        watchRtcParticipantMediaStatesUseCase: getIt(),
       ),
     );
 }

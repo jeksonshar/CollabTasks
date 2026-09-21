@@ -1,6 +1,10 @@
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
+import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
@@ -122,6 +126,62 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                   ),
                 ],
               ),
+              actions: [
+                if (state is GroupChatSuccess) ...[
+                  IconButton(
+                    icon: const Icon(Icons.videocam),
+                    tooltip: 'Group Video Call',
+                    onPressed: () {
+                      getIt<CallsBloc>().add(
+                        StartCallRequested(
+                          callerId: state.currentUserId,
+                          callerName: 'Me',
+                          calleeIds: const [],
+                          type: CallType.video,
+                          isGroup: true,
+                          groupId: widget.groupId,
+                        ),
+                      );
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupCallScreen(
+                            callId: widget.groupId,
+                            groupName: state.groupChatTitle,
+                            callType: CallType.video,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.phone),
+                    tooltip: 'Group Audio Call',
+                    onPressed: () {
+                      getIt<CallsBloc>().add(
+                        StartCallRequested(
+                          callerId: state.currentUserId,
+                          callerName: 'Me',
+                          calleeIds: const [],
+                          type: CallType.audio,
+                          isGroup: true,
+                          groupId: widget.groupId,
+                        ),
+                      );
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupCallScreen(
+                            callId: widget.groupId,
+                            groupName: state.groupChatTitle,
+                            callType: CallType.audio,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
             ),
             body: Column(
               children: [
