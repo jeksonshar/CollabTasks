@@ -15,6 +15,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:collab_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 class GroupChatScreen extends StatefulWidget {
   final String groupId;
@@ -132,10 +133,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                     icon: const Icon(Icons.videocam),
                     tooltip: 'Group Video Call',
                     onPressed: () {
+                      final callId = const Uuid().v4();
                       getIt<CallsBloc>().add(
                         StartCallRequested(
+                          callId: callId,
                           callerId: state.currentUserId,
-                          callerName: 'Me',
+                          callerName: state.currentUserId,
                           calleeIds: const [],
                           type: CallType.video,
                           isGroup: true,
@@ -146,7 +149,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => GroupCallScreen(
-                            callId: widget.groupId,
+                            callId: callId,
                             groupName: state.groupChatTitle,
                             callType: CallType.video,
                           ),
@@ -158,10 +161,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                     icon: const Icon(Icons.phone),
                     tooltip: 'Group Audio Call',
                     onPressed: () {
+                      final callId = const Uuid().v4();
                       getIt<CallsBloc>().add(
                         StartCallRequested(
+                          callId: callId,
                           callerId: state.currentUserId,
-                          callerName: 'Me',
+                          callerName: state.currentUserId,
                           calleeIds: const [],
                           type: CallType.audio,
                           isGroup: true,
@@ -172,7 +177,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => GroupCallScreen(
-                            callId: widget.groupId,
+                            callId: callId,
                             groupName: state.groupChatTitle,
                             callType: CallType.audio,
                           ),

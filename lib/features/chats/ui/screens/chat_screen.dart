@@ -18,6 +18,7 @@ import 'package:collab_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -151,14 +152,16 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                     icon: const Icon(Icons.videocam),
                     tooltip: 'Video Call',
                     onPressed: () {
+                      final callId = const Uuid().v4();
                       final callerId = state.currentUserId;
                       final calleeId = state.opponentEmail;
                       final opponentName = widget.opponentName ?? state.opponentEmail;
 
                       getIt<CallsBloc>().add(
                         StartCallRequested(
+                          callId: callId,
                           callerId: callerId,
-                          callerName: 'Me',
+                          callerName: callerId,
                           calleeIds: [calleeId],
                           type: CallType.video,
                         ),
@@ -167,7 +170,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => VideoCallScreen(
-                            callId: widget.chatId,
+                            callId: callId,
                             opponentName: opponentName,
                             opponentId: calleeId,
                           ),
@@ -179,14 +182,16 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                     icon: const Icon(Icons.phone),
                     tooltip: 'Audio Call',
                     onPressed: () {
+                      final callId = const Uuid().v4();
                       final callerId = state.currentUserId;
                       final calleeId = state.opponentEmail;
                       final opponentName = widget.opponentName ?? state.opponentEmail;
 
                       getIt<CallsBloc>().add(
                         StartCallRequested(
+                          callId: callId,
                           callerId: callerId,
-                          callerName: 'Me',
+                          callerName: callerId,
                           calleeIds: [calleeId],
                           type: CallType.audio,
                         ),
@@ -195,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) =>
-                              AudioCallScreen(callId: widget.chatId, opponentName: opponentName),
+                              AudioCallScreen(callId: callId, opponentName: opponentName),
                         ),
                       );
                     },

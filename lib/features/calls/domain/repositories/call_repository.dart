@@ -11,6 +11,7 @@ abstract class CallRepository {
 
   /// Initiates a new 1-to-1 or group call.
   Future<Call> startCall({
+    String? callId,
     required String callerId,
     required String callerName,
     String? callerAvatarUrl,

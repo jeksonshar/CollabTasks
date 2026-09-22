@@ -69,3 +69,6 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 
 # Локальные индексы ИИ-помощников
 skills-lock.json
+
+# Firebase Functions secrets
+functions/.env.*

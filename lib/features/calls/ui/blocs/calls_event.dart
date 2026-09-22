@@ -13,6 +13,7 @@ sealed class CallsEvent extends Equatable {
 }
 
 class StartCallRequested extends CallsEvent {
+  final String? callId;
   final String callerId;
   final String callerName;
   final String? callerAvatarUrl;
@@ -22,6 +23,7 @@ class StartCallRequested extends CallsEvent {
   final String? groupId;
 
   const StartCallRequested({
+    this.callId,
     required this.callerId,
     required this.callerName,
     this.callerAvatarUrl,
@@ -33,6 +35,7 @@ class StartCallRequested extends CallsEvent {
 
   @override
   List<Object?> get props => [
+    callId,
     callerId,
     callerName,
     callerAvatarUrl,
@@ -155,4 +158,21 @@ class AppLifecycleChanged extends CallsEvent {
 
   @override
   List<Object?> get props => [lifecycleState];
+}
+
+class ListenIncomingCallsStarted extends CallsEvent {
+  final String userId;
+
+  const ListenIncomingCallsStarted(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class StopListeningIncomingCalls extends CallsEvent {
+  const StopListeningIncomingCalls();
+}
+
+class CallTimeoutOccurred extends CallsEvent {
+  const CallTimeoutOccurred();
 }

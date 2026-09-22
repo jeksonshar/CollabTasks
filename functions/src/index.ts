@@ -1,7 +1,91 @@
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import {RtcTokenBuilder, RtcRole} from "agora-token";
 
 admin.initializeApp();
+
+// ============================================================================
+// 0. AGORA RTC TOKEN GENERATOR
+// ============================================================================
+//
+// POST https://us-central1-collabtasks-fda3f.cloudfunctions.net/getAgoraRtcToken
+//
+// Headers:
+//   Authorization: Bearer <Firebase ID token>
+//   Content-Type: application/json
+//
+// Body: { "channelName": "<callId>", "uid": 0 }
+//
+// Response: { "token": "<Agora AccessToken2>", "uid": 0, "channelName": "..." }
+//
+export const getAgoraRtcToken = onRequest(
+    {cors: true},
+    async (req, res) => {
+        // Only allow POST
+        if (req.method !== "POST") {
+            res.status(405).json({error: "Method not allowed"});
+            return;
+        }
+
+        // Verify Firebase ID token from Authorization header
+        const authHeader = req.headers.authorization || "";
+        if (!authHeader.startsWith("Bearer ")) {
+            res.status(401).json({error: "Missing or invalid Authorization header"});
+            return;
+        }
+
+        const idToken = authHeader.split("Bearer ")[1];
+        try {
+            await admin.auth().verifyIdToken(idToken);
+        } catch (err) {
+            console.error("[getAgoraRtcToken] Invalid ID token:", err);
+            res.status(401).json({error: "Unauthorized"});
+            return;
+        }
+
+        // Read Agora credentials from process.env
+        // Set these in functions/.env.collabtasks-fda3f (never commit to git!)
+        const appId = process.env.AGORA_APP_ID || "";
+        const appCertificate = process.env.AGORA_APP_CERTIFICATE || "";
+
+        if (!appId || !appCertificate) {
+            console.error("[getAgoraRtcToken] AGORA_APP_ID or AGORA_APP_CERTIFICATE not set");
+            res.status(500).json({error: "Agora credentials not configured on server"});
+            return;
+        }
+
+        const body = req.body as {channelName?: string; uid?: number};
+        const channelName = body.channelName || "";
+        const uid = typeof body.uid === "number" ? body.uid : 0;
+
+        if (!channelName) {
+            res.status(400).json({error: "channelName is required"});
+            return;
+        }
+
+        // Expiry: current time + 24 hours
+        const expirationTimeInSeconds = Math.floor(Date.now() / 1000) + 86400;
+
+        try {
+            const token = RtcTokenBuilder.buildTokenWithUid(
+                appId,
+                appCertificate,
+                channelName,
+                uid,
+                RtcRole.PUBLISHER,
+                expirationTimeInSeconds,
+                expirationTimeInSeconds,
+            );
+
+            console.log(`[getAgoraRtcToken] Token generated for channel=${channelName}, uid=${uid}`);
+            res.status(200).json({token, uid, channelName});
+        } catch (err) {
+            console.error("[getAgoraRtcToken] Token build error:", err);
+            res.status(500).json({error: "Failed to generate token"});
+        }
+    }
+);
 
 // ============================================================================
 // 1. ТРИГГЕР ДЛЯ ЛИЧНЫХ ЧАТОВ (Остался без изменений)

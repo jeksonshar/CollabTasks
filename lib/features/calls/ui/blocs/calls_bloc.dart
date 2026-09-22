@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
+import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/cancel_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/end_call_use_case.dart';
@@ -18,6 +20,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_c
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
@@ -36,6 +39,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final RequestCallPermissionsUseCase _requestCallPermissionsUseCase;
   final GetCallSessionUseCase _getCallSessionUseCase;
   final WatchActiveCallUseCase _watchActiveCallUseCase;
+  final WatchIncomingCallsUseCase _watchIncomingCallsUseCase;
   final JoinRtcSessionUseCase _joinRtcSessionUseCase;
   final LeaveRtcSessionUseCase _leaveRtcSessionUseCase;
   final ToggleMicrophoneUseCase _toggleMicrophoneUseCase;
@@ -45,8 +49,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final WatchRtcParticipantMediaStatesUseCase _watchRtcParticipantMediaStatesUseCase;
 
   StreamSubscription? _activeCallSubscription;
+  StreamSubscription? _incomingCallsSubscription;
   StreamSubscription? _rtcConnectionStateSubscription;
   StreamSubscription? _participantMediaStatesSubscription;
+  Timer? _outgoingCallTimeoutTimer;
+
+  static const Duration _outgoingCallTimeoutDuration = Duration(seconds: 45);
 
   CallsBloc({
     required StartCallUseCase startCallUseCase,
@@ -59,6 +67,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     required RequestCallPermissionsUseCase requestCallPermissionsUseCase,
     required GetCallSessionUseCase getCallSessionUseCase,
     required WatchActiveCallUseCase watchActiveCallUseCase,
+    required WatchIncomingCallsUseCase watchIncomingCallsUseCase,
     required JoinRtcSessionUseCase joinRtcSessionUseCase,
     required LeaveRtcSessionUseCase leaveRtcSessionUseCase,
     required ToggleMicrophoneUseCase toggleMicrophoneUseCase,
@@ -76,6 +85,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
        _requestCallPermissionsUseCase = requestCallPermissionsUseCase,
        _getCallSessionUseCase = getCallSessionUseCase,
        _watchActiveCallUseCase = watchActiveCallUseCase,
+       _watchIncomingCallsUseCase = watchIncomingCallsUseCase,
        _joinRtcSessionUseCase = joinRtcSessionUseCase,
        _leaveRtcSessionUseCase = leaveRtcSessionUseCase,
        _toggleMicrophoneUseCase = toggleMicrophoneUseCase,
@@ -86,6 +96,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
        super(const CallsState()) {
     on<StartCallRequested>(_onStartCall);
     on<IncomingCallDetected>(_onIncomingCallDetected);
+    on<ListenIncomingCallsStarted>(_onListenIncomingCallsStarted);
+    on<StopListeningIncomingCalls>(_onStopListeningIncomingCalls);
+    on<CallTimeoutOccurred>(_onCallTimeoutOccurred);
     on<AcceptCallRequested>(_onAcceptCall);
     on<RejectCallRequested>(_onRejectCall);
     on<EndCallRequested>(_onEndCall);
@@ -102,9 +115,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onStartCall(StartCallRequested event, Emitter<CallsState> emit) async {
+    debugPrint('[CallsBloc] _onStartCall: type=${event.type}, callee=${event.calleeIds}');
     try {
       final permissionsGranted = await _requestCallPermissionsUseCase(type: event.type);
       if (!permissionsGranted) {
+        debugPrint('[CallsBloc] Permissions denied for call type: ${event.type}');
         emit(
           state.copyWith(
             status: CallsStatus.error,
@@ -126,6 +141,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       );
 
       final call = await _startCallUseCase(
+        callId: event.callId,
         callerId: event.callerId,
         callerName: event.callerName,
         callerAvatarUrl: event.callerAvatarUrl,
@@ -135,10 +151,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         groupId: event.groupId,
       );
 
+      debugPrint('[CallsBloc] Call created: id=${call.id}, status=${call.status}');
       emit(state.copyWith(activeCall: () => call));
 
+      _startOutgoingCallTimeout();
       await _subscribeToActiveCall(call.id);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[CallsBloc] Error starting call: $e\n$st');
       emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
     }
   }
@@ -317,20 +336,92 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     await _switchCameraUseCase();
   }
 
+  void _onListenIncomingCallsStarted(ListenIncomingCallsStarted event, Emitter<CallsState> emit) {
+    debugPrint('[CallsBloc] Starting incoming calls listener for: ${event.userId}');
+    _incomingCallsSubscription?.cancel();
+    final normalizedUserId = event.userId.trim().toLowerCase();
+
+    _incomingCallsSubscription = _watchIncomingCallsUseCase(normalizedUserId).listen(
+      (calls) {
+        debugPrint('[CallsBloc] Received incoming calls update: ${calls.length} call(s)');
+        for (final call in calls) {
+          if (call.status == CallStatus.ringing &&
+              call.callerId.trim().toLowerCase() != normalizedUserId &&
+              call.calleeIds.any((id) => id.trim().toLowerCase() == normalizedUserId) &&
+              call.participants.any(
+                (p) =>
+                    p.userId.trim().toLowerCase() == normalizedUserId &&
+                    p.status == CallParticipantStatus.ringing,
+              )) {
+            debugPrint('[CallsBloc] Incoming call detected from ${call.callerName} (${call.id})');
+            add(IncomingCallDetected(call));
+            break;
+          }
+        }
+      },
+      onError: (e) {
+        debugPrint('[CallsBloc] Error in incoming calls listener: $e');
+      },
+    );
+  }
+
+  void _onStopListeningIncomingCalls(StopListeningIncomingCalls event, Emitter<CallsState> emit) {
+    debugPrint('[CallsBloc] Stopping incoming calls listener');
+    _incomingCallsSubscription?.cancel();
+    _incomingCallsSubscription = null;
+  }
+
+  Future<void> _onCallTimeoutOccurred(CallTimeoutOccurred event, Emitter<CallsState> emit) async {
+    if (state.status != CallsStatus.ringingOutgoing) return;
+    debugPrint('[CallsBloc] Outgoing call timed out (no answer)');
+
+    final callId = state.activeCall?.id;
+    if (callId != null) {
+      try {
+        await _cancelCallUseCase(callId);
+      } catch (e) {
+        debugPrint('[CallsBloc] Error cancelling timed-out call: $e');
+      }
+    }
+
+    await _cleanup();
+    emit(state.copyWith(status: CallsStatus.error, errorMessage: () => 'Recipient did not answer'));
+  }
+
+  void _startOutgoingCallTimeout() {
+    _stopOutgoingCallTimeout();
+    debugPrint('[CallsBloc] Starting 45s outgoing call timeout timer');
+    _outgoingCallTimeoutTimer = Timer(_outgoingCallTimeoutDuration, () {
+      add(const CallTimeoutOccurred());
+    });
+  }
+
+  void _stopOutgoingCallTimeout() {
+    if (_outgoingCallTimeoutTimer != null) {
+      debugPrint('[CallsBloc] Stopping outgoing call timeout timer');
+      _outgoingCallTimeoutTimer?.cancel();
+      _outgoingCallTimeoutTimer = null;
+    }
+  }
+
   Future<void> _onActiveCallUpdated(ActiveCallUpdated event, Emitter<CallsState> emit) async {
     final call = event.call;
     if (call == null) {
+      debugPrint('[CallsBloc] Active call updated to null -> cleaning up');
       await _cleanup();
       emit(const CallsState());
       return;
     }
 
+    debugPrint('[CallsBloc] Active call updated: id=${call.id}, status=${call.status}');
     emit(state.copyWith(activeCall: () => call));
 
     // Caller scenario: callee accepted -> transition from ringing to active & join RTC
     if (state.status == CallsStatus.ringingOutgoing && call.status == CallStatus.active) {
+      _stopOutgoingCallTimeout();
       final userId = state.currentUserId ?? call.callerId;
       try {
+        debugPrint('[CallsBloc] Call became active! Obtaining RTC session...');
         final session = await _getCallSessionUseCase(callId: call.id, userId: userId);
         emit(
           state.copyWith(
@@ -339,20 +430,35 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
             isCameraEnabled: call.type == CallType.video,
           ),
         );
+        debugPrint('[CallsBloc] Joining RTC media session: roomId=${session.roomId}');
         await _joinRtcSession(session);
-      } catch (e) {
+      } catch (e, st) {
+        debugPrint('[CallsBloc] Error joining RTC session: $e\n$st');
         emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
       }
-    } else if (call.status == CallStatus.ended ||
-        call.status == CallStatus.rejected ||
-        call.status == CallStatus.cancelled) {
+    } else if (call.status == CallStatus.rejected) {
+      debugPrint('[CallsBloc] Call was rejected by recipient');
+      await _cleanup();
+      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => 'Call was declined'));
+    } else if (call.status == CallStatus.ended || call.status == CallStatus.cancelled) {
+      debugPrint('[CallsBloc] Call ended or cancelled');
       await _cleanup();
       emit(const CallsState());
     }
   }
 
   void _onRtcConnectionStateChanged(RtcConnectionStateChanged event, Emitter<CallsState> emit) {
+    debugPrint('[CallsBloc] RTC Connection state changed: ${event.state}');
     emit(state.copyWith(rtcConnectionState: event.state));
+
+    if (event.state == RtcConnectionState.failed) {
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorMessage: () => 'RTC connection failed. Check network or RTC settings.',
+        ),
+      );
+    }
   }
 
   void _onParticipantMediaStatesUpdated(
@@ -363,10 +469,14 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _subscribeToActiveCall(String callId) async {
+    debugPrint('[CallsBloc] Subscribing to active call: $callId');
     await _activeCallSubscription?.cancel();
     _activeCallSubscription = _watchActiveCallUseCase(callId).listen(
       (call) => add(ActiveCallUpdated(call)),
-      onError: (_) => add(const ActiveCallUpdated(null)),
+      onError: (err) {
+        debugPrint('[CallsBloc] Error watching active call: $err');
+        add(const ActiveCallUpdated(null));
+      },
     );
   }
 
@@ -388,6 +498,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _cleanup() async {
+    _stopOutgoingCallTimeout();
+
     await _activeCallSubscription?.cancel();
     _activeCallSubscription = null;
 
@@ -404,6 +516,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   @override
   Future<void> close() async {
+    await _incomingCallsSubscription?.cancel();
+    _incomingCallsSubscription = null;
     await _cleanup();
     return super.close();
   }

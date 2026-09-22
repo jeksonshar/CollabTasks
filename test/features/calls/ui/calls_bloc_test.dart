@@ -21,6 +21,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_c
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
@@ -49,6 +50,7 @@ void main() {
       requestCallPermissionsUseCase: RequestCallPermissionsUseCase(fakePermissionsService),
       getCallSessionUseCase: GetCallSessionUseCase(callRepository),
       watchActiveCallUseCase: WatchActiveCallUseCase(callRepository),
+      watchIncomingCallsUseCase: WatchIncomingCallsUseCase(callRepository),
       joinRtcSessionUseCase: JoinRtcSessionUseCase(fakeRtcService),
       leaveRtcSessionUseCase: LeaveRtcSessionUseCase(fakeRtcService),
       toggleMicrophoneUseCase: ToggleMicrophoneUseCase(fakeRtcService),

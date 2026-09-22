@@ -32,6 +32,7 @@ class InMemoryCallRepository implements CallRepository {
 
   @override
   Future<Call> startCall({
+    String? callId,
     required String callerId,
     required String callerName,
     String? callerAvatarUrl,
@@ -41,7 +42,7 @@ class InMemoryCallRepository implements CallRepository {
     String? groupId,
   }) async {
     final now = DateTime.now();
-    final callId = _uuid.v4();
+    final effectiveCallId = callId ?? _uuid.v4();
 
     final participants = [
       CallParticipant(
@@ -63,7 +64,7 @@ class InMemoryCallRepository implements CallRepository {
     ];
 
     final call = Call(
-      id: callId,
+      id: effectiveCallId,
       callerId: callerId,
       callerName: callerName,
       callerAvatarUrl: callerAvatarUrl,
@@ -76,8 +77,8 @@ class InMemoryCallRepository implements CallRepository {
       createdAt: now,
     );
 
-    _calls[callId] = call;
-    _notifyActiveCall(callId, call);
+    _calls[effectiveCallId] = call;
+    _notifyActiveCall(effectiveCallId, call);
 
     for (final calleeId in calleeIds) {
       _notifyIncomingCalls(calleeId);

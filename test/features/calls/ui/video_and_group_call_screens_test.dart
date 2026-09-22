@@ -26,6 +26,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_c
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
@@ -50,6 +51,7 @@ class TestCallsBloc extends CallsBloc {
     required super.requestCallPermissionsUseCase,
     required super.getCallSessionUseCase,
     required super.watchActiveCallUseCase,
+    required super.watchIncomingCallsUseCase,
     required super.joinRtcSessionUseCase,
     required super.leaveRtcSessionUseCase,
     required super.toggleMicrophoneUseCase,
@@ -78,44 +80,27 @@ void main() {
 
     getIt
       ..registerLazySingleton<CallRepository>(() => callRepository)
-      ..registerLazySingleton<CallPermissionsService>(
-        () => fakePermissionsService,
-      )
+      ..registerLazySingleton<CallPermissionsService>(() => fakePermissionsService)
       ..registerLazySingleton<RtcService>(() => fakeRtcService)
-      ..registerLazySingleton<RtcVideoViewFactory>(
-        () => const FakeVideoViewFactory(),
-      )
+      ..registerLazySingleton<RtcVideoViewFactory>(() => const FakeVideoViewFactory())
       ..registerLazySingleton(() => StartCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => AcceptCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => RejectCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => EndCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => CancelCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => LeaveCallUseCase(getIt<CallRepository>()))
-      ..registerLazySingleton(
-        () => InviteParticipantUseCase(getIt<CallRepository>()),
-      )
-      ..registerLazySingleton(
-        () => RequestCallPermissionsUseCase(getIt<CallPermissionsService>()),
-      )
-      ..registerLazySingleton(
-        () => GetCallSessionUseCase(getIt<CallRepository>()),
-      )
-      ..registerLazySingleton(
-        () => WatchActiveCallUseCase(getIt<CallRepository>()),
-      )
+      ..registerLazySingleton(() => InviteParticipantUseCase(getIt<CallRepository>()))
+      ..registerLazySingleton(() => RequestCallPermissionsUseCase(getIt<CallPermissionsService>()))
+      ..registerLazySingleton(() => GetCallSessionUseCase(getIt<CallRepository>()))
+      ..registerLazySingleton(() => WatchActiveCallUseCase(getIt<CallRepository>()))
+      ..registerLazySingleton(() => WatchIncomingCallsUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => JoinRtcSessionUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => LeaveRtcSessionUseCase(getIt<RtcService>()))
-      ..registerLazySingleton(
-        () => ToggleMicrophoneUseCase(getIt<RtcService>()),
-      )
+      ..registerLazySingleton(() => ToggleMicrophoneUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => ToggleCameraUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => SwitchCameraUseCase(getIt<RtcService>()))
-      ..registerLazySingleton(
-        () => WatchRtcConnectionStateUseCase(getIt<RtcService>()),
-      )
-      ..registerLazySingleton(
-        () => WatchRtcParticipantMediaStatesUseCase(getIt<RtcService>()),
-      );
+      ..registerLazySingleton(() => WatchRtcConnectionStateUseCase(getIt<RtcService>()))
+      ..registerLazySingleton(() => WatchRtcParticipantMediaStatesUseCase(getIt<RtcService>()));
 
     callsBloc = TestCallsBloc(
       startCallUseCase: getIt(),
@@ -128,6 +113,7 @@ void main() {
       requestCallPermissionsUseCase: getIt(),
       getCallSessionUseCase: getIt(),
       watchActiveCallUseCase: getIt(),
+      watchIncomingCallsUseCase: getIt(),
       joinRtcSessionUseCase: getIt(),
       leaveRtcSessionUseCase: getIt(),
       toggleMicrophoneUseCase: getIt(),

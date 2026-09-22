@@ -31,7 +31,7 @@ import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_bloc.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_config.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_video_view_factory.dart';
-import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_repository.dart';
+import 'package:collab_tasks/features/calls/data/repositories/firestore_call_repository.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dart';
 import 'package:collab_tasks/features/calls/data/services/call_permissions_service_impl.dart';
@@ -450,7 +450,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
         loadMoreGroupMessagesUseCase: getIt<LoadMoreGroupMessagesUseCase>(),
       ),
     )
-    ..registerLazySingleton<CallRepository>(() => InMemoryCallRepository())
+    ..registerLazySingleton<CallRepository>(
+      () => FirestoreCallRepository(firestore: getIt<FirebaseFirestore>()),
+    )
     ..registerLazySingleton<CallPermissionsService>(() => const CallPermissionsServiceImpl())
     ..registerLazySingleton<RtcService>(
       () => switch (rtcBackend) {
@@ -498,6 +500,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         requestCallPermissionsUseCase: getIt(),
         getCallSessionUseCase: getIt(),
         watchActiveCallUseCase: getIt(),
+        watchIncomingCallsUseCase: getIt(),
         joinRtcSessionUseCase: getIt(),
         leaveRtcSessionUseCase: getIt(),
         toggleMicrophoneUseCase: getIt(),

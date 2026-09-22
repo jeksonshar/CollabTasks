@@ -19,6 +19,7 @@ import 'package:collab_tasks/features/auth/ui/lock_screen/biometric_offer_dialog
 import 'package:collab_tasks/features/auth/ui/lock_screen/lock_screen_widget.dart';
 import 'package:collab_tasks/features/auth/ui/lock_screen/privacy_screen_widget.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/dialogs/incoming_call_dialog.dart';
 import 'package:collab_tasks/features/settings/domain/models/theme_preference.dart';
@@ -158,10 +159,18 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
     // Perform cold-start lock check and sync auth status after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final isAuth = context.read<AuthBloc>().state.status == AuthStatus.authenticated;
+        final authState = context.read<AuthBloc>().state;
+        final isAuth = authState.status == AuthStatus.authenticated;
         context.read<LockBloc>()
           ..add(LockAuthStatusChanged(isAuthenticated: isAuth))
           ..add(const LockCheckRequested());
+
+        if (isAuth && authState.user != null) {
+          final userIdentifier = authState.user!.email.isNotEmpty
+              ? authState.user!.email
+              : authState.user!.id;
+          context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
+        }
       }
     });
   }
@@ -209,10 +218,18 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
             final isAuth = state.status == AuthStatus.authenticated;
             context.read<LockBloc>().add(LockAuthStatusChanged(isAuthenticated: isAuth));
 
+            if (isAuth && state.user != null) {
+              final userIdentifier = state.user!.email.isNotEmpty
+                  ? state.user!.email
+                  : state.user!.id;
+              context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
+            }
+
             if (state.status == AuthStatus.unauthenticated) {
               debugPrint('AppAuthGate: popUntil called (unauthenticated)');
               globalNavigatorKey.currentState?.popUntil((route) => route.isFirst);
               context.read<LockBloc>().clearAndReset();
+              context.read<CallsBloc>().add(const StopListeningIncomingCalls());
             }
           },
         ),
@@ -246,7 +263,9 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
               current.activeCall != null,
           listener: (context, state) {
             final authState = context.read<AuthBloc>().state;
-            final currentUserId = authState.user?.id ?? '';
+            final currentUserId = (authState.user?.email.isNotEmpty == true)
+                ? authState.user!.email
+                : (authState.user?.id ?? '');
             IncomingCallDialog.show(context, call: state.activeCall!, currentUserId: currentUserId);
           },
         ),

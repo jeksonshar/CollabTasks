@@ -76,7 +76,8 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   }
 
   void _onEndCallPressed() {
-    context.read<CallsBloc>().add(EndCallRequested(callId: widget.callId));
+    final activeCallId = context.read<CallsBloc>().state.activeCall?.id ?? widget.callId;
+    context.read<CallsBloc>().add(EndCallRequested(callId: activeCallId));
   }
 
   void _showInviteDialog(BuildContext context) {
@@ -126,7 +127,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
         }
 
         if (state.status == CallsStatus.idle) {
-          Navigator.of(context).maybePop();
+          Navigator.of(context).pop();
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -134,7 +135,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               backgroundColor: theme.colorScheme.error,
             ),
           );
-          Navigator.of(context).maybePop();
+          Navigator.of(context).pop();
         }
       },
       builder: (context, state) {
@@ -149,10 +150,14 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
         // Merge domain participants with RTC media states
         final participants = state.activeCall?.participants ?? [];
 
+        final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
+
         return PopScope(
-          canPop: false,
+          canPop: canAutoPop,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) {
+            if (!didPop &&
+                (state.status == CallsStatus.active ||
+                    state.status == CallsStatus.ringingOutgoing)) {
               _onLeaveCallPressed();
             }
           },

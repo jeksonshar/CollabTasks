@@ -8,6 +8,7 @@ class StartCallUseCase {
   const StartCallUseCase(this._repository);
 
   Future<Call> call({
+    String? callId,
     required String callerId,
     required String callerName,
     String? callerAvatarUrl,
@@ -17,6 +18,7 @@ class StartCallUseCase {
     String? groupId,
   }) {
     return _repository.startCall(
+      callId: callId,
       callerId: callerId,
       callerName: callerName,
       callerAvatarUrl: callerAvatarUrl,
