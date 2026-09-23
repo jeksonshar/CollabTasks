@@ -321,6 +321,11 @@ class FirestoreCallRepository implements CallRepository {
     final call = await getCallById(callId);
     final mediaType = call?.type.name ?? 'audio';
 
+    // Compute the Agora UID for this user — must match what AgoraRtcService uses
+    // so that the generated token binds to the correct UID.
+    final localUid = _computeAgoraUid(userId);
+    debugPrint('[FirestoreCallRepository] localUid for $userId = $localUid');
+
     // Obtain Firebase ID token to authenticate the Cloud Function request
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -332,7 +337,8 @@ class FirestoreCallRepository implements CallRepository {
       final idToken = await currentUser.getIdToken();
       final response = await _dio.post<Map<String, dynamic>>(
         AgoraConfig.tokenServerUrl,
-        data: {'channelName': callId, 'uid': 0},
+        // Send real uid so the token is bound to the UID the client will use in joinChannel
+        data: {'channelName': callId, 'uid': localUid},
         options: Options(
           headers: {'Authorization': 'Bearer $idToken', 'Content-Type': 'application/json'},
           receiveTimeout: const Duration(seconds: 10),
@@ -343,13 +349,14 @@ class FirestoreCallRepository implements CallRepository {
       final responseData = response.data;
       if (response.statusCode == 200 && responseData != null) {
         rtcToken = (responseData['token'] as String?) ?? '';
-        debugPrint('[FirestoreCallRepository] Agora token received for channel=$callId');
+        debugPrint(
+          '[FirestoreCallRepository] Agora token received for channel=$callId, uid=$localUid',
+        );
       } else {
         debugPrint('[FirestoreCallRepository] Token server error: ${response.statusCode}');
       }
     } on DioException catch (e) {
       debugPrint('[FirestoreCallRepository] DioException fetching Agora token: ${e.message}');
-      // Re-throw so CallsBloc can surface an error state instead of silently failing
       rethrow;
     } catch (e) {
       debugPrint('[FirestoreCallRepository] Unexpected error fetching Agora token: $e');
@@ -366,10 +373,16 @@ class FirestoreCallRepository implements CallRepository {
     return CallSession(
       callId: callId,
       roomId: callId,
-      // Channel name = callId for Agora
+      // channel name = callId for Agora
       token: rtcToken,
       localUserId: userId,
-      extra: {'provider': 'agora', 'mediaType': mediaType, 'appId': AgoraConfig.appId, 'uid': '0'},
+      extra: {
+        'provider': 'agora',
+        'mediaType': mediaType,
+        'appId': AgoraConfig.appId,
+        // Pass the int UID so AgoraRtcService uses the same value in joinChannel
+        'uid': localUid,
+      },
     );
   }
 
@@ -378,5 +391,13 @@ class FirestoreCallRepository implements CallRepository {
     final doc = await _firestore.collection(_callsCollection).doc(callId).get();
     if (!doc.exists || doc.data() == null) return null;
     return Call.fromMap(doc.data()!);
+  }
+
+  /// Computes a deterministic positive 31-bit Agora UID from [userId].
+  /// Must mirror [AgoraUidMapper.toAgoraUid] exactly so token and joinChannel use the same value.
+  static int _computeAgoraUid(String userId) {
+    int uid = userId.hashCode & 0x7FFFFFFF;
+    if (uid == 0) uid = 1;
+    return uid;
   }
 }

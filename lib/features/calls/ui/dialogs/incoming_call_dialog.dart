@@ -32,11 +32,14 @@ class IncomingCallDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return BlocListener<CallsBloc, CallsState>(
+      // Only fire when transitioning OUT of ringingIncoming to avoid
+      // spurious pops triggered by unrelated state changes (e.g. mic toggle).
+      listenWhen: (prev, curr) =>
+          prev.status == CallsStatus.ringingIncoming && curr.status != CallsStatus.ringingIncoming,
       listener: (context, state) {
-        // If caller cancelled or call ended/rejected, close the dialog automatically
-        if (state.status != CallsStatus.ringingIncoming) {
-          Navigator.of(context, rootNavigator: true).maybePop();
-        }
+        // Caller cancelled / call ended / rejected → close the dialog.
+        final nav = Navigator.of(context, rootNavigator: true);
+        if (nav.canPop()) nav.pop();
       },
       child: PopScope(
         canPop: false,
@@ -116,7 +119,7 @@ class IncomingCallDialog extends StatelessWidget {
                           context.read<CallsBloc>().add(
                             RejectCallRequested(callId: call.id, userId: currentUserId),
                           );
-                          Navigator.of(context, rootNavigator: true).maybePop();
+                          // Listener will close the dialog via pop() once bloc emits non-ringing
                         },
                         child: const Icon(Icons.call_end, color: Colors.white, size: 28),
                       ),
@@ -137,7 +140,11 @@ class IncomingCallDialog extends StatelessWidget {
                           context.read<CallsBloc>().add(
                             AcceptCallRequested(callId: call.id, userId: currentUserId),
                           );
-                          Navigator.of(context, rootNavigator: true).maybePop();
+                          // Close dialog immediately; then push call screen.
+                          // We do NOT rely on the listener here because the listener fires
+                          // asynchronously (after the bloc emits), which could mean the
+                          // dialog is still visible when the call screen is pushed.
+                          Navigator.of(context, rootNavigator: true).pop();
 
                           if (call.isGroup) {
                             Navigator.of(context).push(

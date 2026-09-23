@@ -167,6 +167,7 @@ class AgoraRtcService implements RtcService {
           if (err == ErrorCodeType.errJoinChannelRejected ||
               err == ErrorCodeType.errTokenExpired ||
               err == ErrorCodeType.errInvalidToken) {
+            leaveSession();
             _updateConnectionState(RtcConnectionState.failed);
           }
         },
@@ -224,8 +225,19 @@ class AgoraRtcService implements RtcService {
       await _engine!.startPreview();
     }
 
-    // Register local participant mapping
-    final localUid = _uidMapper.toAgoraUid(session.localUserId);
+    // Resolve local UID: prefer the value pre-computed by the repository, which is
+    // the exact same integer sent to the Cloud Function for token generation.
+    // This guarantees token-UID == joinChannel-UID → avoids errInvalidToken.
+    final int localUid;
+    final extraUid = session.extra['uid'];
+    if (extraUid is int && extraUid > 0) {
+      localUid = extraUid;
+      // Sync the mapper so reverse-lookup (remote users → userId) still works
+      _uidMapper.register(session.localUserId, localUid);
+    } else {
+      localUid = _uidMapper.toAgoraUid(session.localUserId);
+    }
+    debugPrint('[AgoraRtcService] joinSession: channelId=${session.roomId}, uid=$localUid');
 
     // If extra contains opponent UID, map it in advance
     if (session.extra.containsKey('opponentUserId') && session.extra.containsKey('opponentUid')) {
@@ -261,8 +273,20 @@ class AgoraRtcService implements RtcService {
   @override
   Future<void> leaveSession() async {
     if (_engine != null) {
-      await _engine!.stopPreview();
-      await _engine!.leaveChannel();
+      // Timeout guards: if joinChannel failed (e.g. errInvalidToken) the engine
+      // may never have actually joined, and leaveChannel can hang indefinitely.
+      await _engine!.stopPreview().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('[AgoraRtcService] stopPreview timed out — skipping'),
+      );
+      await _engine!.leaveChannel().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => debugPrint('[AgoraRtcService] leaveChannel timed out — skipping'),
+      );
+      await _engine!.disableAudio().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => debugPrint('[AgoraRtcService] disableAudio timed out — skipping'),
+      );
     }
     _activeSession = null;
     _participants.clear();

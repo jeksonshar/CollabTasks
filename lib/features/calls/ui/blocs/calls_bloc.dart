@@ -208,6 +208,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
       await _joinRtcSession(session);
     } catch (e) {
+      await _cleanup();
       emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
     }
   }
@@ -423,6 +424,19 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       try {
         debugPrint('[CallsBloc] Call became active! Obtaining RTC session...');
         final session = await _getCallSessionUseCase(callId: call.id, userId: userId);
+
+        // ── Guard ────────────────────────────────────────────────────────────
+        // While the token HTTP request was in-flight, the remote party may have
+        // ended/cancelled the call. Another ActiveCallUpdated(ended) would have
+        // run _cleanup() and emitted idle already. Proceeding to joinSession
+        // here would open an RTC session for a dead call and leave the mic
+        // active with no way to release it.
+        if (isClosed || state.status == CallsStatus.idle) {
+          debugPrint('[CallsBloc] Call ended while fetching RTC token — aborting join');
+          return;
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         emit(
           state.copyWith(
             status: CallsStatus.active,
@@ -434,6 +448,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         await _joinRtcSession(session);
       } catch (e, st) {
         debugPrint('[CallsBloc] Error joining RTC session: $e\n$st');
+        await _cleanup();
         emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
       }
     } else if (call.status == CallStatus.rejected) {
@@ -447,11 +462,23 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
   }
 
-  void _onRtcConnectionStateChanged(RtcConnectionStateChanged event, Emitter<CallsState> emit) {
+  Future<void> _onRtcConnectionStateChanged(
+    RtcConnectionStateChanged event,
+    Emitter<CallsState> emit,
+  ) async {
     debugPrint('[CallsBloc] RTC Connection state changed: ${event.state}');
     emit(state.copyWith(rtcConnectionState: event.state));
 
     if (event.state == RtcConnectionState.failed) {
+      debugPrint(
+        '[CallsBloc] RTC connection failed, explicitly calling leaveSession to release microphone...',
+      );
+      try {
+        await _leaveRtcSessionUseCase();
+      } catch (e) {
+        debugPrint('[CallsBloc] Error leaving RTC session on failed state: $e');
+      }
+      await _cleanup();
       emit(
         state.copyWith(
           status: CallsStatus.error,

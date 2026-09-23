@@ -46,8 +46,8 @@ export const getAgoraRtcToken = onRequest(
 
         // Read Agora credentials from process.env
         // Set these in functions/.env.collabtasks-fda3f (never commit to git!)
-        const appId = process.env.AGORA_APP_ID || "";
-        const appCertificate = process.env.AGORA_APP_CERTIFICATE || "";
+        const appId = (process.env.AGORA_APP_ID || "").trim();
+        const appCertificate = (process.env.AGORA_APP_CERTIFICATE || "").trim();
 
         if (!appId || !appCertificate) {
             console.error("[getAgoraRtcToken] AGORA_APP_ID or AGORA_APP_CERTIFICATE not set");
@@ -55,17 +55,17 @@ export const getAgoraRtcToken = onRequest(
             return;
         }
 
-        const body = req.body as {channelName?: string; uid?: number};
-        const channelName = body.channelName || "";
-        const uid = typeof body.uid === "number" ? body.uid : 0;
+        const body = req.body as {channelName?: string; uid?: number | string};
+        const channelName = (body.channelName || "").trim();
+        const uid = typeof body.uid === "number" ? body.uid : (parseInt(String(body.uid || 0), 10) || 0);
 
         if (!channelName) {
             res.status(400).json({error: "channelName is required"});
             return;
         }
 
-        // Expiry: current time + 24 hours
-        const expirationTimeInSeconds = Math.floor(Date.now() / 1000) + 86400;
+        // Token and privilege expiry duration in seconds from NOW (max 24 hours = 86400 seconds)
+        const expirationInSeconds = 86400;
 
         try {
             const token = RtcTokenBuilder.buildTokenWithUid(
@@ -74,11 +74,17 @@ export const getAgoraRtcToken = onRequest(
                 channelName,
                 uid,
                 RtcRole.PUBLISHER,
-                expirationTimeInSeconds,
-                expirationTimeInSeconds,
+                expirationInSeconds,
+                expirationInSeconds,
             );
 
-            console.log(`[getAgoraRtcToken] Token generated for channel=${channelName}, uid=${uid}`);
+            if (!token) {
+                console.error("[getAgoraRtcToken] Token build returned empty string. Verify AGORA_APP_ID and AGORA_APP_CERTIFICATE are valid 32-hex UUIDs.");
+                res.status(500).json({error: "Failed to generate token - invalid App ID or Certificate format"});
+                return;
+            }
+
+            console.log(`[getAgoraRtcToken] Token generated for channel=${channelName}, uid=${uid}, length=${token.length}`);
             res.status(200).json({token, uid, channelName});
         } catch (err) {
             console.error("[getAgoraRtcToken] Token build error:", err);
