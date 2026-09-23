@@ -32,12 +32,14 @@ class IncomingCallDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return BlocListener<CallsBloc, CallsState>(
-      // Only fire when transitioning OUT of ringingIncoming to avoid
-      // spurious pops triggered by unrelated state changes (e.g. mic toggle).
+      // Only fire when caller cancelled (idle) or call errored (error).
+      // NEVER fire when call becomes active (accepted) because the Accept
+      // button itself handles closing the dialog and pushing the call screen.
       listenWhen: (prev, curr) =>
-          prev.status == CallsStatus.ringingIncoming && curr.status != CallsStatus.ringingIncoming,
+          prev.status == CallsStatus.ringingIncoming &&
+          (curr.status == CallsStatus.idle || curr.status == CallsStatus.error),
       listener: (context, state) {
-        // Caller cancelled / call ended / rejected → close the dialog.
+        // Caller cancelled / call ended / error → close the dialog.
         final nav = Navigator.of(context, rootNavigator: true);
         if (nav.canPop()) nav.pop();
       },
@@ -140,44 +142,34 @@ class IncomingCallDialog extends StatelessWidget {
                           context.read<CallsBloc>().add(
                             AcceptCallRequested(callId: call.id, userId: currentUserId),
                           );
-                          // Close dialog immediately; then push call screen.
-                          // We do NOT rely on the listener here because the listener fires
-                          // asynchronously (after the bloc emits), which could mean the
-                          // dialog is still visible when the call screen is pushed.
-                          Navigator.of(context, rootNavigator: true).pop();
+                          final route = call.isGroup
+                              ? MaterialPageRoute<void>(
+                                  builder: (_) => GroupCallScreen(
+                                    callId: call.id,
+                                    groupName: call.callerName,
+                                    callType: call.type,
+                                  ),
+                                )
+                              : (call.type == CallType.video
+                                    ? MaterialPageRoute<void>(
+                                        builder: (_) => VideoCallScreen(
+                                          callId: call.id,
+                                          opponentName: call.callerName,
+                                          opponentAvatarUrl: call.callerAvatarUrl,
+                                          opponentId: call.callerId,
+                                        ),
+                                      )
+                                    : MaterialPageRoute<void>(
+                                        builder: (_) => AudioCallScreen(
+                                          callId: call.id,
+                                          opponentName: call.callerName,
+                                          opponentAvatarUrl: call.callerAvatarUrl,
+                                        ),
+                                      ));
 
-                          if (call.isGroup) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => GroupCallScreen(
-                                  callId: call.id,
-                                  groupName: call.callerName,
-                                  callType: call.type,
-                                ),
-                              ),
-                            );
-                          } else if (call.type == CallType.video) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => VideoCallScreen(
-                                  callId: call.id,
-                                  opponentName: call.callerName,
-                                  opponentAvatarUrl: call.callerAvatarUrl,
-                                  opponentId: call.callerId,
-                                ),
-                              ),
-                            );
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => AudioCallScreen(
-                                  callId: call.id,
-                                  opponentName: call.callerName,
-                                  opponentAvatarUrl: call.callerAvatarUrl,
-                                ),
-                              ),
-                            );
-                          }
+                          Navigator.of(context, rootNavigator: true)
+                            ..pop()
+                            ..push(route);
                         },
                         child: Icon(
                           call.type == CallType.video ? Icons.videocam : Icons.call,
