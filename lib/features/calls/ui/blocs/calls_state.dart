@@ -13,6 +13,7 @@ class CallsState extends Equatable {
   final RtcConnectionState rtcConnectionState;
   final bool isMicrophoneMuted;
   final bool isCameraEnabled;
+  final bool isSpeakerEnabled;
   final List<RtcParticipantMediaState> participantMediaStates;
   final String? errorMessage;
   final String? currentUserId;
@@ -23,6 +24,7 @@ class CallsState extends Equatable {
     this.session,
     this.rtcConnectionState = RtcConnectionState.disconnected,
     this.isMicrophoneMuted = false,
+    this.isSpeakerEnabled = false,
     this.isCameraEnabled = true,
     this.participantMediaStates = const [],
     this.errorMessage,
@@ -35,6 +37,7 @@ class CallsState extends Equatable {
     CallSession? Function()? session,
     RtcConnectionState? rtcConnectionState,
     bool? isMicrophoneMuted,
+    bool? isSpeakerEnabled,
     bool? isCameraEnabled,
     List<RtcParticipantMediaState>? participantMediaStates,
     String? Function()? errorMessage,
@@ -46,6 +49,7 @@ class CallsState extends Equatable {
       session: session != null ? session() : this.session,
       rtcConnectionState: rtcConnectionState ?? this.rtcConnectionState,
       isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
+      isSpeakerEnabled: isSpeakerEnabled ?? this.isSpeakerEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       participantMediaStates: participantMediaStates ?? this.participantMediaStates,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
@@ -60,6 +64,7 @@ class CallsState extends Equatable {
     session,
     rtcConnectionState,
     isMicrophoneMuted,
+    isSpeakerEnabled,
     isCameraEnabled,
     participantMediaStates,
     errorMessage,

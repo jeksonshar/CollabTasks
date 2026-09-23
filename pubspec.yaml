@@ -107,6 +107,9 @@ dependencies:
   agora_rtc_engine: ^6.6.4
   permission_handler: ^13.0.2
 
+  # When the screen is open the device does not go to sleep
+  wakelock_plus: ^1.8.0
+
 dev_dependencies:
   drift_dev: ^2.31.0
   build_runner: ^2.13.1

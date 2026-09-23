@@ -56,7 +56,11 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   }
 
   void _onEndCallPressed() {
-    final activeCallId = context.read<CallsBloc>().state.activeCall?.id ?? widget.callId;
+    final activeCallId = context
+        .read<CallsBloc>()
+        .state
+        .activeCall
+        ?.id ?? widget.callId;
     context.read<CallsBloc>().add(EndCallRequested(callId: activeCallId));
   }
 
@@ -89,7 +93,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       },
       builder: (context, state) {
         final isRemoteSpeaking = state.participantMediaStates.any(
-          (p) => !p.isLocal && p.isSpeaking,
+              (p) => !p.isLocal && p.isSpeaking,
         );
 
         final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
@@ -109,13 +113,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'End Call',
-                  onPressed: _onEndCallPressed,
-                ),
-              ],
+              // actions: [
+              //   IconButton(
+              //     icon: const Icon(Icons.close),
+              //     tooltip: 'End Call',
+              //     onPressed: _onEndCallPressed,
+              //   ),
+              // ],
             ),
             body: SafeArea(
               child: Column(
@@ -140,13 +144,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                             : null,
                         child: widget.opponentAvatarUrl == null
                             ? Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                                style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                              )
+                          displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        )
                             : null,
                       ),
                     ),
@@ -283,10 +287,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         IconButton.filledTonal(
           iconSize: 32,
           padding: const EdgeInsets.all(16),
-          icon: const Icon(Icons.volume_up),
+          icon: Icon(state.isSpeakerEnabled ? Icons.volume_up : Icons.phone),
           tooltip: 'Speaker',
           onPressed: () {
-            // Volume / audio output route toggle
+            context.read<CallsBloc>().add(const ToggleSpeakerRequested());
           },
         ),
       ],

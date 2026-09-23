@@ -25,6 +25,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case
 import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_speaker_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
@@ -59,6 +60,7 @@ class TestCallsBloc extends CallsBloc {
     required super.switchCameraUseCase,
     required super.watchRtcConnectionStateUseCase,
     required super.watchRtcParticipantMediaStatesUseCase,
+    required super.toggleSpeakerUseCase,
   });
 
   void emitState(CallsState state) => emit(state);
@@ -97,6 +99,7 @@ void main() {
       ..registerLazySingleton(() => JoinRtcSessionUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => LeaveRtcSessionUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => ToggleMicrophoneUseCase(getIt<RtcService>()))
+      ..registerLazySingleton(() => ToggleSpeakerUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => ToggleCameraUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => SwitchCameraUseCase(getIt<RtcService>()))
       ..registerLazySingleton(() => WatchRtcConnectionStateUseCase(getIt<RtcService>()))
@@ -121,6 +124,7 @@ void main() {
       switchCameraUseCase: getIt(),
       watchRtcConnectionStateUseCase: getIt(),
       watchRtcParticipantMediaStatesUseCase: getIt(),
+      toggleSpeakerUseCase: getIt(),
     );
   });
 

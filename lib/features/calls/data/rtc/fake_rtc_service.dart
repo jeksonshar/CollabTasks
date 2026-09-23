@@ -16,6 +16,7 @@ class FakeRtcService implements RtcService {
   CallSession? _activeSession;
   bool _isMicrophoneMuted = false;
   bool _isCameraEnabled = true;
+  bool _isSpeakerEnabled = true;
   int _switchCameraCallCount = 0;
   int _joinCallCount = 0;
   int _leaveCallCount = 0;
@@ -36,6 +37,8 @@ class FakeRtcService implements RtcService {
   bool get isMicrophoneMuted => _isMicrophoneMuted;
 
   bool get isCameraEnabled => _isCameraEnabled;
+
+  bool get isSpeakerEnabled => _isSpeakerEnabled;
 
   int get switchCameraCallCount => _switchCameraCallCount;
 
@@ -141,6 +144,11 @@ class FakeRtcService implements RtcService {
       _participants[localId] = _participants[localId]!.copyWith(isAudioMuted: muted);
       _emitParticipants();
     }
+  }
+
+  @override
+  Future<void> setSpeakerEnabled(bool enabled) async {
+    _isSpeakerEnabled = enabled;
   }
 
   @override

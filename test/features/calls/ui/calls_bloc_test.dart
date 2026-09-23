@@ -20,6 +20,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case
 import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/toggle_speaker_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
@@ -36,8 +37,9 @@ void main() {
   late FakeCallPermissionsService fakePermissionsService;
 
   CallsBloc buildBloc({bool micGranted = true, bool cameraGranted = true}) {
-    fakePermissionsService.microphoneGranted = micGranted;
-    fakePermissionsService.cameraGranted = cameraGranted;
+    fakePermissionsService
+      ..microphoneGranted = micGranted
+      ..cameraGranted = cameraGranted;
 
     return CallsBloc(
       startCallUseCase: StartCallUseCase(callRepository),
@@ -58,6 +60,7 @@ void main() {
       switchCameraUseCase: SwitchCameraUseCase(fakeRtcService),
       watchRtcConnectionStateUseCase: WatchRtcConnectionStateUseCase(fakeRtcService),
       watchRtcParticipantMediaStatesUseCase: WatchRtcParticipantMediaStatesUseCase(fakeRtcService),
+      toggleSpeakerUseCase: ToggleSpeakerUseCase(fakeRtcService),
     );
   }
 
@@ -84,15 +87,17 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'StartCallRequested initiates outgoing ringing call when permissions granted',
       build: buildBloc,
-      act: (bloc) => bloc.add(
-        const StartCallRequested(
-          callerId: 'user-caller',
-          callerName: 'Caller User',
-          calleeIds: ['user-callee'],
-          type: CallType.video,
-        ),
-      ),
-      expect: () => [
+      act: (bloc) =>
+          bloc.add(
+            const StartCallRequested(
+              callerId: 'user-caller',
+              callerName: 'Caller User',
+              calleeIds: ['user-callee'],
+              type: CallType.video,
+            ),
+          ),
+      expect: () =>
+      [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.ringingOutgoing)
             .having((s) => s.currentUserId, 'currentUserId', 'user-caller')
@@ -108,15 +113,17 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'StartCallRequested emits error when permissions denied',
       build: () => buildBloc(micGranted: false),
-      act: (bloc) => bloc.add(
-        const StartCallRequested(
-          callerId: 'user-caller',
-          callerName: 'Caller User',
-          calleeIds: ['user-callee'],
-          type: CallType.audio,
-        ),
-      ),
-      expect: () => [
+      act: (bloc) =>
+          bloc.add(
+            const StartCallRequested(
+              callerId: 'user-caller',
+              callerName: 'Caller User',
+              calleeIds: ['user-callee'],
+              type: CallType.audio,
+            ),
+          ),
+      expect: () =>
+      [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.error)
             .having((s) => s.errorMessage, 'errorMessage', contains('Microphone permission')),
@@ -138,7 +145,8 @@ void main() {
         );
         bloc.add(IncomingCallDetected(incoming));
       },
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.ringingIncoming)
             .having((s) => s.activeCall?.callerName, 'callerName', 'Alice'),
@@ -161,7 +169,8 @@ void main() {
       act: (bloc) {
         bloc.add(AcceptCallRequested(callId: incomingCall.id, userId: 'callee-1'));
       },
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.active)
             .having((s) => s.currentUserId, 'currentUserId', 'callee-1'),
@@ -169,17 +178,17 @@ void main() {
             .having((s) => s.status, 'status', CallsStatus.active)
             .having((s) => s.session, 'session', isNotNull),
         isA<CallsState>().having(
-          (s) => s.rtcConnectionState,
+              (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.connecting,
         ),
         isA<CallsState>().having(
-          (s) => s.participantMediaStates,
+              (s) => s.participantMediaStates,
           'participantMediaStates',
           hasLength(1),
         ),
         isA<CallsState>().having(
-          (s) => s.rtcConnectionState,
+              (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.connected,
         ),
@@ -194,7 +203,8 @@ void main() {
       'ToggleMicrophoneRequested toggles mic in state and fake RTC',
       build: buildBloc,
       act: (bloc) => bloc.add(const ToggleMicrophoneRequested()),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.isMicrophoneMuted, 'isMicrophoneMuted', isTrue),
       ],
       verify: (_) {
@@ -206,7 +216,8 @@ void main() {
       'ToggleCameraRequested toggles camera in state and fake RTC',
       build: buildBloc,
       act: (bloc) => bloc.add(const ToggleCameraRequested()),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isFalse),
       ],
       verify: (_) {
@@ -226,21 +237,23 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'CancelCallRequested terminates ringing outgoing call and resets state',
       build: buildBloc,
-      seed: () => CallsState(
-        status: CallsStatus.ringingOutgoing,
-        currentUserId: 'user-1',
-        activeCall: Call(
-          id: 'call-cancel-test',
-          callerId: 'user-1',
-          callerName: 'User 1',
-          calleeIds: const ['user-2'],
-          type: CallType.audio,
-          status: CallStatus.ringing,
-          createdAt: DateTime.now(),
-        ),
-      ),
+      seed: () =>
+          CallsState(
+            status: CallsStatus.ringingOutgoing,
+            currentUserId: 'user-1',
+            activeCall: Call(
+              id: 'call-cancel-test',
+              callerId: 'user-1',
+              callerName: 'User 1',
+              calleeIds: const ['user-2'],
+              type: CallType.audio,
+              status: CallStatus.ringing,
+              createdAt: DateTime.now(),
+            ),
+          ),
       act: (bloc) => bloc.add(const CancelCallRequested()),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],
@@ -249,22 +262,24 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'LeaveCallRequested leaves group call and resets state',
       build: buildBloc,
-      seed: () => CallsState(
-        status: CallsStatus.active,
-        currentUserId: 'user-2',
-        activeCall: Call(
-          id: 'call-leave-test',
-          callerId: 'user-1',
-          callerName: 'User 1',
-          calleeIds: const ['user-2', 'user-3'],
-          type: CallType.audio,
-          status: CallStatus.active,
-          isGroup: true,
-          createdAt: DateTime.now(),
-        ),
-      ),
+      seed: () =>
+          CallsState(
+            status: CallsStatus.active,
+            currentUserId: 'user-2',
+            activeCall: Call(
+              id: 'call-leave-test',
+              callerId: 'user-1',
+              callerName: 'User 1',
+              calleeIds: const ['user-2', 'user-3'],
+              type: CallType.audio,
+              status: CallStatus.active,
+              isGroup: true,
+              createdAt: DateTime.now(),
+            ),
+          ),
       act: (bloc) => bloc.add(const LeaveCallRequested()),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],
@@ -273,24 +288,26 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'AppLifecycleChanged pauses and resumes camera on active video call',
       build: buildBloc,
-      seed: () => CallsState(
-        status: CallsStatus.active,
-        isCameraEnabled: true,
-        activeCall: Call(
-          id: 'call-lifecycle-test',
-          callerId: 'user-1',
-          callerName: 'User 1',
-          calleeIds: const ['user-2'],
-          type: CallType.video,
-          status: CallStatus.active,
-          createdAt: DateTime.now(),
-        ),
-      ),
+      seed: () =>
+          CallsState(
+            status: CallsStatus.active,
+            isCameraEnabled: true,
+            activeCall: Call(
+              id: 'call-lifecycle-test',
+              callerId: 'user-1',
+              callerName: 'User 1',
+              calleeIds: const ['user-2'],
+              type: CallType.video,
+              status: CallStatus.active,
+              createdAt: DateTime.now(),
+            ),
+          ),
       act: (bloc) {
-        bloc.add(const AppLifecycleChanged(AppLifecycleState.paused));
-        bloc.add(const AppLifecycleChanged(AppLifecycleState.resumed));
+        bloc..add(const AppLifecycleChanged(AppLifecycleState.paused))..add(
+            const AppLifecycleChanged(AppLifecycleState.resumed));
       },
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isFalse),
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isTrue),
       ],
@@ -300,9 +317,10 @@ void main() {
       'RtcConnectionStateChanged updates rtcConnectionState in state',
       build: buildBloc,
       act: (bloc) => bloc.add(const RtcConnectionStateChanged(RtcConnectionState.reconnecting)),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having(
-          (s) => s.rtcConnectionState,
+              (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.reconnecting,
         ),
@@ -312,20 +330,22 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'EndCallRequested leaves RTC session and resets state to idle',
       build: buildBloc,
-      seed: () => CallsState(
-        status: CallsStatus.active,
-        activeCall: Call(
-          id: 'call-end-test',
-          callerId: 'user-1',
-          callerName: 'User 1',
-          calleeIds: const ['user-2'],
-          type: CallType.audio,
-          status: CallStatus.active,
-          createdAt: DateTime.now(),
-        ),
-      ),
+      seed: () =>
+          CallsState(
+            status: CallsStatus.active,
+            activeCall: Call(
+              id: 'call-end-test',
+              callerId: 'user-1',
+              callerName: 'User 1',
+              calleeIds: const ['user-2'],
+              type: CallType.audio,
+              status: CallStatus.active,
+              createdAt: DateTime.now(),
+            ),
+          ),
       act: (bloc) => bloc.add(const EndCallRequested()),
-      expect: () => [
+      expect: () =>
+      [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],

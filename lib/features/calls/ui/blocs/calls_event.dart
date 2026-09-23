@@ -92,6 +92,10 @@ class ToggleCameraRequested extends CallsEvent {
   const ToggleCameraRequested();
 }
 
+class ToggleSpeakerRequested extends CallsEvent {
+  const ToggleSpeakerRequested();
+}
+
 class SwitchCameraRequested extends CallsEvent {
   const SwitchCameraRequested();
 }

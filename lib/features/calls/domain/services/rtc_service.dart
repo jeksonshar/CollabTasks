@@ -12,6 +12,9 @@ abstract class RtcService {
   /// Mutes or unmutes the local microphone.
   Future<void> setMicrophoneMuted(bool muted);
 
+  /// Set speaker or Earpiece phone.
+  Future<void> setSpeakerEnabled(bool enabled);
+
   /// Enables or disables the local camera stream.
   Future<void> setCameraEnabled(bool enabled);
 

@@ -8,6 +8,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String callId;
@@ -35,6 +36,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WakelockPlus.enable();
   }
 
   @override
@@ -46,6 +48,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _durationTimer?.cancel();
+    WakelockPlus.disable();
     super.dispose();
   }
 
@@ -111,8 +114,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
 
         final remoteMediaState = state.participantMediaStates.firstWhere(
           (p) => !p.isLocal,
-          orElse: () =>
-              RtcParticipantMediaState(participantId: '', isLocal: false, isVideoEnabled: false),
+          orElse: () => const RtcParticipantMediaState(
+            participantId: '',
+            isLocal: false,
+            isVideoEnabled: false,
+          ),
         );
 
         final isRemoteVideoActive =
@@ -176,11 +182,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                               ],
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            tooltip: 'End Call',
-                            onPressed: _onEndCallPressed,
-                          ),
+                          // IconButton(
+                          //   icon: const Icon(Icons.close, color: Colors.white),
+                          //   tooltip: 'End Call',
+                          //   onPressed: _onEndCallPressed,
+                          // ),
                         ],
                       ),
                     ),
