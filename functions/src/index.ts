@@ -1,4 +1,4 @@
-import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {RtcTokenBuilder, RtcRole} from "agora-token";
@@ -360,3 +360,165 @@ export const onNewGroupMessageSent = onDocumentCreated(
         }
     }
 );
+
+// ============================================================================
+// 3. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ FCM ТОКЕНОВ
+// ============================================================================
+async function getFcmTokensForRecipients(recipients: string[]): Promise<string[]> {
+    const tokens: string[] = [];
+    const uniqueRecipients = [...new Set(recipients)];
+
+    for (const recipient of uniqueRecipients) {
+        const targetUids: string[] = [recipient];
+        if (recipient.includes("@")) {
+            const userQuery = await admin.firestore()
+                .collection("users")
+                .where("email", "==", recipient.toLowerCase())
+                .limit(1)
+                .get();
+
+            if (!userQuery.empty) {
+                targetUids.push(userQuery.docs[0].id);
+            }
+        }
+
+        const uniqueTargetUids = [...new Set(targetUids)];
+        for (const uid of uniqueTargetUids) {
+            const tokensSnapshot = await admin.firestore()
+                .collection("users")
+                .doc(uid)
+                .collection("tokens")
+                .get();
+
+            tokensSnapshot.forEach((doc) => {
+                const data = doc.data();
+                const token = data.token || doc.id;
+                if (token && token.length > 20) {
+                    tokens.push(token);
+                }
+            });
+        }
+    }
+
+    return [...new Set(tokens)];
+}
+
+// ============================================================================
+// 4. ТРИГГЕРЫ ДЛЯ ЗВОНКОВ (Входящий вызов и отмена для CallKit/Telecom)
+// ============================================================================
+export const onCallCreated = onDocumentCreated(
+    "calls/{callId}",
+    async (event) => {
+        const snapshot = event.data;
+        if (!snapshot) return;
+
+        const callData = snapshot.data();
+        if (!callData) return;
+
+        const callId = event.params.callId;
+        const callerId = callData.callerId || "";
+        const callerName = callData.callerName || "Входящий звонок";
+        const callerAvatarUrl = callData.callerAvatarUrl || "";
+        const calleeIds: string[] = callData.calleeIds || [];
+        const callType = callData.type || "audio";
+        const isGroup = Boolean(callData.isGroup);
+
+        if (calleeIds.length === 0) return;
+
+        try {
+            const tokens = await getFcmTokensForRecipients(calleeIds);
+            if (tokens.length === 0) {
+                console.log(`[onCallCreated] Нет FCM токенов для звонка ${callId}`);
+                return;
+            }
+
+            // ВАЖНО: Data-only сообщение (без notification) для корректной работы
+            // flutter_callkit_incoming / Android Telecom / iOS CallKit в фоновом режиме
+            const messagePayload: admin.messaging.MulticastMessage = {
+                tokens: tokens,
+                data: {
+                    type: "incoming_call",
+                    callId: callId,
+                    callerId: callerId,
+                    callerName: callerName,
+                    callerAvatarUrl: callerAvatarUrl,
+                    callType: callType,
+                    isGroup: isGroup ? "true" : "false",
+                },
+                android: {
+                    priority: "high",
+                },
+                apns: {
+                    headers: {
+                        "apns-priority": "10",
+                        "apns-push-type": "background",
+                    },
+                    payload: {
+                        aps: {
+                            contentAvailable: true,
+                        },
+                    },
+                },
+            };
+
+            const response = await admin.messaging().sendEachForMulticast(messagePayload);
+            console.log(`[onCallCreated] Отправлено пушей входящего звонка ${callId}: ${response.successCount} из ${tokens.length}`);
+        } catch (error) {
+            console.error(`[onCallCreated] Ошибка отправки пуша для звонка ${callId}:`, error);
+        }
+    }
+);
+
+export const onCallUpdated = onDocumentUpdated(
+    "calls/{callId}",
+    async (event) => {
+        const beforeData = event.data?.before?.data();
+        const afterData = event.data?.after?.data();
+        if (!beforeData || !afterData) return;
+
+        const callId = event.params.callId;
+        const oldStatus = beforeData.status;
+        const newStatus = afterData.status;
+
+        // Если звонок был отменен, отклонен или завершен — закрываем CallKit
+        if (
+            oldStatus === "ringing" &&
+            (newStatus === "cancelled" || newStatus === "rejected" || newStatus === "ended")
+        ) {
+            const calleeIds: string[] = afterData.calleeIds || [];
+            if (calleeIds.length === 0) return;
+
+            try {
+                const tokens = await getFcmTokensForRecipients(calleeIds);
+                if (tokens.length === 0) return;
+
+                const messagePayload: admin.messaging.MulticastMessage = {
+                    tokens: tokens,
+                    data: {
+                        type: "cancel_call",
+                        callId: callId,
+                    },
+                    android: {
+                        priority: "high",
+                    },
+                    apns: {
+                        headers: {
+                            "apns-priority": "10",
+                            "apns-push-type": "background",
+                        },
+                        payload: {
+                            aps: {
+                                contentAvailable: true,
+                            },
+                        },
+                    },
+                };
+
+                const response = await admin.messaging().sendEachForMulticast(messagePayload);
+                console.log(`[onCallUpdated] Отправлено отмен звонка ${callId}: ${response.successCount}`);
+            } catch (error) {
+                console.error(`[onCallUpdated] Ошибка отправки отмены звонка ${callId}:`, error);
+            }
+        }
+    }
+);
