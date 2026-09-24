@@ -17,6 +17,9 @@ import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_u
 import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_incoming_alert_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_outgoing_alert_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/stop_call_alert_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
@@ -30,13 +33,30 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+// ─── Моки alert use-case'ов ───────────────────────────────────────────────────
+
+class MockStartIncomingAlertUseCase extends Mock implements StartIncomingAlertUseCase {}
+
+class MockStartOutgoingAlertUseCase extends Mock implements StartOutgoingAlertUseCase {}
+
+class MockStopCallAlertUseCase extends Mock implements StopCallAlertUseCase {}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 void main() {
   late InMemoryCallRepository callRepository;
   late FakeRtcService fakeRtcService;
   late FakeCallPermissionsService fakePermissionsService;
 
-  CallsBloc buildBloc({bool micGranted = true, bool cameraGranted = true}) {
+  CallsBloc buildBloc({
+    bool micGranted = true,
+    bool cameraGranted = true,
+    StartIncomingAlertUseCase? startIncomingAlertUseCase,
+    StartOutgoingAlertUseCase? startOutgoingAlertUseCase,
+    StopCallAlertUseCase? stopCallAlertUseCase,
+  }) {
     fakePermissionsService
       ..microphoneGranted = micGranted
       ..cameraGranted = cameraGranted;
@@ -61,6 +81,9 @@ void main() {
       watchRtcConnectionStateUseCase: WatchRtcConnectionStateUseCase(fakeRtcService),
       watchRtcParticipantMediaStatesUseCase: WatchRtcParticipantMediaStatesUseCase(fakeRtcService),
       toggleSpeakerUseCase: ToggleSpeakerUseCase(fakeRtcService),
+      startIncomingAlertUseCase: startIncomingAlertUseCase,
+      startOutgoingAlertUseCase: startOutgoingAlertUseCase,
+      stopCallAlertUseCase: stopCallAlertUseCase,
     );
   }
 
@@ -75,6 +98,10 @@ void main() {
     await fakeRtcService.dispose();
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Группа 1 — базовые тесты (без алертов)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   group('CallsBloc unit tests', () {
     test('initial state is idle and disconnected', () async {
       final bloc = buildBloc();
@@ -87,17 +114,15 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'StartCallRequested initiates outgoing ringing call when permissions granted',
       build: buildBloc,
-      act: (bloc) =>
-          bloc.add(
-            const StartCallRequested(
-              callerId: 'user-caller',
-              callerName: 'Caller User',
-              calleeIds: ['user-callee'],
-              type: CallType.video,
-            ),
-          ),
-      expect: () =>
-      [
+      act: (bloc) => bloc.add(
+        const StartCallRequested(
+          callerId: 'user-caller',
+          callerName: 'Caller User',
+          calleeIds: ['user-callee'],
+          type: CallType.video,
+        ),
+      ),
+      expect: () => [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.ringingOutgoing)
             .having((s) => s.currentUserId, 'currentUserId', 'user-caller')
@@ -113,17 +138,15 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'StartCallRequested emits error when permissions denied',
       build: () => buildBloc(micGranted: false),
-      act: (bloc) =>
-          bloc.add(
-            const StartCallRequested(
-              callerId: 'user-caller',
-              callerName: 'Caller User',
-              calleeIds: ['user-callee'],
-              type: CallType.audio,
-            ),
-          ),
-      expect: () =>
-      [
+      act: (bloc) => bloc.add(
+        const StartCallRequested(
+          callerId: 'user-caller',
+          callerName: 'Caller User',
+          calleeIds: ['user-callee'],
+          type: CallType.audio,
+        ),
+      ),
+      expect: () => [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.error)
             .having((s) => s.errorMessage, 'errorMessage', contains('Microphone permission')),
@@ -145,8 +168,7 @@ void main() {
         );
         bloc.add(IncomingCallDetected(incoming));
       },
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.ringingIncoming)
             .having((s) => s.activeCall?.callerName, 'callerName', 'Alice'),
@@ -169,8 +191,7 @@ void main() {
       act: (bloc) {
         bloc.add(AcceptCallRequested(callId: incomingCall.id, userId: 'callee-1'));
       },
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.active)
             .having((s) => s.currentUserId, 'currentUserId', 'callee-1'),
@@ -178,17 +199,17 @@ void main() {
             .having((s) => s.status, 'status', CallsStatus.active)
             .having((s) => s.session, 'session', isNotNull),
         isA<CallsState>().having(
-              (s) => s.rtcConnectionState,
+          (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.connecting,
         ),
         isA<CallsState>().having(
-              (s) => s.participantMediaStates,
+          (s) => s.participantMediaStates,
           'participantMediaStates',
           hasLength(1),
         ),
         isA<CallsState>().having(
-              (s) => s.rtcConnectionState,
+          (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.connected,
         ),
@@ -203,8 +224,7 @@ void main() {
       'ToggleMicrophoneRequested toggles mic in state and fake RTC',
       build: buildBloc,
       act: (bloc) => bloc.add(const ToggleMicrophoneRequested()),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.isMicrophoneMuted, 'isMicrophoneMuted', isTrue),
       ],
       verify: (_) {
@@ -216,8 +236,7 @@ void main() {
       'ToggleCameraRequested toggles camera in state and fake RTC',
       build: buildBloc,
       act: (bloc) => bloc.add(const ToggleCameraRequested()),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isFalse),
       ],
       verify: (_) {
@@ -237,23 +256,21 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'CancelCallRequested terminates ringing outgoing call and resets state',
       build: buildBloc,
-      seed: () =>
-          CallsState(
-            status: CallsStatus.ringingOutgoing,
-            currentUserId: 'user-1',
-            activeCall: Call(
-              id: 'call-cancel-test',
-              callerId: 'user-1',
-              callerName: 'User 1',
-              calleeIds: const ['user-2'],
-              type: CallType.audio,
-              status: CallStatus.ringing,
-              createdAt: DateTime.now(),
-            ),
-          ),
+      seed: () => CallsState(
+        status: CallsStatus.ringingOutgoing,
+        currentUserId: 'user-1',
+        activeCall: Call(
+          id: 'call-cancel-test',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        ),
+      ),
       act: (bloc) => bloc.add(const CancelCallRequested()),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],
@@ -262,24 +279,22 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'LeaveCallRequested leaves group call and resets state',
       build: buildBloc,
-      seed: () =>
-          CallsState(
-            status: CallsStatus.active,
-            currentUserId: 'user-2',
-            activeCall: Call(
-              id: 'call-leave-test',
-              callerId: 'user-1',
-              callerName: 'User 1',
-              calleeIds: const ['user-2', 'user-3'],
-              type: CallType.audio,
-              status: CallStatus.active,
-              isGroup: true,
-              createdAt: DateTime.now(),
-            ),
-          ),
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        currentUserId: 'user-2',
+        activeCall: Call(
+          id: 'call-leave-test',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2', 'user-3'],
+          type: CallType.audio,
+          status: CallStatus.active,
+          isGroup: true,
+          createdAt: DateTime.now(),
+        ),
+      ),
       act: (bloc) => bloc.add(const LeaveCallRequested()),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],
@@ -288,26 +303,25 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'AppLifecycleChanged pauses and resumes camera on active video call',
       build: buildBloc,
-      seed: () =>
-          CallsState(
-            status: CallsStatus.active,
-            isCameraEnabled: true,
-            activeCall: Call(
-              id: 'call-lifecycle-test',
-              callerId: 'user-1',
-              callerName: 'User 1',
-              calleeIds: const ['user-2'],
-              type: CallType.video,
-              status: CallStatus.active,
-              createdAt: DateTime.now(),
-            ),
-          ),
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        isCameraEnabled: true,
+        activeCall: Call(
+          id: 'call-lifecycle-test',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.video,
+          status: CallStatus.active,
+          createdAt: DateTime.now(),
+        ),
+      ),
       act: (bloc) {
-        bloc..add(const AppLifecycleChanged(AppLifecycleState.paused))..add(
-            const AppLifecycleChanged(AppLifecycleState.resumed));
+        bloc
+          ..add(const AppLifecycleChanged(AppLifecycleState.paused))
+          ..add(const AppLifecycleChanged(AppLifecycleState.resumed));
       },
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isFalse),
         isA<CallsState>().having((s) => s.isCameraEnabled, 'isCameraEnabled', isTrue),
       ],
@@ -317,10 +331,9 @@ void main() {
       'RtcConnectionStateChanged updates rtcConnectionState in state',
       build: buildBloc,
       act: (bloc) => bloc.add(const RtcConnectionStateChanged(RtcConnectionState.reconnecting)),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having(
-              (s) => s.rtcConnectionState,
+          (s) => s.rtcConnectionState,
           'rtcConnectionState',
           RtcConnectionState.reconnecting,
         ),
@@ -330,22 +343,20 @@ void main() {
     blocTest<CallsBloc, CallsState>(
       'EndCallRequested leaves RTC session and resets state to idle',
       build: buildBloc,
-      seed: () =>
-          CallsState(
-            status: CallsStatus.active,
-            activeCall: Call(
-              id: 'call-end-test',
-              callerId: 'user-1',
-              callerName: 'User 1',
-              calleeIds: const ['user-2'],
-              type: CallType.audio,
-              status: CallStatus.active,
-              createdAt: DateTime.now(),
-            ),
-          ),
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        activeCall: Call(
+          id: 'call-end-test',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.active,
+          createdAt: DateTime.now(),
+        ),
+      ),
       act: (bloc) => bloc.add(const EndCallRequested()),
-      expect: () =>
-      [
+      expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
         const CallsState(status: CallsStatus.idle),
       ],
@@ -353,5 +364,321 @@ void main() {
         expect(fakeRtcService.isJoined, isFalse);
       },
     );
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Группа 2 — взаимодействие Bloc с CallAlertService через use-case'ы
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  group('CallsBloc — call alert interactions', () {
+    late MockStartIncomingAlertUseCase mockStartIncoming;
+    late MockStartOutgoingAlertUseCase mockStartOutgoing;
+    late MockStopCallAlertUseCase mockStop;
+
+    /// Возвращает Bloc с подключёнными моками алертов.
+    CallsBloc buildAlertBloc({bool micGranted = true}) {
+      return buildBloc(
+        micGranted: micGranted,
+        startIncomingAlertUseCase: mockStartIncoming,
+        startOutgoingAlertUseCase: mockStartOutgoing,
+        stopCallAlertUseCase: mockStop,
+      );
+    }
+
+    setUp(() {
+      mockStartIncoming = MockStartIncomingAlertUseCase();
+      mockStartOutgoing = MockStartOutgoingAlertUseCase();
+      mockStop = MockStopCallAlertUseCase();
+
+      // По умолчанию все alert-методы выполняются без ошибок.
+      when(() => mockStartIncoming.call()).thenAnswer((_) async {});
+      when(() => mockStartOutgoing.call()).thenAnswer((_) async {});
+      when(() => mockStop.call()).thenAnswer((_) async {});
+    });
+
+    // ── Исходящий звонок ───────────────────────────────────────────────────
+
+    blocTest<CallsBloc, CallsState>(
+      'StartCallRequested вызывает StartOutgoingAlertUseCase',
+      build: buildAlertBloc,
+      act: (bloc) => bloc.add(
+        const StartCallRequested(
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: ['user-2'],
+          type: CallType.audio,
+        ),
+      ),
+      verify: (_) {
+        verify(() => mockStartOutgoing.call()).called(1);
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'StartCallRequested не вызывает StartOutgoingAlertUseCase при отказе в разрешениях',
+      build: () => buildAlertBloc(micGranted: false),
+      act: (bloc) => bloc.add(
+        const StartCallRequested(
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: ['user-2'],
+          type: CallType.audio,
+        ),
+      ),
+      verify: (_) {
+        verifyNever(() => mockStartOutgoing.call());
+        // StopCallAlertUseCase вызывается при ошибке разрешений (cleanup).
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    // ── Входящий звонок ────────────────────────────────────────────────────
+
+    blocTest<CallsBloc, CallsState>(
+      'IncomingCallDialogOpened вызывает StartIncomingAlertUseCase',
+      build: buildAlertBloc,
+      seed: () {
+        final call = Call(
+          id: 'call-alert-in',
+          callerId: 'user-2',
+          callerName: 'Bob',
+          calleeIds: const ['user-1'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        );
+        return CallsState(status: CallsStatus.ringingIncoming, activeCall: call);
+      },
+      act: (bloc) => bloc.add(const IncomingCallDialogOpened('call-alert-in')),
+      verify: (_) {
+        verify(() => mockStartIncoming.call()).called(1);
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'IncomingCallDialogOpened игнорируется, если callId не совпадает с активным звонком',
+      build: buildAlertBloc,
+      seed: () {
+        final call = Call(
+          id: 'call-alert-in',
+          callerId: 'user-2',
+          callerName: 'Bob',
+          calleeIds: const ['user-1'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        );
+        return CallsState(status: CallsStatus.ringingIncoming, activeCall: call);
+      },
+      act: (bloc) => bloc.add(const IncomingCallDialogOpened('wrong-call-id')),
+      verify: (_) {
+        verifyNever(() => mockStartIncoming.call());
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'IncomingCallDialogOpened игнорируется, если статус не ringingIncoming',
+      build: buildAlertBloc,
+      // seed по умолчанию — idle
+      act: (bloc) => bloc.add(const IncomingCallDialogOpened('call-alert-in')),
+      verify: (_) {
+        verifyNever(() => mockStartIncoming.call());
+      },
+    );
+
+    // ── Завершение звонка → алерт должен остановиться ────────────────────
+
+    blocTest<CallsBloc, CallsState>(
+      'RejectCallRequested вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () {
+        final call = Call(
+          id: 'call-reject',
+          callerId: 'user-2',
+          callerName: 'Bob',
+          calleeIds: const ['user-1'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        );
+        return CallsState(status: CallsStatus.ringingIncoming, activeCall: call);
+      },
+      act: (bloc) => bloc.add(const RejectCallRequested(callId: 'call-reject', userId: 'user-1')),
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'AcceptCallRequested вызывает StopCallAlertUseCase перед вступлением в звонок',
+      build: buildAlertBloc,
+      setUp: () async {
+        // Создаём звонок в репозитории, чтобы getCallSession() не упал.
+        await callRepository.startCall(
+          callerId: 'user-2',
+          callerName: 'Bob',
+          calleeIds: ['user-1'],
+          type: CallType.audio,
+          callId: 'call-accept',
+        );
+      },
+      seed: () {
+        final call = Call(
+          id: 'call-accept',
+          callerId: 'user-2',
+          callerName: 'Bob',
+          calleeIds: const ['user-1'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        );
+        return CallsState(status: CallsStatus.ringingIncoming, activeCall: call);
+      },
+      act: (bloc) => bloc.add(const AcceptCallRequested(callId: 'call-accept', userId: 'user-1')),
+      verify: (_) {
+        // stop() должен быть вызван минимум один раз.
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+        // startIncoming при этом НЕ должен быть вызван.
+        verifyNever(() => mockStartIncoming.call());
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'EndCallRequested вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        activeCall: Call(
+          id: 'call-end',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.active,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const EndCallRequested()),
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'CancelCallRequested вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () => CallsState(
+        status: CallsStatus.ringingOutgoing,
+        currentUserId: 'user-1',
+        activeCall: Call(
+          id: 'call-cancel',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const CancelCallRequested()),
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'CallTimeoutOccurred вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () => CallsState(
+        status: CallsStatus.ringingOutgoing,
+        activeCall: Call(
+          id: 'call-timeout',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const CallTimeoutOccurred()),
+      expect: () => [isA<CallsState>().having((s) => s.status, 'status', CallsStatus.error)],
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'ActiveCallUpdated(null) вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () => CallsState(
+        status: CallsStatus.ringingOutgoing,
+        activeCall: Call(
+          id: 'call-null',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const ActiveCallUpdated(null)),
+      expect: () => [const CallsState()],
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'ActiveCallUpdated со статусом rejected вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      seed: () {
+        final call = Call(
+          id: 'call-rejected',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.audio,
+          status: CallStatus.ringing,
+          createdAt: DateTime.now(),
+        );
+        return CallsState(status: CallsStatus.ringingOutgoing, activeCall: call);
+      },
+      act: (bloc) => bloc.add(
+        ActiveCallUpdated(
+          Call(
+            id: 'call-rejected',
+            callerId: 'user-1',
+            callerName: 'User 1',
+            calleeIds: const ['user-2'],
+            type: CallType.audio,
+            status: CallStatus.rejected,
+            createdAt: DateTime.now(),
+          ),
+        ),
+      ),
+      verify: (_) {
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'StopCallAlertRequested напрямую вызывает StopCallAlertUseCase',
+      build: buildAlertBloc,
+      act: (bloc) => bloc.add(const StopCallAlertRequested()),
+      verify: (_) {
+        // Минимум 1 раз через _onStopCallAlertRequested.
+        // bloc_test teardown вызывает close() → _cleanup() → stop() ещё раз,
+        // поэтому используем greaterThanOrEqualTo вместо точного called(1).
+        verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+      },
+    );
+
+    test('close() вызывает StopCallAlertUseCase через _cleanup()', () async {
+      final bloc = buildAlertBloc();
+      await bloc.close();
+      verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
+    });
   });
 }
