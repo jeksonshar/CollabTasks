@@ -47,10 +47,11 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
 
   @override
   void dispose() {
-    final bloc = _callsBloc;
-    if (bloc != null && !bloc.isClosed) {
-      bloc.add(const StopCallAlertRequested());
-    }
+    // Do NOT send StopCallAlertRequested here.
+    // Every dialog-close path (Reject, Accept, caller cancel, back gesture)
+    // already triggers _cleanup() → _stopCallAlertSafely() inside CallsBloc
+    // before or after the dialog is popped. An extra event here would cause a
+    // guaranteed double-stop on every call termination.
     super.dispose();
   }
 

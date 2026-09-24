@@ -518,6 +518,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     emit(state.copyWith(rtcConnectionState: event.state));
 
     if (event.state == RtcConnectionState.failed) {
+      // Guard against double-fire: Agora can emit `failed` twice when
+      // leaveSession() (called from onError) triggers onConnectionStateChanged.
+      if (state.status == CallsStatus.error || state.status == CallsStatus.idle) {
+        debugPrint('[CallsBloc] RTC failed event ignored — already in ${state.status}');
+        return;
+      }
       debugPrint(
         '[CallsBloc] RTC connection failed, explicitly calling leaveSession to release microphone...',
       );

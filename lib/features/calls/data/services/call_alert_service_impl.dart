@@ -13,10 +13,19 @@ class CallAlertServiceImpl implements CallAlertService {
   final AudioPlayer _audioPlayer;
   bool _audioContextConfigured = false;
 
+  /// Prevents concurrent start calls from racing: the second caller waits for
+  /// the first stop()+play() sequence to finish before proceeding.
+  bool _isStarting = false;
+
   CallAlertServiceImpl({AudioPlayer? audioPlayer}) : _audioPlayer = audioPlayer ?? AudioPlayer();
 
   @override
   Future<void> startOutgoingRingtone() async {
+    // Spin-wait until any in-progress start operation completes.
+    while (_isStarting) {
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    }
+    _isStarting = true;
     await stop();
     try {
       await _configureAudioContext();
@@ -25,11 +34,17 @@ class CallAlertServiceImpl implements CallAlertService {
     } catch (error, stackTrace) {
       await _stopBestEffort();
       Error.throwWithStackTrace(error, stackTrace);
+    } finally {
+      _isStarting = false;
     }
   }
 
   @override
   Future<void> startIncomingRingtone() async {
+    while (_isStarting) {
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    }
+    _isStarting = true;
     await stop();
     try {
       await _configureAudioContext();
@@ -42,6 +57,8 @@ class CallAlertServiceImpl implements CallAlertService {
     } catch (error, stackTrace) {
       await _stopBestEffort();
       Error.throwWithStackTrace(error, stackTrace);
+    } finally {
+      _isStarting = false;
     }
   }
 
@@ -63,6 +80,10 @@ class CallAlertServiceImpl implements CallAlertService {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
     }
+
+    // Reset flag so the audio context is re-applied on the next start call.
+    // Without this, the audio session stays in inCommunication mode between calls.
+    _audioContextConfigured = false;
 
     if (firstError != null) {
       Error.throwWithStackTrace(firstError, firstStackTrace!);
