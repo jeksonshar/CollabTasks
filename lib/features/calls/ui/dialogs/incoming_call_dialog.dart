@@ -9,7 +9,7 @@ import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class IncomingCallDialog extends StatelessWidget {
+class IncomingCallDialog extends StatefulWidget {
   final Call call;
   final String currentUserId;
 
@@ -25,6 +25,33 @@ class IncomingCallDialog extends StatelessWidget {
       barrierDismissible: false,
       builder: (_) => IncomingCallDialog(call: call, currentUserId: currentUserId),
     );
+  }
+
+  @override
+  State<IncomingCallDialog> createState() => _IncomingCallDialogState();
+}
+
+class _IncomingCallDialogState extends State<IncomingCallDialog> {
+  CallsBloc? _callsBloc;
+  bool _didNotifyOpened = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _callsBloc ??= context.read<CallsBloc>();
+    if (!_didNotifyOpened) {
+      _didNotifyOpened = true;
+      _callsBloc!.add(IncomingCallDialogOpened(widget.call.id));
+    }
+  }
+
+  @override
+  void dispose() {
+    final bloc = _callsBloc;
+    if (bloc != null && !bloc.isClosed) {
+      bloc.add(const StopCallAlertRequested());
+    }
+    super.dispose();
   }
 
   @override
@@ -49,7 +76,7 @@ class IncomingCallDialog extends StatelessWidget {
           if (!didPop) {
             // Reject on back gesture
             context.read<CallsBloc>().add(
-              RejectCallRequested(callId: call.id, userId: currentUserId),
+              RejectCallRequested(callId: widget.call.id, userId: widget.currentUserId),
             );
           }
         },
@@ -63,12 +90,14 @@ class IncomingCallDialog extends StatelessWidget {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: theme.colorScheme.primaryContainer,
-                backgroundImage: call.callerAvatarUrl != null
-                    ? NetworkImage(call.callerAvatarUrl!)
+                backgroundImage: widget.call.callerAvatarUrl != null
+                    ? NetworkImage(widget.call.callerAvatarUrl!)
                     : null,
-                child: call.callerAvatarUrl == null
+                child: widget.call.callerAvatarUrl == null
                     ? Text(
-                        call.callerName.isNotEmpty ? call.callerName[0].toUpperCase() : '?',
+                        widget.call.callerName.isNotEmpty
+                            ? widget.call.callerName[0].toUpperCase()
+                            : '?',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -79,7 +108,7 @@ class IncomingCallDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                call.callerName,
+                widget.call.callerName,
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -88,17 +117,17 @@ class IncomingCallDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    call.isGroup
+                    widget.call.isGroup
                         ? Icons.groups
-                        : (call.type == CallType.video ? Icons.videocam : Icons.call),
+                        : (widget.call.type == CallType.video ? Icons.videocam : Icons.call),
                     size: 16,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    call.isGroup
-                        ? 'Incoming group ${call.type.name} call...'
-                        : 'Incoming ${call.type.name} call...',
+                    widget.call.isGroup
+                        ? 'Incoming group ${widget.call.type.name} call...'
+                        : 'Incoming ${widget.call.type.name} call...',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -119,7 +148,10 @@ class IncomingCallDialog extends StatelessWidget {
                         backgroundColor: Colors.redAccent,
                         onPressed: () {
                           context.read<CallsBloc>().add(
-                            RejectCallRequested(callId: call.id, userId: currentUserId),
+                            RejectCallRequested(
+                              callId: widget.call.id,
+                              userId: widget.currentUserId,
+                            ),
                           );
                           // Listener will close the dialog via pop() once bloc emits non-ringing
                         },
@@ -140,30 +172,33 @@ class IncomingCallDialog extends StatelessWidget {
                         backgroundColor: Colors.green,
                         onPressed: () {
                           context.read<CallsBloc>().add(
-                            AcceptCallRequested(callId: call.id, userId: currentUserId),
+                            AcceptCallRequested(
+                              callId: widget.call.id,
+                              userId: widget.currentUserId,
+                            ),
                           );
-                          final route = call.isGroup
+                          final route = widget.call.isGroup
                               ? MaterialPageRoute<void>(
                                   builder: (_) => GroupCallScreen(
-                                    callId: call.id,
-                                    groupName: call.callerName,
-                                    callType: call.type,
+                                    callId: widget.call.id,
+                                    groupName: widget.call.callerName,
+                                    callType: widget.call.type,
                                   ),
                                 )
-                              : (call.type == CallType.video
+                              : (widget.call.type == CallType.video
                                     ? MaterialPageRoute<void>(
                                         builder: (_) => VideoCallScreen(
-                                          callId: call.id,
-                                          opponentName: call.callerName,
-                                          opponentAvatarUrl: call.callerAvatarUrl,
-                                          opponentId: call.callerId,
+                                          callId: widget.call.id,
+                                          opponentName: widget.call.callerName,
+                                          opponentAvatarUrl: widget.call.callerAvatarUrl,
+                                          opponentId: widget.call.callerId,
                                         ),
                                       )
                                     : MaterialPageRoute<void>(
                                         builder: (_) => AudioCallScreen(
-                                          callId: call.id,
-                                          opponentName: call.callerName,
-                                          opponentAvatarUrl: call.callerAvatarUrl,
+                                          callId: widget.call.id,
+                                          opponentName: widget.call.callerName,
+                                          opponentAvatarUrl: widget.call.callerAvatarUrl,
                                         ),
                                       ));
 
@@ -172,7 +207,7 @@ class IncomingCallDialog extends StatelessWidget {
                             ..push(route);
                         },
                         child: Icon(
-                          call.type == CallType.video ? Icons.videocam : Icons.call,
+                          widget.call.type == CallType.video ? Icons.videocam : Icons.call,
                           color: Colors.white,
                           size: 28,
                         ),

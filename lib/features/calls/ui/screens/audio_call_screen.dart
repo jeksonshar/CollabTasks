@@ -56,11 +56,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   }
 
   void _onEndCallPressed() {
-    final activeCallId = context
-        .read<CallsBloc>()
-        .state
-        .activeCall
-        ?.id ?? widget.callId;
+    final activeCallId = context.read<CallsBloc>().state.activeCall?.id ?? widget.callId;
     context.read<CallsBloc>().add(EndCallRequested(callId: activeCallId));
   }
 
@@ -93,7 +89,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       },
       builder: (context, state) {
         final isRemoteSpeaking = state.participantMediaStates.any(
-              (p) => !p.isLocal && p.isSpeaking,
+          (p) => !p.isLocal && p.isSpeaking,
         );
 
         final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
@@ -144,13 +140,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                             : null,
                         child: widget.opponentAvatarUrl == null
                             ? Text(
-                          displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                          style: TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        )
+                                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                style: TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              )
                             : null,
                       ),
                     ),

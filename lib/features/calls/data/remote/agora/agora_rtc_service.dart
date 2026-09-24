@@ -17,7 +17,7 @@ class AgoraRtcService implements RtcService {
 
   final _connectionStateController = StreamController<RtcConnectionState>.broadcast();
   final _participantMediaStatesController =
-  StreamController<List<RtcParticipantMediaState>>.broadcast();
+      StreamController<List<RtcParticipantMediaState>>.broadcast();
 
   RtcConnectionState _currentState = RtcConnectionState.disconnected;
   final Map<String, RtcParticipantMediaState> _participants = {};
@@ -29,9 +29,9 @@ class AgoraRtcService implements RtcService {
   bool _isDisposed = false;
 
   AgoraRtcService({required this.appId, AgoraUidMapper? uidMapper, RtcEngine? engine})
-      : _uidMapper = uidMapper ?? AgoraUidMapper(),
-        _engine = engine,
-        _isCustomEngine = engine != null;
+    : _uidMapper = uidMapper ?? AgoraUidMapper(),
+      _engine = engine,
+      _isCustomEngine = engine != null;
 
   @override
   RtcConnectionState get currentConnectionState => _currentState;
@@ -99,13 +99,15 @@ class AgoraRtcService implements RtcService {
           _emitParticipants();
         },
         onConnectionStateChanged:
-            (RtcConnection connection,
-            ConnectionStateType state,
-            ConnectionChangedReasonType reason,) {
-          debugPrint('[AgoraRtcService] Connection state: $state, reason: $reason');
-          final mappedState = _mapAgoraConnectionState(state);
-          _updateConnectionState(mappedState);
-        },
+            (
+              RtcConnection connection,
+              ConnectionStateType state,
+              ConnectionChangedReasonType reason,
+            ) {
+              debugPrint('[AgoraRtcService] Connection state: $state, reason: $reason');
+              final mappedState = _mapAgoraConnectionState(state);
+              _updateConnectionState(mappedState);
+            },
         onUserMuteAudio: (RtcConnection connection, int remoteUid, bool muted) {
           final participantId = _uidMapper.toUserId(remoteUid) ?? 'user_$remoteUid';
           final existing = _participants[participantId];
@@ -123,42 +125,44 @@ class AgoraRtcService implements RtcService {
           }
         },
         onAudioVolumeIndication:
-            (RtcConnection connection,
-            List<AudioVolumeInfo> speakers,
-            int totalVolume,
-            int speakerNumber,) {
-          bool changed = false;
-          final localUid = _activeSession != null
-              ? _uidMapper.toAgoraUid(_activeSession!.localUserId)
-              : null;
+            (
+              RtcConnection connection,
+              List<AudioVolumeInfo> speakers,
+              int totalVolume,
+              int speakerNumber,
+            ) {
+              bool changed = false;
+              final localUid = _activeSession != null
+                  ? _uidMapper.toAgoraUid(_activeSession!.localUserId)
+                  : null;
 
-          for (final speaker in speakers) {
-            final isLocal = (speaker.uid == 0) || (speaker.uid == localUid);
-            final participantId = isLocal
-                ? (_activeSession?.localUserId ?? '')
-                : (_uidMapper.toUserId(speaker.uid ?? 0) ?? 'user_${speaker.uid}');
+              for (final speaker in speakers) {
+                final isLocal = (speaker.uid == 0) || (speaker.uid == localUid);
+                final participantId = isLocal
+                    ? (_activeSession?.localUserId ?? '')
+                    : (_uidMapper.toUserId(speaker.uid ?? 0) ?? 'user_${speaker.uid}');
 
-            if (participantId.isEmpty) continue;
+                if (participantId.isEmpty) continue;
 
-            final existing = _participants[participantId];
-            if (existing != null) {
-              final volume = (speaker.volume ?? 0) / 255.0;
-              final isSpeaking = volume > 0.1;
-              if (existing.isSpeaking != isSpeaking ||
-                  (existing.audioLevel - volume).abs() > 0.05) {
-                _participants[participantId] = existing.copyWith(
-                  isSpeaking: isSpeaking,
-                  audioLevel: volume,
-                );
-                changed = true;
+                final existing = _participants[participantId];
+                if (existing != null) {
+                  final volume = (speaker.volume ?? 0) / 255.0;
+                  final isSpeaking = volume > 0.1;
+                  if (existing.isSpeaking != isSpeaking ||
+                      (existing.audioLevel - volume).abs() > 0.05) {
+                    _participants[participantId] = existing.copyWith(
+                      isSpeaking: isSpeaking,
+                      audioLevel: volume,
+                    );
+                    changed = true;
+                  }
+                }
               }
-            }
-          }
 
-          if (changed) {
-            _emitParticipants();
-          }
-        },
+              if (changed) {
+                _emitParticipants();
+              }
+            },
         onError: (ErrorCodeType err, String msg) {
           debugPrint('[AgoraRtcService] Error: $err, msg: $msg');
           if (err == ErrorCodeType.errJoinChannelRejected ||

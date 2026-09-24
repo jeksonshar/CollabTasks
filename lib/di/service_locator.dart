@@ -34,8 +34,10 @@ import 'package:collab_tasks/features/calls/data/remote/agora/agora_video_view_f
 import 'package:collab_tasks/features/calls/data/repositories/firestore_call_repository.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dart';
+import 'package:collab_tasks/features/calls/data/services/call_alert_service_impl.dart';
 import 'package:collab_tasks/features/calls/data/services/call_permissions_service_impl.dart';
 import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
+import 'package:collab_tasks/features/calls/domain/services/call_alert_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/rtc_service.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
@@ -49,6 +51,9 @@ import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_u
 import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_incoming_alert_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/start_outgoing_alert_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/stop_call_alert_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
@@ -454,6 +459,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton<CallRepository>(
       () => FirestoreCallRepository(firestore: getIt<FirebaseFirestore>()),
     )
+    ..registerLazySingleton<CallAlertService>(() => CallAlertServiceImpl())
     ..registerLazySingleton<CallPermissionsService>(() => const CallPermissionsServiceImpl())
     ..registerLazySingleton<RtcService>(
       () => switch (rtcBackend) {
@@ -490,6 +496,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => SwitchCameraUseCase(getIt<RtcService>()))
     ..registerLazySingleton(() => WatchRtcConnectionStateUseCase(getIt<RtcService>()))
     ..registerLazySingleton(() => WatchRtcParticipantMediaStatesUseCase(getIt<RtcService>()))
+    ..registerLazySingleton(() => StartIncomingAlertUseCase(getIt<CallAlertService>()))
+    ..registerLazySingleton(() => StartOutgoingAlertUseCase(getIt<CallAlertService>()))
+    ..registerLazySingleton(() => StopCallAlertUseCase(getIt<CallAlertService>()))
     ..registerLazySingleton(
       () => CallsBloc(
         startCallUseCase: getIt(),
@@ -511,6 +520,9 @@ void setupLocator(SharedPreferences sharedPreferences) {
         switchCameraUseCase: getIt(),
         watchRtcConnectionStateUseCase: getIt(),
         watchRtcParticipantMediaStatesUseCase: getIt(),
+        startIncomingAlertUseCase: getIt(),
+        startOutgoingAlertUseCase: getIt(),
+        stopCallAlertUseCase: getIt(),
       ),
     );
 }

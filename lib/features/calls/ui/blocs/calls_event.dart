@@ -55,6 +55,19 @@ class IncomingCallDetected extends CallsEvent {
   List<Object?> get props => [call];
 }
 
+class IncomingCallDialogOpened extends CallsEvent {
+  final String callId;
+
+  const IncomingCallDialogOpened(this.callId);
+
+  @override
+  List<Object?> get props => [callId];
+}
+
+class StopCallAlertRequested extends CallsEvent {
+  const StopCallAlertRequested();
+}
+
 class AcceptCallRequested extends CallsEvent {
   final String callId;
   final String userId;
