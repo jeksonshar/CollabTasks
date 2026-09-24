@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_alert_service.dart';
@@ -76,14 +77,26 @@ class CallAlertServiceImpl implements CallAlertService {
   Future<void> _dispose() async {
     try {
       await stop();
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Continue releasing the player even if an OS stop operation fails.
+      developer.log(
+        'Failed to stop call alert during disposal.',
+        name: 'CallAlertServiceImpl',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
 
     try {
       await _audioPlayer.dispose();
-    } catch (_) {
+    } catch (error, stackTrace) {
       // dispose() has no error channel; avoid an unhandled async error.
+      developer.log(
+        'Failed to dispose audio player.',
+        name: 'CallAlertServiceImpl',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -111,14 +124,26 @@ class CallAlertServiceImpl implements CallAlertService {
   Future<void> _stopBestEffort() async {
     try {
       await _audioPlayer.stop();
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Preserve the original playback error.
+      developer.log(
+        'Best-effort audio stop failed after an alert error.',
+        name: 'CallAlertServiceImpl',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
 
     try {
       await Vibration.cancel();
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Preserve the original playback error.
+      developer.log(
+        'Best-effort vibration cancellation failed after an alert error.',
+        name: 'CallAlertServiceImpl',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 }
