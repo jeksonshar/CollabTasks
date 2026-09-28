@@ -1,36 +1,39 @@
-# Feature: ChatPresence
+# Feature: Chat Presence
 
 ## 1. Business Goal & Value
-- **Purpose:** Reflect direct-chat presence from authenticated WebSocket connections and report offline promptly when the app enters the background.
-- **User Stories Covered:** Show online/offline status and last-seen information for direct-chat participants.
+- **Purpose:** Keep the direct-chat online indicator scoped to active subscriptions to that chat. A general authenticated WebSocket connection, including FCM-token synchronization, does not imply that the user is present in a chat.
+- **User Stories Covered:** Show a peer as online while at least one of their devices is subscribed to the direct-chat topic; show offline and last seen after the last device leaves or disconnects from that topic.
 
 ## 2. Architectural Blueprint (Clean Architecture)
 
 ### Domain Layer
-- **Models:** `UserStatusEntity` contains user ID, status, and optional last-seen timestamp.
-- **Use Cases:** `WatchUserStatusUseCase` exposes presence updates for the selected chat participant.
-- **Repository Interface:** `ChatRepository` exposes a user-status stream.
+- **Models:** `UserStatusEntity` represents `online` or `offline`, with an optional last-seen timestamp.
+- **Use Cases:** `WatchUserStatusUseCase` exposes status changes for a peer.
+- **Repository Interface:** `ChatRepository.watchUserStatus(userId)` provides the peer's status stream.
 
 ### Data Layer
-- **Remote Data:** `WebSocketChatRemoteDataSource` closes its socket on `paused`/`hidden` and reconnects and resubscribes on `resumed`. The chat server keeps an account online while any authenticated device connection remains.
-- **Data Mappers:** `WsUserStatusDto` maps server `user_status_changed` events to `UserStatusEntity`.
+- **Local Persistence (Drift):** None.
+- **Data Mappers:** `WsUserStatusDto` maps server events to `UserStatusEntity`.
+- **Remote Data:** The WebSocket server emits `user_status_changed` when the first account socket joins a chat topic, when the last account socket leaves it, or when an initial topic subscription requests the peer's current status. Socket authentication and FCM token synchronization do not broadcast chat presence. Last-seen timestamps are persisted when the last topic subscription ends.
 
 ### Presentation Layer (UI & Bloc)
-- **Bloc / Cubit:** `ChatBloc` listens to the opponent's status stream and updates the loaded chat state.
-- **Components & Screens:** `ChatScreen` renders online status or last-seen time.
+- **Bloc / Cubit:** `ChatBloc` subscribes to the peer status stream and emits `UserStatusUpdated`.
+- **Events:** `UserStatusUpdated` carries the latest mapped server status.
+- **States:** `ChatLoaded.opponentStatus` drives the header indicator.
+- **Components & Screens:** `ChatScreen` displays the online marker or last-seen time.
 
 ## 3. Testing Matrix
-- [ ] **Unit:** Verify websocket close on background and reconnect/resubscribe on resume.
-- [ ] **Bloc:** Verify presence events update the active chat state.
+- [ ] **Unit:** Verify topic presence transitions for subscribe, unsubscribe, disconnect, and multiple devices.
+- [ ] **Bloc:** Verify peer status events update `ChatLoaded.opponentStatus`.
+- [ ] **Widget:** Verify online and last-seen header rendering.
 
 ## 4. Data Flow & State Machine (Mermaid)
 ```mermaid
-graph TD
-    Lifecycle[App paused or hidden] -->|Close socket| Server[Chat WebSocket server]
-    Server -->|Offline unless another device remains connected| Status[User status event]
-    Lifecycle2[App resumed] -->|Reconnect and resubscribe| Server
-    Server -->|user_status_changed| DataSource[WebSocketChatRemoteDataSource]
-    DataSource --> Repo[ChatRepository]
-    Repo --> Bloc[ChatBloc]
-    Bloc --> UI[ChatScreen]
+stateDiagram-v2
+    [*] --> Offline
+    Offline --> Online: first account socket subscribes to direct chat
+    Online --> Online: another account socket subscribes
+    Online --> Online: one socket leaves, another remains subscribed
+    Online --> Offline: last account socket unsubscribes or disconnects
+    Offline --> Online: initial status query sees peer subscribed to topic
 ```

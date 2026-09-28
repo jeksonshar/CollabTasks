@@ -13,15 +13,12 @@ import {
   AuthenticatedSocket,
   addConnection,
   removeConnection,
-  isUserOnline,
   startHeartbeat,
   handlePong,
-  broadcastUserStatus,
 } from './websocket/connectionManager';
-import { unsubscribeAll } from './websocket/subscriptionManager';
-import { handleEvent } from './controllers/chatController';
+import { handleClientDisconnect, handleEvent } from './controllers/chatController';
 import { initializeFirebase } from './services/pushNotificationService';
-import { initDatabase, upsertLastSeen } from './storage/db'; // upsertLastSeen тепер async
+import { initDatabase } from './storage/db';
 import { InboundEvent } from './models/types';
 
 // ─────────────────────────────────────────────────────────────
@@ -115,29 +112,11 @@ async function main(): Promise<void> {
           `code=${code} reason=${reason.toString() || '—'}`
       );
 
-      unsubscribeAll(client);
-
-      // Сохраняем lastSeen в PostgreSQL и рассылаем offline-статус
-      const lastSeenMs = Date.now();
-      const dbPromises: Promise<void>[] = [];
-      dbPromises.push(upsertLastSeen(user.userId, lastSeenMs));
-      if (user.email) {
-        dbPromises.push(upsertLastSeen(user.email, lastSeenMs));
-      }
-
       try {
-        await Promise.all(dbPromises);
+        removeConnection(ws);
+        await handleClientDisconnect(client);
       } catch (err) {
-        console.error(`[Server] Ошибка сохранения lastSeen для userId=${user.userId}:`, err);
-      }
-
-      removeConnection(ws);
-
-      // Account status stays online while another device still has a socket.
-      if (!isUserOnline(user.userId)) {
-        void broadcastUserStatus(user, 'offline', lastSeenMs).catch((err) => {
-          console.error(`[Server] Ошибка рассылки offline-статуса для userId=${user.userId}:`, err);
-        });
+        console.error(`[Server] Ошибка очистки присутствия userId=${user.userId}:`, err);
       }
     });
 
@@ -207,11 +186,6 @@ async function main(): Promise<void> {
 
       client = addConnection(ws, user);
       console.log(`[Server] ✅ Авторизован: userId=${user.userId} email=${user.email}`);
-
-      // Рассылаем online-статус в фоне, не блокируя очередь сообщений
-      void broadcastUserStatus(user, 'online').catch((err) => {
-        console.error(`[Server] Ошибка рассылки online-статуса для userId=${user.userId}:`, err);
-      });
 
       // Обрабатываем накопившиеся во время рукопожатия сообщения
       while (messageBuffer.length > 0) {

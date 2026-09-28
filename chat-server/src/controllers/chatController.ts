@@ -17,8 +17,10 @@ import {
   unsubscribe,
   getSubscribers,
   isUserSubscribed,
+  getClientTopics,
   chatTopicKey,
   groupTopicKey,
+  unsubscribeAll,
 } from '../websocket/subscriptionManager';
 import * as db from '../storage/db';
 import {
@@ -139,6 +141,9 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
     sendError(client, 'subscribe_topic: topicId обязателен');
     return;
   }
+  const userWasSubscribed = [client.user.userId, client.user.email]
+      .filter(Boolean)
+      .some((id) => isUserSubscribed(id, topicId));
   subscribe(client, topicId);
 
   // При подписке на чат — сразу отдаём историю сообщений и статус участников
@@ -149,21 +154,32 @@ async function handleSubscribeTopic(client: AuthenticatedSocket, topicId: string
     // Отдаём первую страницу истории одним атомарным событием (устраняет дёрганье UI)
     sendToClient(client, { type: 'messages_history', chatId, messages, hasMore });
 
+    // За время запроса истории клиент мог успеть закрыть экран чата.
+    const isStillSubscribed = [client.user.userId, client.user.email]
+        .filter(Boolean)
+        .some((id) => isUserSubscribed(id, topicId));
+    if (!isStillSubscribed) return;
+
     const clientIdentifiers = [
       client.user.userId.trim().toLowerCase(),
       client.user.email.trim().toLowerCase(),
     ];
 
     // 1. Оповещаем остальных участников этого чата, что данный пользователь вошёл (online)
-    const subscribers = getSubscribers(topicId);
-    for (const sub of subscribers) {
-      if (clientIdentifiers.includes(sub.user.userId.trim().toLowerCase())) continue;
-      for (const id of clientIdentifiers) {
-        sendToClient(sub, {
-          type: 'user_status_changed',
-          userId: id,
-          status: 'online',
-        });
+    if (!userWasSubscribed) {
+      const subscribers = getSubscribers(topicId);
+      for (const sub of subscribers) {
+        const subscriberIdentifiers = [sub.user.userId, sub.user.email]
+            .filter(Boolean)
+            .map((id) => id.trim().toLowerCase());
+        if (clientIdentifiers.some((id) => subscriberIdentifiers.includes(id))) continue;
+        for (const id of clientIdentifiers) {
+          sendToClient(sub, {
+            type: 'user_status_changed',
+            userId: id,
+            status: 'online',
+          });
+        }
       }
     }
 
@@ -246,35 +262,64 @@ async function handleUnsubscribeTopic(client: AuthenticatedSocket, topicId: stri
   unsubscribe(client, topicId);
 
   if (topicId.startsWith('chat:')) {
-    // Пользователь вышел из чата — фиксируем время выхода
-    const lastSeenMs = Date.now();
-    // Добавлены await для db.upsertLastSeen
-    await db.upsertLastSeen(client.user.userId, lastSeenMs);
-    if (client.user.email) {
-      await db.upsertLastSeen(client.user.email, lastSeenMs);
+    await broadcastDirectChatPresence(client, topicId, 'offline');
+  }
+}
+
+/** Удаляет подписки закрывшегося сокета и обновляет статус только его чат-топиков. */
+export async function handleClientDisconnect(client: AuthenticatedSocket): Promise<void> {
+  const chatTopics = getClientTopics(client).filter((topicId) => topicId.startsWith('chat:'));
+  unsubscribeAll(client);
+
+  for (const topicId of chatTopics) {
+    await broadcastDirectChatPresence(client, topicId, 'offline');
+  }
+}
+
+async function broadcastDirectChatPresence(
+  client: AuthenticatedSocket,
+  topicId: string,
+  status: 'online' | 'offline',
+): Promise<void> {
+  const clientIdentifiers = [client.user.userId, client.user.email]
+      .filter(Boolean)
+      .map((id) => id.trim().toLowerCase());
+  const stillSubscribed = clientIdentifiers.some((id) => isUserSubscribed(id, topicId));
+
+  // Другое устройство этого же аккаунта всё ещё подписано на этот чат.
+  if (status === 'offline' && stillSubscribed) return;
+
+  const lastSeenMs = status === 'offline' ? Date.now() : undefined;
+  if (lastSeenMs !== undefined) {
+    try {
+      await db.upsertLastSeen(client.user.userId, lastSeenMs);
+      if (client.user.email) {
+        await db.upsertLastSeen(client.user.email, lastSeenMs);
+      }
+    } catch (error) {
+      // База lastSeen не должна блокировать доставку offline-события в чат.
+      console.error(`[ChatPresence] Не удалось сохранить lastSeen для userId=${client.user.userId}:`, error);
     }
 
-    const clientIdentifiers = [
-      client.user.userId.trim().toLowerCase(),
-      client.user.email.trim().toLowerCase(),
-    ];
+    // Подписка могла появиться, пока сохранялся lastSeen.
+    const becameSubscribed = clientIdentifiers.some((id) => isUserSubscribed(id, topicId));
+    if (becameSubscribed) return;
+  }
 
-    // Проверяем, не остался ли сокет с этого же аккаунта в данном топике
-    const stillSubscribed = isUserSubscribed(client.user.userId, topicId);
-    if (!stillSubscribed) {
-      // Оповещаем оставшихся участников чата, что пользователь вышел (offline)
-      const subscribers = getSubscribers(topicId);
-      for (const sub of subscribers) {
-        if (clientIdentifiers.includes(sub.user.userId.trim().toLowerCase())) continue;
-        for (const id of clientIdentifiers) {
-          sendToClient(sub, {
-            type: 'user_status_changed',
-            userId: id,
-            status: 'offline',
-            lastSeenMillis: lastSeenMs,
-          });
-        }
-      }
+  const subscribers = getSubscribers(topicId);
+  for (const subscriber of subscribers) {
+    const subscriberIdentifiers = [subscriber.user.userId, subscriber.user.email]
+        .filter(Boolean)
+        .map((id) => id.trim().toLowerCase());
+    if (clientIdentifiers.some((id) => subscriberIdentifiers.includes(id))) continue;
+
+    for (const id of clientIdentifiers) {
+      sendToClient(subscriber, {
+        type: 'user_status_changed',
+        userId: id,
+        status,
+        ...(lastSeenMs !== undefined ? { lastSeenMillis: lastSeenMs } : {}),
+      });
     }
   }
 }
