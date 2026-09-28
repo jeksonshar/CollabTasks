@@ -75,9 +75,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   Timer? _outgoingCallTimeoutTimer;
   final Set<String> _callKitDismissalsPending = {};
   final Set<String> _acceptedCallKitIds = {};
+  final Set<String> _pendingCallKitAcceptIds = {};
   final Set<String> _resolvedIncomingCallIds = {};
   final List<CallEvent> _pendingCallKitEvents = [];
   final List<CallDataEntity> _pendingAcceptedCallKitCalls = [];
+  final List<CallDataEntity> _pendingDeclinedCallKitCalls = [];
 
   static const Duration _outgoingCallTimeoutDuration = Duration(seconds: 45);
 
@@ -159,6 +161,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     on<ParticipantMediaStatesUpdated>(_onParticipantMediaStatesUpdated);
     on<CallKitEventReceived>(_onCallKitEventReceived);
     on<CallKitAccepted>(_onCallKitAccepted);
+    on<CallKitDeclined>(_onCallKitDeclined);
     on<CallCancellationPushReceived>(_onCallCancellationPushReceived);
     _callKitEventSubscription = callKitEvents?.listen(
       (event) {
@@ -241,7 +244,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   bool _isCallKitAcceptPending(String callId) {
-    return _pendingAcceptedCallKitCalls.any((call) => call.callId == callId) ||
+    return _pendingCallKitAcceptIds.contains(callId) ||
+        _acceptedCallKitIds.contains(callId) ||
+        _pendingAcceptedCallKitCalls.any((call) => call.callId == callId) ||
         _pendingCallKitEvents.any(
           (event) => event is CallEventActionCallAccept && event.callKitParams.id == callId,
         );
@@ -335,7 +340,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       // Ignored on reject
     } finally {
       await _cleanup();
-      emit(const CallsState());
+      emit(CallsState(currentUserId: state.currentUserId));
     }
   }
 
@@ -353,7 +358,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
 
     await _cleanup();
-    emit(const CallsState());
+    emit(CallsState(currentUserId: state.currentUserId));
   }
 
   Future<void> _onCancelCall(CancelCallRequested event, Emitter<CallsState> emit) async {
@@ -368,7 +373,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
 
     await _cleanup();
-    emit(const CallsState());
+    emit(CallsState(currentUserId: state.currentUserId));
   }
 
   Future<void> _onLeaveCall(LeaveCallRequested event, Emitter<CallsState> emit) async {
@@ -384,7 +389,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
 
     await _cleanup();
-    emit(const CallsState());
+    emit(CallsState(currentUserId: state.currentUserId));
   }
 
   Future<void> _onInviteParticipant(
@@ -469,6 +474,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       final pendingEvents = List<CallEvent>.of(_pendingCallKitEvents);
       _pendingCallKitEvents.clear();
       for (final pendingEvent in pendingEvents) {
+        if (pendingEvent is CallEventActionCallAccept) {
+          _pendingCallKitAcceptIds.add(pendingEvent.callKitParams.id);
+        }
         add(CallKitEventReceived(pendingEvent));
       }
     }
@@ -476,7 +484,15 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       final pendingCalls = List<CallDataEntity>.of(_pendingAcceptedCallKitCalls);
       _pendingAcceptedCallKitCalls.clear();
       for (final callData in pendingCalls) {
+        _pendingCallKitAcceptIds.add(callData.callId);
         add(CallKitAccepted(callData));
+      }
+    }
+    if (_pendingDeclinedCallKitCalls.isNotEmpty) {
+      final pendingCalls = List<CallDataEntity>.of(_pendingDeclinedCallKitCalls);
+      _pendingDeclinedCallKitCalls.clear();
+      for (final callData in pendingCalls) {
+        add(CallKitDeclined(callData));
       }
     }
     final normalizedUserId = event.userId.trim().toLowerCase();
@@ -507,30 +523,32 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   Future<void> _onCallKitEventReceived(CallKitEventReceived event, Emitter<CallsState> emit) async {
     final nativeEvent = event.event;
+    final callData = switch (nativeEvent) {
+      CallEventActionCallAccept() => _callDataFromParams(nativeEvent.callKitParams),
+      CallEventActionCallDecline() => _callDataFromParams(nativeEvent.callKitParams),
+      _ => null,
+    };
+    if (nativeEvent is CallEventActionCallAccept) {
+      if (_acceptedCallKitIds.contains(nativeEvent.callKitParams.id)) return;
+      _pendingCallKitAcceptIds.add(nativeEvent.callKitParams.id);
+    }
     final requiresUser =
         nativeEvent is CallEventActionCallAccept || nativeEvent is CallEventActionCallDecline;
-    if (requiresUser && (state.currentUserId == null || state.currentUserId!.isEmpty)) {
+    final recipientId = nativeEvent is CallEventActionCallDecline
+        ? _resolveCallRecipientId(callData)
+        : state.currentUserId?.trim() ?? '';
+    if (requiresUser && recipientId.isEmpty) {
       _pendingCallKitEvents.add(nativeEvent);
       debugPrint('[CallsBloc] Deferring CallKit action until recipient identity is ready');
       return;
     }
     if (nativeEvent is CallEventActionCallAccept) {
-      await _acceptCallKitData(_callDataFromParams(nativeEvent.callKitParams), emit);
+      await _acceptCallKitData(callData!, emit);
       return;
     }
 
     if (nativeEvent is CallEventActionCallDecline) {
-      final callData = _callDataFromParams(nativeEvent.callKitParams);
-      _resolvedIncomingCallIds.add(callData.callId);
-      final userId = state.currentUserId!;
-      try {
-        _callKitDismissalsPending.add(callData.callId);
-        await _declineIncomingCallUseCase?.call(callId: callData.callId, userId: userId);
-      } catch (error) {
-        debugPrint('[CallsBloc] Failed to decline CallKit call: $error');
-      }
-      await _cleanup();
-      emit(const CallEndedState());
+      await _declineCallKitData(callData!, emit, userId: recipientId);
       return;
     }
 
@@ -545,6 +563,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onCallKitAccepted(CallKitAccepted event, Emitter<CallsState> emit) async {
+    if (_acceptedCallKitIds.contains(event.callData.callId)) return;
+    _pendingCallKitAcceptIds.add(event.callData.callId);
     if (state.currentUserId == null || state.currentUserId!.isEmpty) {
       if (!_pendingAcceptedCallKitCalls.any((call) => call.callId == event.callData.callId)) {
         _pendingAcceptedCallKitCalls.add(event.callData);
@@ -555,12 +575,62 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     await _acceptCallKitData(event.callData, emit);
   }
 
+  Future<void> _onCallKitDeclined(CallKitDeclined event, Emitter<CallsState> emit) async {
+    final callData = event.callData;
+    final userId = state.currentUserId?.trim().isNotEmpty == true
+        ? state.currentUserId!.trim()
+        : callData.calleeId.trim();
+    if (userId.isEmpty) {
+      if (!_pendingDeclinedCallKitCalls.any((call) => call.callId == callData.callId)) {
+        _pendingDeclinedCallKitCalls.add(callData);
+      }
+      debugPrint(
+        '[CallsBloc] Deferring restored CallKit decline until recipient identity is ready',
+      );
+      return;
+    }
+    await _declineCallKitData(callData, emit, userId: userId);
+  }
+
+  Future<void> _declineCallKitData(
+    CallDataEntity callData,
+    Emitter<CallsState> emit, {
+    String? userId,
+  }) async {
+    final callId = callData.callId;
+    if (callId.isEmpty) return;
+    _resolvedIncomingCallIds.add(callId);
+    final recipientId = userId ?? state.currentUserId ?? callData.calleeId;
+    if (recipientId.trim().isEmpty || _declineIncomingCallUseCase == null) {
+      _resolvedIncomingCallIds.remove(callId);
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorMessage: () => 'Unable to identify the call recipient',
+        ),
+      );
+      return;
+    }
+    try {
+      _callKitDismissalsPending.add(callId);
+      await _declineIncomingCallUseCase.call(callId: callId, userId: recipientId);
+      await _cleanup();
+      emit(CallEndedState(callId: callId, currentUserId: state.currentUserId));
+    } catch (error, stackTrace) {
+      _resolvedIncomingCallIds.remove(callId);
+      _callKitDismissalsPending.remove(callId);
+      debugPrint('[CallsBloc] Failed to decline CallKit call: $error\n$stackTrace');
+      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => error.toString()));
+    }
+  }
+
   Future<void> _onCallCancellationPushReceived(
     CallCancellationPushReceived event,
     Emitter<CallsState> emit,
   ) async {
     if (event.callId.isEmpty) return;
     _resolvedIncomingCallIds.add(event.callId);
+    _pendingCallKitAcceptIds.remove(event.callId);
     _callKitDismissalsPending.add(event.callId);
     try {
       await _cancelIncomingCallUseCase?.call(event.callId);
@@ -576,12 +646,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     if (activeCallId == event.callId ||
         (state.status == CallsStatus.ringingIncoming && state.activeCall?.id == event.callId)) {
       await _cleanup();
-      emit(const CallEndedState());
+      emit(CallEndedState(currentUserId: state.currentUserId));
     }
   }
 
   Future<void> _acceptCallKitData(CallDataEntity callData, Emitter<CallsState> emit) async {
     if (!_acceptedCallKitIds.add(callData.callId)) return;
+    _pendingCallKitAcceptIds.remove(callData.callId);
     _resolvedIncomingCallIds.add(callData.callId);
     await _stopCallAlertSafely();
     final userId = state.currentUserId;
@@ -645,10 +716,23 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     });
   }
 
+  String _resolveCallRecipientId(CallDataEntity? callData) {
+    final currentUserId = state.currentUserId?.trim() ?? '';
+    if (currentUserId.isNotEmpty) return currentUserId;
+
+    final payloadRecipientId = callData?.calleeId.trim() ?? '';
+    if (payloadRecipientId.isNotEmpty) {
+      debugPrint('[CallsBloc] Using calleeId from CallKit payload as recipient identity');
+      return payloadRecipientId;
+    }
+    return '';
+  }
+
   Future<void> _endCallFromCallKit(String callId, Emitter<CallsState> emit) async {
     if (_callKitDismissalsPending.remove(callId)) return;
     _resolvedIncomingCallIds.add(callId);
     _acceptedCallKitIds.remove(callId);
+    _pendingCallKitAcceptIds.remove(callId);
     _callKitDismissalsPending.add(callId);
     try {
       await _cancelIncomingCallUseCase?.call(callId);
@@ -656,13 +740,14 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       debugPrint('[CallsBloc] Failed to clear CallKit call: $error');
     }
     await _cleanup();
-    emit(const CallEndedState());
+    emit(CallEndedState(callId: callId, currentUserId: state.currentUserId));
   }
 
   void _onStopListeningIncomingCalls(StopListeningIncomingCalls event, Emitter<CallsState> emit) {
     debugPrint('[CallsBloc] Stopping incoming calls listener');
     _incomingCallsSubscription?.cancel();
     _incomingCallsSubscription = null;
+    emit(const CallsState());
   }
 
   Future<void> _onCallTimeoutOccurred(CallTimeoutOccurred event, Emitter<CallsState> emit) async {
@@ -703,7 +788,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     if (call == null) {
       debugPrint('[CallsBloc] Active call updated to null -> cleaning up');
       await _cleanup();
-      emit(const CallsState());
+      emit(CallsState(currentUserId: state.currentUserId));
       return;
     }
 
@@ -752,7 +837,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } else if (call.status == CallStatus.ended || call.status == CallStatus.cancelled) {
       debugPrint('[CallsBloc] Call ended or cancelled');
       await _cleanup();
-      emit(const CallsState());
+      emit(CallsState(currentUserId: state.currentUserId));
     }
   }
 

@@ -467,14 +467,18 @@ export const onCallCreated = onDocumentCreated(
         const callType = callData.type || "audio";
         const isGroup = Boolean(callData.isGroup);
 
-        if (calleeIds.length === 0) return;
+        if (calleeIds.length === 0) {
+            console.warn(`[onCallCreated] Call ${callId} has no calleeIds`);
+            return;
+        }
 
         try {
             const recipients = await getFcmRecipientTokens(calleeIds);
             if (recipients.length === 0) {
-                console.log(`[onCallCreated] Нет FCM токенов для звонка ${callId}`);
+                console.warn(`[onCallCreated] No registered FCM tokens for call ${callId}; calleeCount=${calleeIds.length}`);
                 return;
             }
+            console.log(`[onCallCreated] Sending call ${callId}; recipientsWithTokens=${recipients.length}`);
 
             // ВАЖНО: Data-only сообщение (без notification) для корректной работы
             // flutter_callkit_incoming / Android Telecom / iOS CallKit в фоновом режиме
@@ -507,9 +511,14 @@ export const onCallCreated = onDocumentCreated(
             }));
 
             const response = await admin.messaging().sendEach(messages);
-            console.log(`[onCallCreated] Отправлено пушей входящего звонка ${callId}: ${response.successCount} из ${recipients.length}`);
+            console.log(`[onCallCreated] Call ${callId}: FCM accepted ${response.successCount}/${recipients.length}; failed=${response.failureCount}`);
+            response.responses.forEach((result, index) => {
+                if (!result.success) {
+                    console.error(`[onCallCreated] FCM send failed for call ${callId}, recipientIndex=${index}: ${result.error?.code || "unknown"}`);
+                }
+            });
         } catch (error) {
-            console.error(`[onCallCreated] Ошибка отправки пуша для звонка ${callId}:`, error);
+            console.error(`[onCallCreated] FCM send failed for call ${callId}:`, error);
         }
     }
 );

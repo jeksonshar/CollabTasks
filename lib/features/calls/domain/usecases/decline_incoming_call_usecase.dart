@@ -16,8 +16,14 @@ class DeclineIncomingCallUseCase {
        _callKitService = callKitService;
 
   Future<void> call({required String callId, required String userId}) async {
-    await _callRepository.rejectCall(callId: callId, userId: userId);
-    await _callAlertService.stop();
-    await _callKitService.endCall(callId);
+    try {
+      await _callRepository.rejectCall(callId: callId, userId: userId);
+    } finally {
+      try {
+        await _callAlertService.stop();
+      } finally {
+        await _callKitService.endCall(callId);
+      }
+    }
   }
 }

@@ -178,8 +178,9 @@ void main() {
     });
 
     test('RequestCallPermissionsUseCase respects service grants', () async {
-      permissionsService.microphoneGranted = true;
-      permissionsService.cameraGranted = true;
+      permissionsService
+        ..microphoneGranted = true
+        ..cameraGranted = true;
       expect(await requestCallPermissionsUseCase(type: CallType.audio), isTrue);
       expect(await requestCallPermissionsUseCase(type: CallType.video), isTrue);
 

@@ -74,6 +74,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   /// Флаг уничтожения объекта — блокирует все переподключения после [dispose].
   bool _isDisposed = false;
+  bool _isAppInBackground = false;
 
   /// Ожидающие Completer'ы: ключ — тип ответного события сервера.
   /// Значение — список, т. к. теоретически возможны параллельные запросы
@@ -147,6 +148,11 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     if (_channel != null) return _channel!;
 
     final token = await _getTokenProvider();
+    if (_isDisposed || _isAppInBackground) {
+      throw const WebSocketConnectionException(
+        'Cannot open a chat socket while the app is backgrounded',
+      );
+    }
     final tokenParam = token != null ? '?token=${Uri.encodeComponent(token)}' : '';
     final uri = Uri.parse('$_baseUrl$tokenParam');
     _channel = _channelFactory(uri);
@@ -163,11 +169,14 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   /// Отправляет JSON-объект через WebSocket.
   Future<void> _send(Map<String, dynamic> payload) async {
+    if (_isDisposed || _isAppInBackground) return;
     try {
       final channel = await _getOrCreateChannel();
       channel.sink.add(jsonEncode(payload));
     } catch (e, st) {
-      debugPrint('[WS] Ошибка отправки: $e\n$st');
+      if (!_isAppInBackground && !_isDisposed) {
+        debugPrint('[WS] Ошибка отправки: $e\n$st');
+      }
     }
   }
 
@@ -470,7 +479,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     debugPrint('[WS] Ошибка соединения: $error\n$st');
     _failAllPending(error);
     _resetConnection();
-    if (!_isDisposed && _activeTopicIds.isNotEmpty) {
+    if (!_isDisposed && !_isAppInBackground && _activeTopicIds.isNotEmpty) {
       _scheduleReconnect();
     }
   }
@@ -480,7 +489,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     _failAllPending(const WebSocketConnectionException('Соединение с WebSocket-сервером прервано'));
     _resetConnection();
     // Если есть активные топики — переподключаемся автоматически.
-    if (!_isDisposed && _activeTopicIds.isNotEmpty) {
+    if (!_isDisposed && !_isAppInBackground && _activeTopicIds.isNotEmpty) {
       _scheduleReconnect();
     }
   }
@@ -509,7 +518,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   /// Задержка: 1с → 2с → 4с → 8с → 16с → 30с (далее не растёт).
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
-    if (_isDisposed) return;
+    if (_isDisposed || _isAppInBackground) return;
 
     final delaySec = min(_maxReconnectDelaySec, pow(2, _reconnectAttempts).toInt());
     _reconnectAttempts++;
@@ -528,7 +537,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   ///
   /// При ошибке — планирует следующую попытку через [_scheduleReconnect].
   Future<void> _reconnect() async {
-    if (_isDisposed) return;
+    if (_isDisposed || _isAppInBackground) return;
 
     // Нет активных топиков — переподключаться незачем.
     if (_activeTopicIds.isEmpty) {
@@ -571,8 +580,35 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _onAppResumed();
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        unawaited(_disconnectForBackground());
+        break;
+      case AppLifecycleState.resumed:
+        _onAppResumed();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  Future<void> _disconnectForBackground() async {
+    if (_isDisposed || _isAppInBackground) return;
+    _isAppInBackground = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+
+    final channel = _channel;
+    final subscription = _channelSubscription;
+    _channel = null;
+    _channelSubscription = null;
+    await subscription?.cancel();
+    try {
+      await channel?.sink.close();
+    } catch (error) {
+      debugPrint('[WS] Failed to close connection while app is backgrounded: $error');
     }
   }
 
@@ -582,6 +618,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   /// активные топики — немедленно сбрасывает backoff и запускает переподключение.
   void _onAppResumed() {
     if (_isDisposed) return;
+    _isAppInBackground = false;
     debugPrint('[WS] App resumed — проверка состояния WS-соединения...');
 
     if (_channel == null && _activeTopicIds.isNotEmpty) {

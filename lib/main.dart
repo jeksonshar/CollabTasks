@@ -152,6 +152,7 @@ class AppAuthGate extends StatefulWidget {
 
 class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
   final Set<String> _restoredCallIds = {};
+  final Set<String> _navigatedCallIds = {};
   String? _incomingCallDialogId;
   bool _fullScreenPermissionRequested = false;
   StreamSubscription<RemoteMessage>? _callPushSubscription;
@@ -189,8 +190,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
           final userIdentifier = authState.user!.email.isNotEmpty
               ? authState.user!.email
               : authState.user!.id;
-          context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
-          unawaited(_restoreAcceptedCallIfAny());
+          unawaited(_restoreCallKitActionsThenListen(userIdentifier));
         }
       }
     });
@@ -224,7 +224,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         if (mounted) {
           context.read<LockBloc>().add(const LockAppResumed());
-          unawaited(_restoreAcceptedCallIfAny());
+          unawaited(_restoreAcceptedCallIfAny().then((_) => _navigateToCurrentAcceptedCall()));
         }
       case AppLifecycleState.detached:
         break;
@@ -246,8 +246,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
               final userIdentifier = state.user!.email.isNotEmpty
                   ? state.user!.email
                   : state.user!.id;
-              context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
-              unawaited(_restoreAcceptedCallIfAny());
+              unawaited(_restoreCallKitActionsThenListen(userIdentifier));
             }
 
             if (state.status == AuthStatus.unauthenticated) {
@@ -287,6 +286,12 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
               current.status == CallsStatus.ringingIncoming &&
               current.activeCall != null,
           listener: (context, state) {
+            if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+              debugPrint(
+                '[CallNavigation] Skipping in-app incoming dialog while app is backgrounded',
+              );
+              return;
+            }
             final authState = context.read<AuthBloc>().state;
             final currentUserId = (authState.user?.email.isNotEmpty == true)
                 ? authState.user!.email
@@ -313,47 +318,23 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
                   previous.callData.callId != current.callData.callId),
           listener: (context, state) {
             if (state is! CallAcceptedState) return;
-            final callData = state.callData;
-            _restoredCallIds.add(callData.callId);
-            final navigator = Navigator.of(context, rootNavigator: true);
-            if (_incomingCallDialogId == callData.callId && navigator.canPop()) {
-              navigator.pop();
-            }
-            final route = callData.isGroup
-                ? MaterialPageRoute<void>(
-                    builder: (_) => GroupCallScreen(
-                      callId: callData.callId,
-                      groupName: callData.displayName,
-                      callType: callData.callType,
-                    ),
-                  )
-                : callData.callType == CallType.video
-                ? MaterialPageRoute<void>(
-                    builder: (_) => VideoCallScreen(
-                      callId: callData.callId,
-                      opponentName: callData.displayName,
-                      opponentAvatarUrl: callData.callerAvatarUrl,
-                      opponentId: callData.callerId,
-                    ),
-                  )
-                : MaterialPageRoute<void>(
-                    builder: (_) => AudioCallScreen(
-                      callId: callData.callId,
-                      opponentName: callData.displayName,
-                      opponentAvatarUrl: callData.callerAvatarUrl,
-                    ),
-                  );
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                Navigator.of(context, rootNavigator: true).push(route);
-              }
-            });
+            _navigateToAcceptedCall(state.callData);
           },
         ),
         BlocListener<CallsBloc, CallsState>(
           listenWhen: (previous, current) =>
               current.status == CallsStatus.idle && previous.status != CallsStatus.idle,
-          listener: (_, _) => _restoredCallIds.clear(),
+          listener: (_, _) {
+            _restoredCallIds.clear();
+            _navigatedCallIds.clear();
+          },
+        ),
+        BlocListener<CallsBloc, CallsState>(
+          listenWhen: (_, current) => current is CallEndedState && current.callId != null,
+          listener: (_, state) {
+            final endedState = state as CallEndedState;
+            unawaited(_clearPendingCallKitDecline(endedState.callId!));
+          },
         ),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
@@ -388,6 +369,71 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _restoreCallKitActionsThenListen(String userIdentifier) async {
+    await _restoreAcceptedCallIfAny();
+    if (!mounted) return;
+    context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
+    _navigateToCurrentAcceptedCall();
+  }
+
+  void _navigateToCurrentAcceptedCall() {
+    if (!mounted) return;
+    final state = context.read<CallsBloc>().state;
+    if (state is CallAcceptedState) {
+      _navigateToAcceptedCall(state.callData);
+    }
+  }
+
+  void _navigateToAcceptedCall(CallDataEntity callData) {
+    if (!mounted || !_navigatedCallIds.add(callData.callId)) return;
+    _restoredCallIds.add(callData.callId);
+    final navigator = globalNavigatorKey.currentState;
+    if (navigator == null) {
+      _navigatedCallIds.remove(callData.callId);
+      debugPrint('[CallNavigation] Navigator is not ready for ${callData.callId}');
+      return;
+    }
+
+    if (_incomingCallDialogId != null && navigator.canPop()) {
+      navigator.pop();
+      _incomingCallDialogId = null;
+    }
+    final route = callData.isGroup
+        ? MaterialPageRoute<void>(
+            builder: (_) => GroupCallScreen(
+              callId: callData.callId,
+              groupName: callData.displayName,
+              callType: callData.callType,
+            ),
+          )
+        : callData.callType == CallType.video
+        ? MaterialPageRoute<void>(
+            builder: (_) => VideoCallScreen(
+              callId: callData.callId,
+              opponentName: callData.displayName,
+              opponentAvatarUrl: callData.callerAvatarUrl,
+              opponentId: callData.callerId,
+            ),
+          )
+        : MaterialPageRoute<void>(
+            builder: (_) => AudioCallScreen(
+              callId: callData.callId,
+              opponentName: callData.displayName,
+              opponentAvatarUrl: callData.callerAvatarUrl,
+            ),
+          );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentNavigator = globalNavigatorKey.currentState;
+      if (!mounted || currentNavigator == null) {
+        _navigatedCallIds.remove(callData.callId);
+        return;
+      }
+      debugPrint('[CallNavigation] Opening call screen for ${callData.callId}');
+      currentNavigator.push(route);
+    });
+  }
+
   Future<void> _restoreAcceptedCallIfAny() async {
     if (!mounted) return;
     final authState = context.read<AuthBloc>().state;
@@ -401,6 +447,15 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       // isolate's SharedPreferences cache before reading a persisted Accept.
       await preferences.reload();
       if (!mounted) return;
+      final pendingDecline = preferences.getString(pendingCallKitDeclinePreferenceKey);
+      if (pendingDecline != null) {
+        final declinedCall = CallDataEntity.fromMap(
+          Map<String, dynamic>.from(jsonDecode(pendingDecline) as Map),
+        );
+        if (declinedCall.callId.isNotEmpty) {
+          context.read<CallsBloc>().add(CallKitDeclined(declinedCall));
+        }
+      }
       final pendingAccept = preferences.getString(pendingCallKitAcceptPreferenceKey);
       if (pendingAccept != null) {
         final callData = CallDataEntity.fromMap(
@@ -421,6 +476,23 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       }
     } catch (error, stackTrace) {
       debugPrint('Failed to restore accepted CallKit call: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _clearPendingCallKitDecline(String callId) async {
+    try {
+      final preferences = getIt<SharedPreferences>();
+      await preferences.reload();
+      final pending = preferences.getString(pendingCallKitDeclinePreferenceKey);
+      if (pending == null) return;
+      final callData = CallDataEntity.fromMap(
+        Map<String, dynamic>.from(jsonDecode(pending) as Map),
+      );
+      if (callData.callId == callId) {
+        await preferences.remove(pendingCallKitDeclinePreferenceKey);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to clear pending CallKit decline: $error\n$stackTrace');
     }
   }
 }

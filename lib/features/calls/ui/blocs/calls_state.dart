@@ -89,5 +89,10 @@ class CallAcceptedState extends CallsState {
 
 /// Emitted when a native call action ends the current call.
 class CallEndedState extends CallsState {
-  const CallEndedState() : super();
+  final String? callId;
+
+  const CallEndedState({this.callId, super.currentUserId}) : super();
+
+  @override
+  List<Object?> get props => [...super.props, callId];
 }

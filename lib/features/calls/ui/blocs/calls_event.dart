@@ -214,6 +214,15 @@ class CallKitAccepted extends CallsEvent {
   List<Object?> get props => [callData.callId];
 }
 
+class CallKitDeclined extends CallsEvent {
+  final CallDataEntity callData;
+
+  const CallKitDeclined(this.callData);
+
+  @override
+  List<Object?> get props => [callData.callId];
+}
+
 class CallCancellationPushReceived extends CallsEvent {
   final String callId;
 
