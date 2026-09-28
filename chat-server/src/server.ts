@@ -13,6 +13,7 @@ import {
   AuthenticatedSocket,
   addConnection,
   removeConnection,
+  isUserOnline,
   startHeartbeat,
   handlePong,
   broadcastUserStatus,
@@ -132,10 +133,12 @@ async function main(): Promise<void> {
 
       removeConnection(ws);
 
-      // Рассылаем offline-статус в фоне
-      void broadcastUserStatus(user, 'offline', lastSeenMs).catch((err) => {
-        console.error(`[Server] Ошибка рассылки offline-статуса для userId=${user.userId}:`, err);
-      });
+      // Account status stays online while another device still has a socket.
+      if (!isUserOnline(user.userId)) {
+        void broadcastUserStatus(user, 'offline', lastSeenMs).catch((err) => {
+          console.error(`[Server] Ошибка рассылки offline-статуса для userId=${user.userId}:`, err);
+        });
+      }
     });
 
     // ── 2. Функция обработки входящего сообщения ──
