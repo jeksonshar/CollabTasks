@@ -364,6 +364,11 @@ export const onNewGroupMessageSent = onDocumentCreated(
 // ============================================================================
 // 3. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ FCM ТОКЕНОВ
 // ============================================================================
+/**
+ * Получает уникальные FCM-токены для списка получателей (UID или email).
+ * @param {string[]} recipients Список идентификаторов пользователей или их email.
+ * @return {Promise<string[]>} Массив активных токенов устройств.
+ */
 async function getFcmTokensForRecipients(recipients: string[]): Promise<string[]> {
     const tokens: string[] = [];
     const uniqueRecipients = [...new Set(recipients)];
@@ -403,6 +408,45 @@ async function getFcmTokensForRecipients(recipients: string[]): Promise<string[]
     return [...new Set(tokens)];
 }
 
+/**
+ * Resolves each FCM token to the recipient identifier stored in the call document.
+ * @param {string[]} recipients Recipient identifiers from the call document.
+ * @return {Promise<Array<{token: string, calleeId: string}>>} FCM tokens and recipients.
+ */
+async function getFcmRecipientTokens(
+    recipients: string[],
+): Promise<Array<{token: string; calleeId: string}>> {
+    const tokenRecipients = new Map<string, string>();
+    for (const rawRecipient of [...new Set(recipients)]) {
+        const recipient = String(rawRecipient).trim();
+        if (!recipient) continue;
+        const targetUids: string[] = [recipient];
+        if (recipient.includes("@")) {
+            const userQuery = await admin.firestore()
+                .collection("users")
+                .where("email", "==", recipient.toLowerCase())
+                .limit(1)
+                .get();
+            if (!userQuery.empty) targetUids.push(userQuery.docs[0].id);
+        }
+
+        for (const uid of [...new Set(targetUids)]) {
+            const tokensSnapshot = await admin.firestore()
+                .collection("users")
+                .doc(uid)
+                .collection("tokens")
+                .get();
+            tokensSnapshot.forEach((tokenDoc) => {
+                const token = tokenDoc.data().token || tokenDoc.id;
+                if (token && token.length > 20 && !tokenRecipients.has(token)) {
+                    tokenRecipients.set(token, recipient);
+                }
+            });
+        }
+    }
+    return [...tokenRecipients.entries()].map(([token, calleeId]) => ({token, calleeId}));
+}
+
 // ============================================================================
 // 4. ТРИГГЕРЫ ДЛЯ ЗВОНКОВ (Входящий вызов и отмена для CallKit/Telecom)
 // ============================================================================
@@ -426,20 +470,21 @@ export const onCallCreated = onDocumentCreated(
         if (calleeIds.length === 0) return;
 
         try {
-            const tokens = await getFcmTokensForRecipients(calleeIds);
-            if (tokens.length === 0) {
+            const recipients = await getFcmRecipientTokens(calleeIds);
+            if (recipients.length === 0) {
                 console.log(`[onCallCreated] Нет FCM токенов для звонка ${callId}`);
                 return;
             }
 
             // ВАЖНО: Data-only сообщение (без notification) для корректной работы
             // flutter_callkit_incoming / Android Telecom / iOS CallKit в фоновом режиме
-            const messagePayload: admin.messaging.MulticastMessage = {
-                tokens: tokens,
+            const messages: admin.messaging.Message[] = recipients.map(({token, calleeId}) => ({
+                token,
                 data: {
                     type: "incoming_call",
                     callId: callId,
                     callerId: callerId,
+                    calleeId: calleeId,
                     callerName: callerName,
                     callerAvatarUrl: callerAvatarUrl,
                     callType: callType,
@@ -459,10 +504,10 @@ export const onCallCreated = onDocumentCreated(
                         },
                     },
                 },
-            };
+            }));
 
-            const response = await admin.messaging().sendEachForMulticast(messagePayload);
-            console.log(`[onCallCreated] Отправлено пушей входящего звонка ${callId}: ${response.successCount} из ${tokens.length}`);
+            const response = await admin.messaging().sendEach(messages);
+            console.log(`[onCallCreated] Отправлено пушей входящего звонка ${callId}: ${response.successCount} из ${recipients.length}`);
         } catch (error) {
             console.error(`[onCallCreated] Ошибка отправки пуша для звонка ${callId}:`, error);
         }
@@ -482,7 +527,7 @@ export const onCallUpdated = onDocumentUpdated(
 
         // Если звонок был отменен, отклонен или завершен — закрываем CallKit
         if (
-            oldStatus === "ringing" &&
+            oldStatus !== newStatus &&
             (newStatus === "cancelled" || newStatus === "rejected" || newStatus === "ended")
         ) {
             const calleeIds: string[] = afterData.calleeIds || [];
@@ -521,4 +566,4 @@ export const onCallUpdated = onDocumentUpdated(
             }
         }
     }
-);
+);

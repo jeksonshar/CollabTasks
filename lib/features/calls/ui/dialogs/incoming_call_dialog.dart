@@ -3,9 +3,6 @@ import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
-import 'package:collab_tasks/features/calls/ui/screens/audio_call_screen.dart';
-import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
-import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -60,12 +57,11 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
     final theme = Theme.of(context);
 
     return BlocListener<CallsBloc, CallsState>(
-      // Only fire when caller cancelled (idle) or call errored (error).
-      // NEVER fire when call becomes active (accepted) because the Accept
-      // button itself handles closing the dialog and pushing the call screen.
+      // Caller cancel / error closes the dialog here; accepted calls are
+      // dismissed by AppAuthGate before the call screen is pushed.
       listenWhen: (prev, curr) =>
-          prev.status == CallsStatus.ringingIncoming &&
-          (curr.status == CallsStatus.idle || curr.status == CallsStatus.error),
+          (prev.status == CallsStatus.ringingIncoming &&
+          (curr.status == CallsStatus.idle || curr.status == CallsStatus.error)),
       listener: (context, state) {
         // Caller cancelled / call ended / error → close the dialog.
         final nav = Navigator.of(context, rootNavigator: true);
@@ -178,34 +174,6 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                               userId: widget.currentUserId,
                             ),
                           );
-                          final route = widget.call.isGroup
-                              ? MaterialPageRoute<void>(
-                                  builder: (_) => GroupCallScreen(
-                                    callId: widget.call.id,
-                                    groupName: widget.call.callerName,
-                                    callType: widget.call.type,
-                                  ),
-                                )
-                              : (widget.call.type == CallType.video
-                                    ? MaterialPageRoute<void>(
-                                        builder: (_) => VideoCallScreen(
-                                          callId: widget.call.id,
-                                          opponentName: widget.call.callerName,
-                                          opponentAvatarUrl: widget.call.callerAvatarUrl,
-                                          opponentId: widget.call.callerId,
-                                        ),
-                                      )
-                                    : MaterialPageRoute<void>(
-                                        builder: (_) => AudioCallScreen(
-                                          callId: widget.call.id,
-                                          opponentName: widget.call.callerName,
-                                          opponentAvatarUrl: widget.call.callerAvatarUrl,
-                                        ),
-                                      ));
-
-                          Navigator.of(context, rootNavigator: true)
-                            ..pop()
-                            ..push(route);
                         },
                         child: Icon(
                           widget.call.type == CallType.video ? Icons.videocam : Icons.call,

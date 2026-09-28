@@ -12,6 +12,7 @@ class CallAlertServiceImpl implements CallAlertService {
 
   final AudioPlayer _audioPlayer;
   bool _audioContextConfigured = false;
+  int _stopVersion = 0;
 
   /// Prevents concurrent start calls from racing: the second caller waits for
   /// the first stop()+play() sequence to finish before proceeding.
@@ -45,14 +46,23 @@ class CallAlertServiceImpl implements CallAlertService {
       await Future<void>.delayed(const Duration(milliseconds: 30));
     }
     _isStarting = true;
+    final expectedVersion = _stopVersion + 1;
     await stop();
     try {
+      if (_stopVersion != expectedVersion) return;
       await _configureAudioContext();
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      if (_stopVersion != expectedVersion) return;
       await _audioPlayer.play(AssetSource(_incomingRingtoneAsset));
+      if (_stopVersion != expectedVersion) {
+        await _stopBestEffort();
+        return;
+      }
 
       if (await Vibration.hasVibrator()) {
+        if (_stopVersion != expectedVersion) return;
         await Vibration.vibrate(pattern: _incomingVibrationPattern, repeat: 0);
+        if (_stopVersion != expectedVersion) await Vibration.cancel();
       }
     } catch (error, stackTrace) {
       await _stopBestEffort();
@@ -64,6 +74,7 @@ class CallAlertServiceImpl implements CallAlertService {
 
   @override
   Future<void> stop() async {
+    _stopVersion++;
     Object? firstError;
     StackTrace? firstStackTrace;
 

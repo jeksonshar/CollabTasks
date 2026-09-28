@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
@@ -18,10 +19,16 @@ import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_state.dart' as lock
 import 'package:collab_tasks/features/auth/ui/lock_screen/biometric_offer_dialog.dart';
 import 'package:collab_tasks/features/auth/ui/lock_screen/lock_screen_widget.dart';
 import 'package:collab_tasks/features/auth/ui/lock_screen/privacy_screen_widget.dart';
+import 'package:collab_tasks/features/calls/data/datasources/call_fcm_background_handler.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/dialogs/incoming_call_dialog.dart';
+import 'package:collab_tasks/features/calls/ui/screens/audio_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:collab_tasks/features/settings/domain/models/theme_preference.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubit.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.dart';
@@ -32,25 +39,15 @@ import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Инициализируем Firebase с конфигурацией платформы
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).timeout(
-    const Duration(seconds: 3),
-    onTimeout: () {
-      debugPrint('Firebase init timed out!');
-      return Firebase.app();
-    },
-  );
-  debugPrint("=== [FCM] Обработан пуш в состоянии Terminated: ${message.messageId} ===");
-}
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -66,7 +63,9 @@ Future<void> main() async {
 
   // Инициализируем FCM ТОЛЬКО если выбран бэкенд Firebase
   if (authBackend == AuthBackend.firebase) {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundCallHandler);
+    await FlutterCallkitIncoming.onBackgroundMessage(callKitBackgroundEventHandler);
+    FlutterCallkitIncoming.acceptCallHandle(callKitAcceptedFromKilledHandler);
     await getIt<ChatNotificationService>().initialize();
   }
 
@@ -152,13 +151,34 @@ class AppAuthGate extends StatefulWidget {
 }
 
 class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
+  final Set<String> _restoredCallIds = {};
+  String? _incomingCallDialogId;
+  bool _fullScreenPermissionRequested = false;
+  StreamSubscription<RemoteMessage>? _callPushSubscription;
+  StreamSubscription<CallDataEntity>? _callKitAcceptSubscription;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _callKitAcceptSubscription = callKitAcceptedActions.listen((callData) {
+      if (mounted) {
+        context.read<CallsBloc>().add(CallKitAccepted(callData));
+      }
+    });
+    if (authBackend == AuthBackend.firebase) {
+      _callPushSubscription = FirebaseMessaging.onMessage.listen((message) {
+        final action = message.data['action'] ?? message.data['type'];
+        if (action != 'cancel_call') return;
+        final callId = (message.data['callId'] ?? message.data['id'])?.toString();
+        if (callId == null || callId.isEmpty || !mounted) return;
+        context.read<CallsBloc>().add(CallCancellationPushReceived(callId));
+      });
+    }
     // Perform cold-start lock check and sync auth status after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        unawaited(_requestFullScreenCallPermission());
         final authState = context.read<AuthBloc>().state;
         final isAuth = authState.status == AuthStatus.authenticated;
         context.read<LockBloc>()
@@ -170,6 +190,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
               ? authState.user!.email
               : authState.user!.id;
           context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
+          unawaited(_restoreAcceptedCallIfAny());
         }
       }
     });
@@ -178,6 +199,8 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_callPushSubscription?.cancel());
+    unawaited(_callKitAcceptSubscription?.cancel());
     super.dispose();
   }
 
@@ -201,6 +224,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         if (mounted) {
           context.read<LockBloc>().add(const LockAppResumed());
+          unawaited(_restoreAcceptedCallIfAny());
         }
       case AppLifecycleState.detached:
         break;
@@ -223,6 +247,7 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
                   ? state.user!.email
                   : state.user!.id;
               context.read<CallsBloc>().add(ListenIncomingCallsStarted(userIdentifier));
+              unawaited(_restoreAcceptedCallIfAny());
             }
 
             if (state.status == AuthStatus.unauthenticated) {
@@ -266,8 +291,69 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
             final currentUserId = (authState.user?.email.isNotEmpty == true)
                 ? authState.user!.email
                 : (authState.user?.id ?? '');
-            IncomingCallDialog.show(context, call: state.activeCall!, currentUserId: currentUserId);
+            final call = state.activeCall!;
+            _incomingCallDialogId = call.id;
+            unawaited(
+              IncomingCallDialog.show(
+                context,
+                call: call,
+                currentUserId: currentUserId,
+              ).whenComplete(() {
+                if (mounted && _incomingCallDialogId == call.id) {
+                  _incomingCallDialogId = null;
+                }
+              }),
+            );
           },
+        ),
+        BlocListener<CallsBloc, CallsState>(
+          listenWhen: (previous, current) =>
+              current is CallAcceptedState &&
+              (previous is! CallAcceptedState ||
+                  previous.callData.callId != current.callData.callId),
+          listener: (context, state) {
+            if (state is! CallAcceptedState) return;
+            final callData = state.callData;
+            _restoredCallIds.add(callData.callId);
+            final navigator = Navigator.of(context, rootNavigator: true);
+            if (_incomingCallDialogId == callData.callId && navigator.canPop()) {
+              navigator.pop();
+            }
+            final route = callData.isGroup
+                ? MaterialPageRoute<void>(
+                    builder: (_) => GroupCallScreen(
+                      callId: callData.callId,
+                      groupName: callData.displayName,
+                      callType: callData.callType,
+                    ),
+                  )
+                : callData.callType == CallType.video
+                ? MaterialPageRoute<void>(
+                    builder: (_) => VideoCallScreen(
+                      callId: callData.callId,
+                      opponentName: callData.displayName,
+                      opponentAvatarUrl: callData.callerAvatarUrl,
+                      opponentId: callData.callerId,
+                    ),
+                  )
+                : MaterialPageRoute<void>(
+                    builder: (_) => AudioCallScreen(
+                      callId: callData.callId,
+                      opponentName: callData.displayName,
+                      opponentAvatarUrl: callData.callerAvatarUrl,
+                    ),
+                  );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.of(context, rootNavigator: true).push(route);
+              }
+            });
+          },
+        ),
+        BlocListener<CallsBloc, CallsState>(
+          listenWhen: (previous, current) =>
+              current.status == CallsStatus.idle && previous.status != CallsStatus.idle,
+          listener: (_, _) => _restoredCallIds.clear(),
         ),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
@@ -285,6 +371,68 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       ),
     );
   }
+
+  Future<void> _requestFullScreenCallPermission() async {
+    if (_fullScreenPermissionRequested ||
+        kIsWeb ||
+        defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    _fullScreenPermissionRequested = true;
+    try {
+      if (!await FlutterCallkitIncoming.canUseFullScreenIntent()) {
+        await FlutterCallkitIncoming.requestFullIntentPermission();
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to request full-screen call permission: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _restoreAcceptedCallIfAny() async {
+    if (!mounted) return;
+    final authState = context.read<AuthBloc>().state;
+    if (authState.status != AuthStatus.authenticated || authState.user == null) {
+      return;
+    }
+
+    try {
+      final preferences = getIt<SharedPreferences>();
+      // CallKit background callbacks run in another isolate. Refresh this
+      // isolate's SharedPreferences cache before reading a persisted Accept.
+      await preferences.reload();
+      if (!mounted) return;
+      final pendingAccept = preferences.getString(pendingCallKitAcceptPreferenceKey);
+      if (pendingAccept != null) {
+        final callData = CallDataEntity.fromMap(
+          Map<String, dynamic>.from(jsonDecode(pendingAccept) as Map),
+        );
+        if (callData.callId.isNotEmpty && _restoredCallIds.add(callData.callId)) {
+          context.read<CallsBloc>().add(CallKitAccepted(callData));
+          await preferences.remove(pendingCallKitAcceptPreferenceKey);
+          return;
+        }
+      }
+      final calls = await FlutterCallkitIncoming.activeCalls();
+      if (!mounted) return;
+      for (final params in calls) {
+        if (!params.isAccepted || !_restoredCallIds.add(params.id)) continue;
+        context.read<CallsBloc>().add(CallKitAccepted(_callDataFromCallKitParams(params)));
+        break;
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Failed to restore accepted CallKit call: $error\n$stackTrace');
+    }
+  }
+}
+
+CallDataEntity _callDataFromCallKitParams(CallKitParams params) {
+  return CallDataEntity.fromMap({
+    ...?params.extra,
+    'callId': params.id,
+    'displayName': params.nameCaller,
+    'handle': params.handle,
+    'callType': params.type?.toString() ?? '0',
+  });
 }
 
 Future<void> _configureSelectedAuthBackend() async {

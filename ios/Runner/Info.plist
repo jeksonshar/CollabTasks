@@ -57,5 +57,15 @@
     <!-- Required for local_auth Face ID usage -->
     <key>NSFaceIDUsageDescription</key>
     <string>CollabTasks uses Face ID to securely unlock the app.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>CollabTasks requires camera access for video calls.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>CollabTasks requires microphone access for audio and video calls.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>voip</string>
+        <string>fetch</string>
+        <string>remote-notification</string>
+    </array>
 </dict>
 </plist>

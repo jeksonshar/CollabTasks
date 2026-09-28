@@ -76,6 +76,11 @@ class ChatNotificationService {
     // 3. Слушаем пуши в Foreground (когда приложение ОТКРЫТО прямо сейчас)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('=== [FCM] Пуш прилетел в Foreground ===');
+      final action = message.data['action'] ?? message.data['type'];
+      if (action == 'incoming_call' || action == 'cancel_call') {
+        debugPrint('=== [FCM] Баннер пропущен: обработка звонка выполняется через CallsBloc ===');
+        return;
+      }
       _showLocalBanner(message);
     });
 

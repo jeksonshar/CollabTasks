@@ -1,4 +1,5 @@
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
@@ -70,4 +71,23 @@ class CallsState extends Equatable {
     errorMessage,
     currentUserId,
   ];
+}
+
+/// Emitted after accepting a call from the native CallKit UI.
+class CallAcceptedState extends CallsState {
+  final CallDataEntity callData;
+
+  const CallAcceptedState({
+    required this.callData,
+    required CallSession session,
+    super.currentUserId,
+  }) : super(status: CallsStatus.active, session: session);
+
+  @override
+  List<Object?> get props => [...super.props, callData];
+}
+
+/// Emitted when a native call action ends the current call.
+class CallEndedState extends CallsState {
+  const CallEndedState() : super();
 }

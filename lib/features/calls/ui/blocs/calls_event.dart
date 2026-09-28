@@ -1,9 +1,11 @@
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_callkit_incoming/entities/call_event.dart';
 
 sealed class CallsEvent extends Equatable {
   const CallsEvent();
@@ -192,4 +194,31 @@ class StopListeningIncomingCalls extends CallsEvent {
 
 class CallTimeoutOccurred extends CallsEvent {
   const CallTimeoutOccurred();
+}
+
+class CallKitEventReceived extends CallsEvent {
+  final CallEvent event;
+
+  const CallKitEventReceived(this.event);
+
+  @override
+  List<Object?> get props => [event];
+}
+
+class CallKitAccepted extends CallsEvent {
+  final CallDataEntity callData;
+
+  const CallKitAccepted(this.callData);
+
+  @override
+  List<Object?> get props => [callData.callId];
+}
+
+class CallCancellationPushReceived extends CallsEvent {
+  final String callId;
+
+  const CallCancellationPushReceived(this.callId);
+
+  @override
+  List<Object?> get props => [callId];
 }

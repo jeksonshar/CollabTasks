@@ -35,9 +35,11 @@ import 'package:collab_tasks/features/calls/data/repositories/firestore_call_rep
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dart';
 import 'package:collab_tasks/features/calls/data/services/call_alert_service_impl.dart';
+import 'package:collab_tasks/features/calls/data/services/call_kit_service_impl.dart';
 import 'package:collab_tasks/features/calls/data/services/call_permissions_service_impl.dart';
 import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_alert_service.dart';
+import 'package:collab_tasks/features/calls/domain/services/call_kit_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/rtc_service.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
@@ -62,6 +64,9 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_u
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/usecases/accept_incoming_call_usecase.dart';
+import 'package:collab_tasks/features/calls/domain/usecases/cancel_incoming_call_usecase.dart';
+import 'package:collab_tasks/features/calls/domain/usecases/decline_incoming_call_usecase.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
@@ -146,6 +151,7 @@ import 'package:collab_tasks/features/working_groups/ui/blocs/working_groups/wor
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart'; // Import for @visibleForTesting
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -460,6 +466,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
       () => FirestoreCallRepository(firestore: getIt<FirebaseFirestore>()),
     )
     ..registerLazySingleton<CallAlertService>(() => CallAlertServiceImpl())
+    ..registerLazySingleton<CallKitService>(() => const CallKitServiceImpl())
     ..registerLazySingleton<CallPermissionsService>(() => const CallPermissionsServiceImpl())
     ..registerLazySingleton<RtcService>(
       () => switch (rtcBackend) {
@@ -479,6 +486,25 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton(() => StartCallUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => AcceptCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(
+      () => AcceptIncomingCallUseCase(
+        callRepository: getIt<CallRepository>(),
+        callKitService: getIt<CallKitService>(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => DeclineIncomingCallUseCase(
+        callRepository: getIt<CallRepository>(),
+        callAlertService: getIt<CallAlertService>(),
+        callKitService: getIt<CallKitService>(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => CancelIncomingCallUseCase(
+        callKitService: getIt<CallKitService>(),
+        callAlertService: getIt<CallAlertService>(),
+      ),
+    )
     ..registerLazySingleton(() => RejectCallUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => EndCallUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => CancelCallUseCase(getIt<CallRepository>()))
@@ -503,6 +529,11 @@ void setupLocator(SharedPreferences sharedPreferences) {
       () => CallsBloc(
         startCallUseCase: getIt(),
         acceptCallUseCase: getIt(),
+        acceptIncomingCallUseCase: getIt(),
+        declineIncomingCallUseCase: getIt(),
+        cancelIncomingCallUseCase: getIt(),
+        callKitService: getIt(),
+        callKitEvents: FlutterCallkitIncoming.onEvent,
         rejectCallUseCase: getIt(),
         endCallUseCase: getIt(),
         cancelCallUseCase: getIt(),

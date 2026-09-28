@@ -114,6 +114,9 @@ dependencies:
   audioplayers: ^6.8.1
   vibration: ^3.2.1
 
+  # Native incoming call screen (CallKit on iOS, Telecom / Full Screen on Android)
+  flutter_callkit_incoming: ^3.1.6
+
 dev_dependencies:
   drift_dev: ^2.31.0
   build_runner: ^2.13.1
