@@ -18,7 +18,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-enum _GroupAction { edit, invite, groupChat, groupAudioCall, groupVideoCall, leave, delete }
+enum _GroupAction { edit, invite, groupChat, /*groupAudioCall, groupVideoCall,*/ leave, delete }
 
 class WorkingGroupDetailsScreen extends StatefulWidget {
   const WorkingGroupDetailsScreen({super.key, required this.group});
@@ -164,14 +164,14 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                   value: _GroupAction.groupChat,
                   child: Text(localization.group_chat_toolbarSabTitle),
                 ),
-                PopupMenuItem(
-                  value: _GroupAction.groupAudioCall,
-                  child: Text(localization.group_chat_audioCallTitle),
-                ),
-                PopupMenuItem(
-                  value: _GroupAction.groupVideoCall,
-                  child: Text(localization.group_chat_videoCallTitle),
-                ),
+                // PopupMenuItem(
+                //   value: _GroupAction.groupAudioCall,
+                //   child: Text(localization.group_chat_audioCallTitle),
+                // ),
+                // PopupMenuItem(
+                //   value: _GroupAction.groupVideoCall,
+                //   child: Text(localization.group_chat_videoCallTitle),
+                // ),
                 PopupMenuItem(
                   value: _GroupAction.leave,
                   child: Text(localization.group_details_popupItemLeaveGroup),
@@ -203,22 +203,22 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                     ),
                   );
                 },
-                onAudioCallTap: (participantId) {
-                  // TODO реализовать переход или убрать отсюда, запуск из чата
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(content: Text('Переход на экран персонального аудио звонка')),
-                    );
-                },
-                onVideoCallTap: (participantId) {
-                  // TODO реализовать переход или убрать отсюда, запуск из чата
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(content: Text('Переход на экран персонального видео звонка')),
-                    );
-                },
+                // onAudioCallTap: (participantId) {
+                //   // TODO реализовать переход или убрать отсюда, запуск из чата
+                //   ScaffoldMessenger.of(context)
+                //     ..hideCurrentSnackBar()
+                //     ..showSnackBar(
+                //       const SnackBar(content: Text('Переход на экран персонального аудио звонка')),
+                //     );
+                // },
+                // onVideoCallTap: (participantId) {
+                //   // TODO реализовать переход или убрать отсюда, запуск из чата
+                //   ScaffoldMessenger.of(context)
+                //     ..hideCurrentSnackBar()
+                //     ..showSnackBar(
+                //       const SnackBar(content: Text('Переход на экран персонального видео звонка')),
+                //     );
+                // },
               ),
               TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
             ],
@@ -296,31 +296,31 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     }
   }
 
-  Future<void> _openGroupAudioCallScreen(
-    BuildContext context,
-    String groupId,
-    String? groupName,
-  ) async {
-    if (context.mounted) {
-      // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupAudioCall
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Переход на экран группового аудио звонка')));
-    }
-  }
+  // Future<void> _openGroupAudioCallScreen(
+  //   BuildContext context,
+  //   String groupId,
+  //   String? groupName,
+  // ) async {
+  //   if (context.mounted) {
+  //     // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupAudioCall
+  //     ScaffoldMessenger.of(context)
+  //       ..hideCurrentSnackBar()
+  //       ..showSnackBar(const SnackBar(content: Text('Переход на экран группового аудио звонка')));
+  //   }
+  // }
 
-  Future<void> _openGroupVideoCallScreen(
-    BuildContext context,
-    String groupId,
-    String? groupName,
-  ) async {
-    if (context.mounted) {
-      // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupВидеоCall
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Переход на экран группового видео звонка')));
-    }
-  }
+  // Future<void> _openGroupVideoCallScreen(
+  //   BuildContext context,
+  //   String groupId,
+  //   String? groupName,
+  // ) async {
+  //   if (context.mounted) {
+  //     // TODO добавить переход или убрать отсюда, запуск из чата, убрать также _GroupAction.groupВидеоCall
+  //     ScaffoldMessenger.of(context)
+  //       ..hideCurrentSnackBar()
+  //       ..showSnackBar(const SnackBar(content: Text('Переход на экран группового видео звонка')));
+  //   }
+  // }
 
   Future<void> _handleGroupAction(
     BuildContext context,
@@ -334,10 +334,10 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         await showInviteDialog(context);
       case _GroupAction.groupChat:
         await _openChatScreen(context, group.id, group.title);
-      case _GroupAction.groupAudioCall:
-        await _openGroupAudioCallScreen(context, group.id, group.title);
-      case _GroupAction.groupVideoCall:
-        await _openGroupVideoCallScreen(context, group.id, group.title);
+      // case _GroupAction.groupAudioCall:
+      //   await _openGroupAudioCallScreen(context, group.id, group.title);
+      // case _GroupAction.groupVideoCall:
+      //   await _openGroupVideoCallScreen(context, group.id, group.title);
       case _GroupAction.leave:
         await confirmLeaveGroup(context);
       case _GroupAction.delete:

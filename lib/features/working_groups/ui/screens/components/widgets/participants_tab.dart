@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'participant_avatar.dart';
 
-enum ParticipantAction { directChat, audioCall, videoCall }
+enum ParticipantAction { directChat /*, audioCall, videoCall*/ }
 
 class ParticipantsTab extends StatelessWidget {
   const ParticipantsTab({
@@ -80,10 +80,10 @@ class ParticipantsTab extends StatelessWidget {
                             switch (action) {
                               case ParticipantAction.directChat:
                                 onDirectChatTap(participant.id);
-                              case ParticipantAction.audioCall:
-                                onAudioCallTap?.call(participant.id);
-                              case ParticipantAction.videoCall:
-                                onVideoCallTap?.call(participant.id);
+                              // case ParticipantAction.audioCall:
+                              //   onAudioCallTap?.call(participant.id);
+                              // case ParticipantAction.videoCall:
+                              //   onVideoCallTap?.call(participant.id);
                             }
                           },
                           itemBuilder: (context) => [
@@ -91,14 +91,14 @@ class ParticipantsTab extends StatelessWidget {
                               value: ParticipantAction.directChat,
                               child: Text(localization.group_details_participantOpenDirectChat),
                             ),
-                            PopupMenuItem(
-                              value: ParticipantAction.audioCall,
-                              child: Text(localization.group_details_participantAudioCall),
-                            ),
-                            PopupMenuItem(
-                              value: ParticipantAction.videoCall,
-                              child: Text(localization.group_details_participantVideoCall),
-                            ),
+                            // PopupMenuItem(
+                            //   value: ParticipantAction.audioCall,
+                            //   child: Text(localization.group_details_participantAudioCall),
+                            // ),
+                            // PopupMenuItem(
+                            //   value: ParticipantAction.videoCall,
+                            //   child: Text(localization.group_details_participantVideoCall),
+                            // ),
                           ],
                         ),
                 );
