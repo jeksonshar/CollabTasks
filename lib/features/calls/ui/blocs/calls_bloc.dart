@@ -833,7 +833,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } else if (call.status == CallStatus.rejected) {
       debugPrint('[CallsBloc] Call was rejected by recipient');
       await _cleanup();
-      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => 'Call was declined'));
+      // A rejected call is terminal, so return to idle instead of leaving the
+      // Bloc in error where _onIncomingCallDetected would ignore new calls.
+      emit(CallsState(currentUserId: state.currentUserId));
     } else if (call.status == CallStatus.ended || call.status == CallStatus.cancelled) {
       debugPrint('[CallsBloc] Call ended or cancelled');
       await _cleanup();
