@@ -192,4 +192,6 @@ flutter:
 
 dependency_overrides:
   permission_handler_android: 12.1.0 # для отключения ошибки agora_rtc_engine is currently compiled against android-31.
+  flutter_callkit_incoming:
+    path: packages/flutter_callkit_incoming
 #  analyzer: ^10.0.0 # use it if you use riverpod, riverpod_annotation, riverpod_generator, build_runner, custom_lint, riverpod_lint,
