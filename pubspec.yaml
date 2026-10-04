@@ -90,10 +90,10 @@ dependencies:
   firebase_messaging: ^16.6.0
 
   # aws
-  amplify_flutter: ^2.15.0
-  amplify_auth_cognito: ^2.15.0
-  amplify_api: ^2.15.0
-  amplify_storage_s3: ^2.15.0
+#  amplify_flutter: ^2.15.0
+#  amplify_auth_cognito: ^2.15.0
+#  amplify_api: ^2.15.0
+#  amplify_storage_s3: ^2.15.0
 
   web_socket_channel: ^3.0.3
 

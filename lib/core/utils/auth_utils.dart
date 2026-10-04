@@ -1,21 +1,21 @@
 import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 
-enum AuthBackend { aws, firebase }
+enum AuthBackend { /*aws, */firebase }
 
-enum StorageBackend { aws, firebase }
+enum StorageBackend { /*aws, */firebase }
 
 enum ChatBackend { webSocket, firebase }
 
 const AuthBackend authBackend = AuthBackend.firebase;
 
 StorageBackend get storageBackend => switch (authBackend) {
-  AuthBackend.aws => StorageBackend.aws,
+  // AuthBackend.aws => StorageBackend.aws,
   AuthBackend.firebase => StorageBackend.firebase,
 };
 
 ChatBackend get chatBackend => switch (authBackend) {
-  AuthBackend.aws => ChatBackend.webSocket,
+  // AuthBackend.aws => ChatBackend.webSocket,
   AuthBackend.firebase => ChatBackend.webSocket,
 };
 

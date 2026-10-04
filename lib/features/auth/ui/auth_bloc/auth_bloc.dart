@@ -220,8 +220,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             signUpConfirmed: false,
             requiresSignUpConfirmation: false,
             clearPendingConfirmationEmail: true,
-            requiresResetPasswordConfirmation: authBackend == AuthBackend.aws,
-            pendingResetPasswordEmail: authBackend == AuthBackend.aws ? event.email : null,
+            requiresResetPasswordConfirmation: authBackend != AuthBackend.firebase,
+            pendingResetPasswordEmail: authBackend != AuthBackend.firebase ? event.email : null,
           ),
         );
       case FailureResult<void, Failure>(:final failure):

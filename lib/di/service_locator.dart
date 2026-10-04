@@ -1,10 +1,10 @@
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
+// import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+// import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/core/config/websocket_config.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
 // will use aws_auth_repository_impl or firebase_auth_repository_impl + firebase_auth + google_sign_in depending authBackend chose
-import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
+// import 'package:collab_tasks/features/auth/data/repositories/aws_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/data/repositories/firebase_auth_repository_impl.dart';
 import 'package:collab_tasks/features/auth/data/services/biometric_secure_storage.dart';
 import 'package:collab_tasks/features/auth/data/services/biometric_service.dart';
@@ -61,7 +61,7 @@ import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.da
 import 'package:collab_tasks/features/tasks/data/local/db/app_database.dart';
 import 'package:collab_tasks/features/tasks/data/local/tasks_local_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
-import 'package:collab_tasks/features/tasks/data/remote/aws_remote_data_source.dart';
+// import 'package:collab_tasks/features/tasks/data/remote/aws_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/remote/firebase_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/remote/tasks_remote_data_source.dart';
 import 'package:collab_tasks/features/tasks/data/repositories/task_repository_impl.dart';
@@ -82,7 +82,7 @@ import 'package:collab_tasks/features/tasks/domain/use_cases/watch_tasks_use_cas
 import 'package:collab_tasks/features/tasks/ui/blocs/confirmation_dialog_bloc/confirmation_dialog_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
-import 'package:collab_tasks/features/working_groups/data/remote/aws_working_groups_remote_data_source.dart';
+// import 'package:collab_tasks/features/working_groups/data/remote/aws_working_groups_remote_data_source.dart';
 import 'package:collab_tasks/features/working_groups/data/remote/firebase_working_groups_remote_data_source.dart';
 import 'package:collab_tasks/features/working_groups/data/remote/working_groups_remote_data_source.dart';
 import 'package:collab_tasks/features/working_groups/data/repositories/working_groups_repository_impl.dart';
@@ -148,7 +148,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton<TasksRemoteDataSource>(
       () => switch (storageBackend) {
-        StorageBackend.aws => const AWSRemoteDataSource(),
+        // StorageBackend.aws => const AWSRemoteDataSource(),
         StorageBackend.firebase => FirebaseRemoteDataSource(
           firestore: getIt<FirebaseFirestore>(),
           storage: getIt<FirebaseStorage>(),
@@ -161,14 +161,14 @@ void setupLocator(SharedPreferences sharedPreferences) {
         ChatBackend.webSocket => WebSocketChatRemoteDataSource(
           baseUrl: WebSocketConfig.serverUrl,
           getTokenProvider: () async {
-            if (authBackend == AuthBackend.aws) {
+/*            if (authBackend == AuthBackend.aws) {
               try {
                 final session = await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
                 return session.userPoolTokensResult.value.accessToken.raw;
               } catch (e) {
                 debugPrint('Failed to fetch AWS auth session token: $e');
               }
-            } else if (authBackend == AuthBackend.firebase) {
+            } else */if (authBackend == AuthBackend.firebase) {
               final firebaseToken = await FirebaseAuth.instance.currentUser?.getIdToken();
               return firebaseToken;
             }
@@ -188,7 +188,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
     )
     ..registerLazySingleton<WorkingGroupsRemoteDataSource>(
       () => switch (authBackend) {
-        AuthBackend.aws => const AWSWorkingGroupsRemoteDataSource(),
+        // AuthBackend.aws => const AWSWorkingGroupsRemoteDataSource(),
         AuthBackend.firebase => FirebaseWorkingGroupsRemoteDataSource(
           firestore: getIt<FirebaseFirestore>(),
         ),
@@ -263,14 +263,14 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton<FirebaseStorage>(() => FirebaseStorage.instance)
     ..registerLazySingleton<GoogleSignIn>(() => GoogleSignIn.instance);
 
-  if (authBackend == AuthBackend.aws) {
-    getIt
-      ..registerLazySingleton<AwsAuthRepositoryImpl>(
-        () => AwsAuthRepositoryImpl(requireEmailVerifiedForEmailLogin: true),
-      )
-      ..registerLazySingleton<AuthRepository>(() => getIt<AwsAuthRepositoryImpl>())
-      ..registerLazySingleton<CognitoAuthRepository>(() => getIt<AwsAuthRepositoryImpl>());
-  } else {
+  // if (authBackend == AuthBackend.aws) {
+  //   getIt
+  //     ..registerLazySingleton<AwsAuthRepositoryImpl>(
+  //       () => AwsAuthRepositoryImpl(requireEmailVerifiedForEmailLogin: true),
+  //     )
+  //     ..registerLazySingleton<AuthRepository>(() => getIt<AwsAuthRepositoryImpl>())
+  //     ..registerLazySingleton<CognitoAuthRepository>(() => getIt<AwsAuthRepositoryImpl>());
+  // } else {
     getIt
       ..registerLazySingleton<AuthRepository>(
         () => FirebaseAuthRepositoryImpl(
@@ -282,7 +282,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
       ..registerLazySingleton<ChatNotificationService>(
         () => ChatNotificationService(firestore: getIt<FirebaseFirestore>()),
       );
-  }
+  // }
 
   getIt
     ..registerLazySingleton(() => RegisterWithEmailUseCase(getIt()))

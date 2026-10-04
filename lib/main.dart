@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:amplify_api/amplify_api.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_storage_s3/amplify_storage_s3.dart';
+// import 'package:amplify_api/amplify_api.dart';
+// import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+// import 'package:amplify_flutter/amplify_flutter.dart';
+// import 'package:amplify_storage_s3/amplify_storage_s3.dart';
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/theme/app_theme.dart';
 import 'package:collab_tasks/core/utils/auth_utils.dart';
@@ -29,7 +29,7 @@ import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+// import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -264,23 +264,23 @@ Future<void> _configureSelectedAuthBackend() async {
     return;
   }
 
-  try {
-    await Amplify.addPlugin(AmplifyAuthCognito());
-    await Amplify.addPlugin(AmplifyAPI());
-    await Amplify.addPlugin(AmplifyStorageS3());
-
-    final configString = await rootBundle.loadString('amplify_outputs.json');
-    await Amplify.configure(configString).timeout(const Duration(seconds: 10));
-
-    safePrint('Amplify successfully configured with Gen 2 outputs!');
-  } on AmplifyAlreadyConfiguredException {
-    safePrint('Amplify was already configured.');
-  } on TimeoutException {
-    safePrint('Amplify configure timed out. Continue app startup without blocking UI.');
-  } catch (error, stackTrace) {
-    safePrint('Amplify configure failed: $error');
-    safePrint('$stackTrace');
-  }
+  // try {
+  //   await Amplify.addPlugin(AmplifyAuthCognito());
+  //   await Amplify.addPlugin(AmplifyAPI());
+  //   await Amplify.addPlugin(AmplifyStorageS3());
+  //
+  //   final configString = await rootBundle.loadString('amplify_outputs.json');
+  //   await Amplify.configure(configString).timeout(const Duration(seconds: 10));
+  //
+  //   safePrint('Amplify successfully configured with Gen 2 outputs!');
+  // } on AmplifyAlreadyConfiguredException {
+  //   safePrint('Amplify was already configured.');
+  // } on TimeoutException {
+  //   safePrint('Amplify configure timed out. Continue app startup without blocking UI.');
+  // } catch (error, stackTrace) {
+  //   safePrint('Amplify configure failed: $error');
+  //   safePrint('$stackTrace');
+  // }
 }
 
 ThemeMode _mapThemeModeToFlutterThemeMode(AppThemeMode themeModeEnum) {

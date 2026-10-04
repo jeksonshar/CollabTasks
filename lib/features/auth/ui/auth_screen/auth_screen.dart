@@ -1,4 +1,4 @@
-import 'package:collab_tasks/core/utils/auth_utils.dart';
+// import 'package:collab_tasks/core/utils/auth_utils.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_error_type.dart';
 import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_event.dart';
@@ -189,26 +189,26 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    if (authBackend == AuthBackend.aws)
-                      BlocBuilder<AuthBloc, AuthState>(
-                        buildWhen: (previous, current) =>
-                            previous.requiresSignUpConfirmation !=
-                                current.requiresSignUpConfirmation ||
-                            previous.pendingConfirmationEmail != current.pendingConfirmationEmail,
-                        builder: (context, state) {
-                          return _buildSignUpConfirmationFields(state, localization);
-                        },
-                      ),
-                    if (authBackend == AuthBackend.aws)
-                      BlocBuilder<AuthBloc, AuthState>(
-                        buildWhen: (previous, current) =>
-                            previous.requiresResetPasswordConfirmation !=
-                                current.requiresResetPasswordConfirmation ||
-                            previous.pendingResetPasswordEmail != current.pendingResetPasswordEmail,
-                        builder: (context, state) {
-                          return _buildResetPasswordConfirmationFields(state, localization);
-                        },
-                      ),
+                    // if (authBackend == AuthBackend.aws)
+                    //   BlocBuilder<AuthBloc, AuthState>(
+                    //     buildWhen: (previous, current) =>
+                    //         previous.requiresSignUpConfirmation !=
+                    //             current.requiresSignUpConfirmation ||
+                    //         previous.pendingConfirmationEmail != current.pendingConfirmationEmail,
+                    //     builder: (context, state) {
+                    //       return _buildSignUpConfirmationFields(state, localization);
+                    //     },
+                    //   ),
+                    // if (authBackend == AuthBackend.aws)
+                    //   BlocBuilder<AuthBloc, AuthState>(
+                    //     buildWhen: (previous, current) =>
+                    //         previous.requiresResetPasswordConfirmation !=
+                    //             current.requiresResetPasswordConfirmation ||
+                    //         previous.pendingResetPasswordEmail != current.pendingResetPasswordEmail,
+                    //     builder: (context, state) {
+                    //       return _buildResetPasswordConfirmationFields(state, localization);
+                    //     },
+                    //   ),
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         final loading = state.status == AuthStatus.loadingFormSubmit;

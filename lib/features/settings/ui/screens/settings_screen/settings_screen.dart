@@ -134,7 +134,7 @@ class SettingsScreen extends StatelessWidget {
     final user = authState.user;
     final authProviderLabel = mapProviderLabel(localization, user);
 
-    if (authBackend == AuthBackend.aws && authProviderLabel == localization.authProviderGoogle) {
+    if (/*authBackend == AuthBackend.aws &&*/ authProviderLabel == localization.authProviderGoogle) {
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
