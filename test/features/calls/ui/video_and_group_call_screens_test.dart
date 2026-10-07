@@ -240,4 +240,63 @@ void main() {
     expect(find.byIcon(Icons.person_add_alt_1), findsOneWidget);
     expect(find.text('Leave'), findsOneWidget);
   });
+
+  testWidgets('GroupCallScreen hides participants who have left or declined', (tester) async {
+    final activeCall = Call(
+      id: 'group-2',
+      callerId: 'user-host',
+      callerName: 'Team Standup',
+      calleeIds: const ['user-left', 'user-declined'],
+      type: CallType.video,
+      status: CallStatus.active,
+      isGroup: true,
+      participants: [
+        CallParticipant(
+          userId: 'user-host',
+          displayName: 'Host User',
+          role: CallParticipantRole.host,
+          status: CallParticipantStatus.connected,
+          joinedAt: DateTime.now(),
+        ),
+        const CallParticipant(
+          userId: 'user-left',
+          displayName: 'Leaver User',
+          status: CallParticipantStatus.left,
+        ),
+        const CallParticipant(
+          userId: 'user-declined',
+          displayName: 'Declined User',
+          status: CallParticipantStatus.declined,
+        ),
+      ],
+      createdAt: DateTime.now(),
+    );
+
+    callsBloc.emitState(
+      CallsState(
+        status: CallsStatus.active,
+        currentUserId: 'user-host',
+        activeCall: activeCall,
+        rtcConnectionState: RtcConnectionState.connected,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<CallsBloc>.value(
+          value: callsBloc,
+          child: const GroupCallScreen(
+            callId: 'group-2',
+            groupName: 'Team Standup',
+            callType: CallType.video,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('1 participants'), findsOneWidget);
+    expect(find.text('Host User (You)'), findsOneWidget);
+    expect(find.text('Leaver User'), findsNothing);
+    expect(find.text('Declined User'), findsNothing);
+  });
 }

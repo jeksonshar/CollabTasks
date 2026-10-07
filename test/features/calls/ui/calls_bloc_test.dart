@@ -3,6 +3,7 @@ import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_rep
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/services/fake_call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
@@ -175,6 +176,43 @@ void main() {
       ],
     );
 
+    blocTest<CallsBloc, CallsState>(
+      'IncomingCallDetected sets status to ringingIncoming for active call with ringing participant',
+      build: buildBloc,
+      act: (bloc) {
+        final incoming = Call(
+          id: 'call-in-group-1',
+          callerId: 'user-caller',
+          callerName: 'Alice',
+          calleeIds: const ['user-callee'],
+          type: CallType.audio,
+          status: CallStatus.active,
+          isGroup: true,
+          participants: const [
+            CallParticipant(
+              userId: 'user-caller',
+              displayName: 'Alice',
+              status: CallParticipantStatus.connected,
+              role: CallParticipantRole.host,
+            ),
+            CallParticipant(
+              userId: 'user-callee',
+              displayName: 'Bob',
+              status: CallParticipantStatus.ringing,
+              role: CallParticipantRole.participant,
+            ),
+          ],
+          createdAt: DateTime.now(),
+        );
+        bloc.add(IncomingCallDetected(incoming));
+      },
+      expect: () => [
+        isA<CallsState>()
+            .having((s) => s.status, 'status', CallsStatus.ringingIncoming)
+            .having((s) => s.activeCall?.callerName, 'callerName', 'Alice'),
+      ],
+    );
+
     late Call incomingCall;
 
     blocTest<CallsBloc, CallsState>(
@@ -272,7 +310,7 @@ void main() {
       act: (bloc) => bloc.add(const CancelCallRequested()),
       expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
-        const CallsState(status: CallsStatus.idle),
+        isA<CallsState>().having((s) => s.status, 'status', CallsStatus.idle),
       ],
     );
 
@@ -296,7 +334,7 @@ void main() {
       act: (bloc) => bloc.add(const LeaveCallRequested()),
       expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
-        const CallsState(status: CallsStatus.idle),
+        isA<CallsState>().having((s) => s.status, 'status', CallsStatus.idle),
       ],
     );
 

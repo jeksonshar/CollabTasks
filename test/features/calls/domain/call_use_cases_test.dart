@@ -177,6 +177,39 @@ void main() {
       expect(updated?.calleeIds.contains('user-3'), isTrue);
     });
 
+    test(
+      'LeaveCallUseCase removes leaver from calleeIds and InviteParticipantUseCase re-invites leaver',
+      () async {
+        final call = await startCallUseCase(
+          callerId: 'user-1',
+          callerName: 'Alice',
+          calleeIds: ['user-2'],
+          type: CallType.video,
+          isGroup: true,
+        );
+
+        // user-2 leaves
+        await leaveCallUseCase(callId: call.id, userId: 'user-2');
+        final afterLeave = await callRepository.getCallById(call.id);
+        expect(
+          afterLeave?.participants.firstWhere((p) => p.userId == 'user-2').status,
+          CallParticipantStatus.left,
+        );
+        expect(afterLeave?.calleeIds.contains('user-2'), isFalse);
+
+        // Re-invite user-2
+        await inviteParticipantUseCase(
+          callId: call.id,
+          userId: 'user-2',
+          displayName: 'Bob Re-invited',
+        );
+        final afterReinvite = await callRepository.getCallById(call.id);
+        final reinvited = afterReinvite?.participants.firstWhere((p) => p.userId == 'user-2');
+        expect(reinvited?.status, CallParticipantStatus.ringing);
+        expect(afterReinvite?.calleeIds.contains('user-2'), isTrue);
+      },
+    );
+
     test('RequestCallPermissionsUseCase respects service grants', () async {
       permissionsService
         ..microphoneGranted = true

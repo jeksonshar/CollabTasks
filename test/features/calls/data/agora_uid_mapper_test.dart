@@ -30,6 +30,12 @@ void main() {
       expect(mapper.toAgoraUid('user-carol-789'), 9999);
     });
 
+    test('user_ prefix extracts integer UID directly', () {
+      final uid = mapper.toAgoraUid('user_123456');
+      expect(uid, 123456);
+      expect(mapper.toUserId(123456), 'user_123456');
+    });
+
     test('clear removes all mappings', () {
       final uid = mapper.toAgoraUid('user-david');
       expect(mapper.toUserId(uid), 'user-david');
