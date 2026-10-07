@@ -44,19 +44,26 @@ class InMemoryCallRepository implements CallRepository {
     final now = DateTime.now();
     final effectiveCallId = callId ?? _uuid.v4();
 
+    final normalizedCallerId = callerId.trim().toLowerCase();
+    final normalizedCalleeIds = calleeIds
+        .map((id) => id.trim().toLowerCase())
+        .where((id) => id != normalizedCallerId)
+        .toSet()
+        .toList();
+
     final participants = [
       CallParticipant(
-        userId: callerId,
+        userId: normalizedCallerId,
         displayName: callerName,
         avatarUrl: callerAvatarUrl,
         role: CallParticipantRole.host,
         status: CallParticipantStatus.connected,
         joinedAt: now,
       ),
-      ...calleeIds.map(
+      ...normalizedCalleeIds.map(
         (id) => CallParticipant(
           userId: id,
-          displayName: 'User $id',
+          displayName: id,
           role: CallParticipantRole.participant,
           status: CallParticipantStatus.ringing,
         ),
@@ -193,9 +200,12 @@ class InMemoryCallRepository implements CallRepository {
     final shouldEnd =
         remainingConnected.isEmpty || (!call.isGroup && remainingConnected.length < 2);
 
+    final updatedCalleeIds = call.calleeIds.where((id) => id != userId).toList();
+
     final updatedCall = call.copyWith(
       status: shouldEnd ? CallStatus.ended : call.status,
       endedAt: shouldEnd ? DateTime.now() : null,
+      calleeIds: updatedCalleeIds,
       participants: updatedParticipants,
     );
 
@@ -217,15 +227,32 @@ class InMemoryCallRepository implements CallRepository {
     final call = _calls[callId];
     if (call == null) return;
 
-    if (call.participants.any((p) => p.userId == userId)) return;
-
-    final newParticipant = CallParticipant(
-      userId: userId,
-      displayName: displayName,
-      avatarUrl: avatarUrl,
-      role: CallParticipantRole.participant,
-      status: CallParticipantStatus.ringing,
-    );
+    final existingIndex = call.participants.indexWhere((p) => p.userId == userId);
+    final List<CallParticipant> updatedParticipants;
+    if (existingIndex != -1) {
+      final existing = call.participants[existingIndex];
+      if (existing.status == CallParticipantStatus.connected ||
+          existing.status == CallParticipantStatus.ringing) {
+        return;
+      }
+      final reInvited = existing.copyWith(
+        displayName: displayName.isNotEmpty ? displayName : existing.displayName,
+        avatarUrl: avatarUrl ?? existing.avatarUrl,
+        status: CallParticipantStatus.ringing,
+        role: CallParticipantRole.participant,
+      );
+      updatedParticipants = List<CallParticipant>.from(call.participants);
+      updatedParticipants[existingIndex] = reInvited;
+    } else {
+      final newParticipant = CallParticipant(
+        userId: userId,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        role: CallParticipantRole.participant,
+        status: CallParticipantStatus.ringing,
+      );
+      updatedParticipants = [...call.participants, newParticipant];
+    }
 
     final updatedCalleeIds = List<String>.from(call.calleeIds);
     if (!updatedCalleeIds.contains(userId)) {
@@ -234,7 +261,7 @@ class InMemoryCallRepository implements CallRepository {
 
     final updatedCall = call.copyWith(
       calleeIds: updatedCalleeIds,
-      participants: [...call.participants, newParticipant],
+      participants: updatedParticipants,
     );
 
     _calls[callId] = updatedCall;

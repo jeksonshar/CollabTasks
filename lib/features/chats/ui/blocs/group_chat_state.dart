@@ -21,6 +21,8 @@ class GroupChatSuccess extends GroupChatState {
   final String groupChatTitle;
   final String groupChatDescription;
   final String currentUserId;
+  final List<String> participantUserIds;
+  final List<String> participantEmails;
   final bool hasMore;
   final bool isLoadingMore;
 
@@ -29,6 +31,8 @@ class GroupChatSuccess extends GroupChatState {
     required this.groupChatTitle,
     required this.groupChatDescription,
     required this.currentUserId,
+    this.participantUserIds = const [],
+    this.participantEmails = const [],
     this.hasMore = true,
     this.isLoadingMore = false,
   });
@@ -38,6 +42,8 @@ class GroupChatSuccess extends GroupChatState {
     String? groupChatTitle,
     String? groupChatDescription,
     String? currentUserId,
+    List<String>? participantUserIds,
+    List<String>? participantEmails,
     bool? hasMore,
     bool? isLoadingMore,
   }) {
@@ -46,6 +52,8 @@ class GroupChatSuccess extends GroupChatState {
       groupChatTitle: groupChatTitle ?? this.groupChatTitle,
       groupChatDescription: groupChatDescription ?? this.groupChatDescription,
       currentUserId: currentUserId ?? this.currentUserId,
+      participantUserIds: participantUserIds ?? this.participantUserIds,
+      participantEmails: participantEmails ?? this.participantEmails,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
@@ -57,6 +65,8 @@ class GroupChatSuccess extends GroupChatState {
     groupChatTitle,
     groupChatDescription,
     currentUserId,
+    participantUserIds,
+    participantEmails,
     hasMore,
     isLoadingMore,
   ];

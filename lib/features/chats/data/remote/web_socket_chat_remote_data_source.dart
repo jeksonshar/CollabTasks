@@ -776,32 +776,71 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
         'Превышено время ожидания данных группового чата (120 с)',
       ),
     );
-    if (serverChat != null && serverChat.title.isNotEmpty) {
-      return serverChat;
-    }
 
-    // Fallback на локальную рабочую группу, если на WS сервере еще нет метаданных
+    // 1. Извлекаем и фильтруем email, которые уже есть на сервере (отбрасывая любые UUID без '@')
+    final serverEmails = (serverChat?.participantEmails ?? const <String>[])
+        .where((e) => e.contains('@') && !e.contains(' '))
+        .map((e) => e.trim().toLowerCase())
+        .toSet();
+
+    // 2. Если на сервере меньше 2 валидных email или данных нет, добираем из локального хранилища/Firestore
+    final collectedEmails = <String>{...serverEmails};
+    final collectedUserIds = <String>{...?serverChat?.participantUserIds};
+    String groupTitle = serverChat?.title ?? '';
+    String groupDescription = serverChat?.description ?? '';
+    int groupUpdatedAt = serverChat?.updatedAtMillis ?? 0;
+
     try {
       if (getIt.isRegistered<WorkingGroupsLocalDataSource>()) {
         final localDs = getIt<WorkingGroupsLocalDataSource>();
         final localGroup = await localDs.watchGroup(chatId).first;
         if (localGroup != null) {
+          if (groupTitle.isEmpty) groupTitle = localGroup.title;
+          if (groupDescription.isEmpty) groupDescription = localGroup.description;
+          if (groupUpdatedAt == 0) groupUpdatedAt = localGroup.updatedAt;
+
           final participants = await localDs.getParticipants(chatId);
-          final dto = GroupChatDto(
-            id: chatId,
-            participantUserIds: participants.map((p) => p.userId).toList(),
-            participantEmails: participants.map((p) => p.userId).toList(),
-            title: localGroup.title,
-            description: localGroup.description,
-            updatedAtMillis: localGroup.updatedAt,
-          );
-          // Сохраняем/синхронизируем метаданные на WS сервер
-          unawaited(_send({'type': 'upsert_group_chat', 'chat': dto.toFirestore()}));
-          return dto;
+          for (final p in participants) {
+            if (!p.userId.contains('@') && p.userId.isNotEmpty) {
+              collectedUserIds.add(p.userId);
+            }
+            // Извлекаем реальный email
+            if (p.userId.contains('@')) {
+              collectedEmails.add(p.userId.trim().toLowerCase());
+            } else if (p.name.contains('@')) {
+              collectedEmails.add(p.name.trim().toLowerCase());
+            } else if (p.id.contains('@')) {
+              final lastPart = p.id.split(':').last;
+              if (lastPart.contains('@')) {
+                collectedEmails.add(lastPart.trim().toLowerCase());
+              }
+            }
+          }
         }
       }
     } catch (e) {
       debugPrint('[WS] Ошибка получения локальной метаинформации группы: $e');
+    }
+
+    if (groupTitle.isNotEmpty || collectedEmails.isNotEmpty) {
+      final cleanDto = GroupChatDto(
+        id: chatId,
+        participantUserIds: collectedUserIds.toList(),
+        participantEmails: collectedEmails.toList(),
+        title: groupTitle,
+        description: groupDescription,
+        updatedAtMillis: groupUpdatedAt != 0
+            ? groupUpdatedAt
+            : DateTime.now().millisecondsSinceEpoch,
+      );
+
+      // Если данные на сервере отсутствовали или содержали мусор (не совпадали по email),
+      // самоисцеляем метаинформацию на WS сервере
+      if (serverChat == null || serverEmails.length != collectedEmails.length) {
+        unawaited(_send({'type': 'upsert_group_chat', 'chat': cleanDto.toFirestore()}));
+      }
+
+      return cleanDto;
     }
 
     return serverChat;

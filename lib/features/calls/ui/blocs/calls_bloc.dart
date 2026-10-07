@@ -193,13 +193,15 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
       emit(
         state.copyWith(
-          status: CallsStatus.ringingOutgoing,
+          status: event.isGroup ? CallsStatus.active : CallsStatus.ringingOutgoing,
           currentUserId: () => event.callerId,
           isCameraEnabled: event.type == CallType.video,
           errorMessage: () => null,
         ),
       );
-      await _startOutgoingAlertSafely();
+      if (!event.isGroup) {
+        await _startOutgoingAlertSafely();
+      }
 
       final call = await _startCallUseCase(
         callId: event.callId,
@@ -215,8 +217,24 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       debugPrint('[CallsBloc] Call created: id=${call.id}, status=${call.status}');
       emit(state.copyWith(activeCall: () => call));
 
-      _startOutgoingCallTimeout();
-      await _subscribeToActiveCall(call.id);
+      if (event.isGroup) {
+        final session = await _getCallSessionUseCase(callId: call.id, userId: event.callerId);
+        emit(
+          state.copyWith(
+            status: CallsStatus.active,
+            session: () => session,
+            isCameraEnabled: event.type == CallType.video,
+          ),
+        );
+        debugPrint(
+          '[CallsBloc] Group call host joining RTC media session: roomId=${session.roomId}',
+        );
+        await _joinRtcSession(session);
+        await _subscribeToActiveCall(call.id);
+      } else {
+        _startOutgoingCallTimeout();
+        await _subscribeToActiveCall(call.id);
+      }
     } catch (e, st) {
       debugPrint('[CallsBloc] Error starting call: $e\n$st');
       await _stopCallAlertSafely();
@@ -225,6 +243,16 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onIncomingCallDetected(IncomingCallDetected event, Emitter<CallsState> emit) async {
+    final normalizedUserId = state.currentUserId?.trim().toLowerCase() ?? '';
+    final isParticipantRinging = event.call.participants.any(
+      (p) =>
+          p.userId.trim().toLowerCase() == normalizedUserId &&
+          p.status == CallParticipantStatus.ringing,
+    );
+    if (isParticipantRinging) {
+      _resolvedIncomingCallIds.remove(event.call.id);
+    }
+
     if (state.status != CallsStatus.idle ||
         _acceptedCallKitIds.contains(event.call.id) ||
         _resolvedIncomingCallIds.contains(event.call.id) ||
@@ -320,10 +348,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
             isGroup: acceptedCall?.isGroup ?? false,
           ),
           session: session,
+          activeCall: acceptedCall,
           currentUserId: event.userId,
+          isCameraEnabled: callType == CallType.video,
         ),
       );
 
+      await _subscribeToActiveCall(event.callId);
       await _joinRtcSession(session);
     } catch (e) {
       _acceptedCallKitIds.remove(event.callId);
@@ -386,6 +417,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         await _leaveCallUseCase(callId: callId, userId: userId);
       } catch (_) {}
       await _dismissCallKitCall(callId);
+      _resolvedIncomingCallIds.remove(callId);
+      _acceptedCallKitIds.remove(callId);
+      _pendingCallKitAcceptIds.remove(callId);
     }
 
     await _cleanup();
@@ -501,7 +535,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       (calls) {
         debugPrint('[CallsBloc] Received incoming calls update: ${calls.length} call(s)');
         for (final call in calls) {
-          if (call.status == CallStatus.ringing &&
+          final isCallRingingOrActive =
+              call.status == CallStatus.ringing || call.status == CallStatus.active;
+          if (isCallRingingOrActive &&
               call.callerId.trim().toLowerCase() != normalizedUserId &&
               call.calleeIds.any((id) => id.trim().toLowerCase() == normalizedUserId) &&
               call.participants.any(
@@ -686,7 +722,15 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       // to observe the caller ending the accepted call.
       await _subscribeToActiveCall(callData.callId);
       final session = await useCase(callData: callData, userId: userId);
-      emit(CallAcceptedState(callData: callData, session: session, currentUserId: userId));
+      emit(
+        CallAcceptedState(
+          callData: callData,
+          session: session,
+          activeCall: state.activeCall,
+          currentUserId: userId,
+          isCameraEnabled: callData.callType == CallType.video,
+        ),
+      );
       await _joinRtcSession(session);
     } catch (error, stackTrace) {
       _acceptedCallKitIds.remove(callData.callId);

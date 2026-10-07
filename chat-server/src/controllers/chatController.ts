@@ -556,6 +556,15 @@ async function handleGetGroupChatById(client: AuthenticatedSocket, chatId: strin
 
   // Добавлен await для db.getGroupChatById
   const chat = await db.getGroupChatById(chatId);
+  if (chat && Array.isArray(chat.participantEmails)) {
+    chat.participantEmails = [
+      ...new Set(
+        chat.participantEmails
+          .filter((e: any) => typeof e === 'string' && e.includes('@') && !e.includes(' '))
+          .map((e: string) => e.trim().toLowerCase())
+      ),
+    ];
+  }
   sendToClient(client, { type: 'group_chat_by_id', chat });
 }
 
@@ -657,7 +666,19 @@ async function handleUpsertGroupChat(
   }
 
   // Добавлен await для db.upsertGroupChat
-  await db.upsertGroupChat(chat);
+  const sanitizedEmails = (Array.isArray(chat.participantEmails) ? chat.participantEmails : [])
+    .filter((e: any) => typeof e === 'string' && e.includes('@') && !e.includes(' '))
+    .map((e: string) => e.trim().toLowerCase());
+
+  const sanitizedUserIds = (Array.isArray(chat.participantUserIds) ? chat.participantUserIds : [])
+    .filter((id: any) => typeof id === 'string' && id.trim().length > 0)
+    .map((id: string) => id.trim());
+
+  await db.upsertGroupChat({
+    ...chat,
+    participantEmails: [...new Set(sanitizedEmails)],
+    participantUserIds: [...new Set(sanitizedUserIds)],
+  });
 
   console.log(
       `[ChatController] Групповой чат ${chat.id} ("${chat.title}") сохранён в БД ` +

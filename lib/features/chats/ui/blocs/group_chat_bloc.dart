@@ -52,6 +52,12 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
       final title = chat?.title ?? '';
       final description = chat?.description ?? '';
 
+      final filteredEmails = (chat?.participantEmails ?? const <String>[])
+          .where((e) => e.contains('@') && !e.contains(' '))
+          .map((e) => e.trim().toLowerCase())
+          .toSet()
+          .toList();
+
       // emit.forEach управляет подпиской автоматически и отменяет ее при необходимости
       await emit.forEach<List<MessageEntity>>(
         _watchGroupMessagesUseCase(event.groupChatId),
@@ -60,6 +66,8 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
           groupChatTitle: title,
           groupChatDescription: description,
           currentUserId: currentUserId,
+          participantEmails: filteredEmails,
+          participantUserIds: chat?.participantUserIds ?? const [],
         ),
         onError: (error, stackTrace) => GroupChatError(error.toString()),
       );

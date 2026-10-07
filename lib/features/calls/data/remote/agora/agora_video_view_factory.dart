@@ -32,31 +32,110 @@ class AgoraVideoViewFactory implements RtcVideoViewFactory {
         : RenderModeType.renderModeFit;
 
     if (isLocal) {
-      return AgoraVideoView(
+      return _AgoraVideoViewWidget(
         key: key ?? const ValueKey('agora_video_local'),
-        controller: VideoViewController(
-          rtcEngine: engine,
-          canvas: VideoCanvas(
-            uid: 0,
-            renderMode: renderMode,
-            mirrorMode: mirror
-                ? VideoMirrorModeType.videoMirrorModeEnabled
-                : VideoMirrorModeType.videoMirrorModeDisabled,
-          ),
-        ),
+        engine: engine,
+        isLocal: true,
+        uid: 0,
+        channelId: '',
+        renderMode: renderMode,
+        mirror: mirror,
       );
     } else {
       final uid = _agoraRtcService.uidMapper.toAgoraUid(participantId);
       final channelId = _agoraRtcService.activeSession?.roomId ?? '';
 
-      return AgoraVideoView(
+      return _AgoraVideoViewWidget(
         key: key ?? ValueKey('agora_video_remote_$participantId'),
-        controller: VideoViewController.remote(
-          rtcEngine: engine,
-          canvas: VideoCanvas(uid: uid, renderMode: renderMode),
-          connection: RtcConnection(channelId: channelId),
-        ),
+        engine: engine,
+        isLocal: false,
+        uid: uid,
+        channelId: channelId,
+        renderMode: renderMode,
+        mirror: false,
       );
     }
+  }
+}
+
+class _AgoraVideoViewWidget extends StatefulWidget {
+  final RtcEngine engine;
+  final bool isLocal;
+  final int uid;
+  final String channelId;
+  final RenderModeType renderMode;
+  final bool mirror;
+
+  const _AgoraVideoViewWidget({
+    super.key,
+    required this.engine,
+    required this.isLocal,
+    required this.uid,
+    required this.channelId,
+    required this.renderMode,
+    required this.mirror,
+  });
+
+  @override
+  State<_AgoraVideoViewWidget> createState() => _AgoraVideoViewWidgetState();
+}
+
+class _AgoraVideoViewWidgetState extends State<_AgoraVideoViewWidget> {
+  VideoViewControllerBase? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _initController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AgoraVideoViewWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.engine != widget.engine ||
+        oldWidget.isLocal != widget.isLocal ||
+        oldWidget.uid != widget.uid ||
+        oldWidget.channelId != widget.channelId ||
+        oldWidget.renderMode != widget.renderMode ||
+        oldWidget.mirror != widget.mirror) {
+      _controller?.dispose();
+      _initController();
+    }
+  }
+
+  void _initController() {
+    if (widget.isLocal) {
+      _controller = VideoViewController(
+        rtcEngine: widget.engine,
+        canvas: VideoCanvas(
+          uid: 0,
+          renderMode: widget.renderMode,
+          mirrorMode: widget.mirror
+              ? VideoMirrorModeType.videoMirrorModeEnabled
+              : VideoMirrorModeType.videoMirrorModeDisabled,
+        ),
+      );
+    } else {
+      _controller = VideoViewController.remote(
+        rtcEngine: widget.engine,
+        canvas: VideoCanvas(uid: widget.uid, renderMode: widget.renderMode),
+        connection: RtcConnection(channelId: widget.channelId),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+    return AgoraVideoView(controller: controller);
   }
 }

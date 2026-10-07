@@ -76,6 +76,9 @@ class AgoraRtcService implements RtcService {
         onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
           debugPrint('[AgoraRtcService] Joined channel: ${connection.channelId}');
           _updateConnectionState(RtcConnectionState.connected);
+          try {
+            _engine?.setEnableSpeakerphone(true);
+          } catch (_) {}
         },
         onLeaveChannel: (RtcConnection connection, RtcStats stats) {
           debugPrint('[AgoraRtcService] Left channel: ${connection.channelId}');
@@ -84,11 +87,12 @@ class AgoraRtcService implements RtcService {
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
           debugPrint('[AgoraRtcService] Remote user joined: $remoteUid');
           final participantId = _uidMapper.toUserId(remoteUid) ?? 'user_$remoteUid';
+          final isCallVideo = _activeSession?.extra['mediaType'] == 'video' || _isCameraEnabled;
           _participants[participantId] = RtcParticipantMediaState(
             participantId: participantId,
             isLocal: false,
             isAudioMuted: false,
-            isVideoEnabled: false,
+            isVideoEnabled: isCallVideo,
           );
           _emitParticipants();
         },
@@ -124,6 +128,53 @@ class AgoraRtcService implements RtcService {
             _emitParticipants();
           }
         },
+        onRemoteVideoStateChanged:
+            (
+              RtcConnection connection,
+              int remoteUid,
+              RemoteVideoState state,
+              RemoteVideoStateReason reason,
+              int elapsed,
+            ) {
+              debugPrint(
+                '[AgoraRtcService] Remote video state changed: uid=$remoteUid, state=$state, reason=$reason',
+              );
+              final participantId = _uidMapper.toUserId(remoteUid) ?? 'user_$remoteUid';
+              final isVideo =
+                  state == RemoteVideoState.remoteVideoStateDecoding ||
+                  state == RemoteVideoState.remoteVideoStateStarting;
+              final existing = _participants[participantId];
+              if (existing != null) {
+                _participants[participantId] = existing.copyWith(isVideoEnabled: isVideo);
+              } else {
+                _participants[participantId] = RtcParticipantMediaState(
+                  participantId: participantId,
+                  isLocal: false,
+                  isAudioMuted: false,
+                  isVideoEnabled: isVideo,
+                );
+              }
+              _emitParticipants();
+            },
+        onFirstRemoteVideoDecoded:
+            (RtcConnection connection, int remoteUid, int width, int height, int elapsed) {
+              debugPrint(
+                '[AgoraRtcService] First remote video decoded: uid=$remoteUid ($width x $height)',
+              );
+              final participantId = _uidMapper.toUserId(remoteUid) ?? 'user_$remoteUid';
+              final existing = _participants[participantId];
+              if (existing != null) {
+                _participants[participantId] = existing.copyWith(isVideoEnabled: true);
+              } else {
+                _participants[participantId] = RtcParticipantMediaState(
+                  participantId: participantId,
+                  isLocal: false,
+                  isAudioMuted: false,
+                  isVideoEnabled: true,
+                );
+              }
+              _emitParticipants();
+            },
         onAudioVolumeIndication:
             (
               RtcConnection connection,
@@ -222,9 +273,17 @@ class AgoraRtcService implements RtcService {
     // Video setup if video call or camera is enabled
     final isVideo = session.extra['mediaType'] == 'video' || _isCameraEnabled;
     if (isVideo) {
+      _isCameraEnabled = true;
       await _engine!.enableVideo();
+      await _engine!.setVideoEncoderConfiguration(
+        const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 640, height: 360),
+          frameRate: 15,
+          bitrate: 600,
+        ),
+      );
       await _engine!.startPreview();
-      // await _engine!.setEnableSpeakerphone(true);
+      await _engine!.setDefaultAudioRouteToSpeakerphone(true);
     }
 
     // Resolve local UID: prefer the value pre-computed by the repository, which is
@@ -246,6 +305,15 @@ class AgoraRtcService implements RtcService {
       final oppId = session.extra['opponentUserId'] as String;
       final oppUid = (session.extra['opponentUid'] as num).toInt();
       _uidMapper.register(oppId, oppUid);
+    }
+
+    final rawParticipants = session.extra['participants'];
+    if (rawParticipants is Map) {
+      for (final entry in rawParticipants.entries) {
+        if (entry.key is String && entry.value is num) {
+          _uidMapper.register(entry.key as String, (entry.value as num).toInt());
+        }
+      }
     }
 
     // Add local participant

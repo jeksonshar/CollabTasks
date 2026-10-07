@@ -534,7 +534,83 @@ export const onCallUpdated = onDocumentUpdated(
         const oldStatus = beforeData.status;
         const newStatus = afterData.status;
 
-        // Если звонок был отменен, отклонен или завершен — закрываем CallKit
+        // 1. Если добавлены новые участники (например, через кнопку Invite в идущем или звонящем вызове)
+        const beforeCallees: string[] = beforeData.calleeIds || [];
+        const afterCallees: string[] = afterData.calleeIds || [];
+
+        const beforeParticipants: Array<{userId?: string; status?: string}> = beforeData.participants || [];
+        const afterParticipants: Array<{userId?: string; status?: string}> = afterData.participants || [];
+        const ringingCalleesFromParticipants = afterParticipants
+            .filter((afterP) => {
+                if (afterP?.status !== "ringing") return false;
+                const afterUserId = String(afterP.userId || "").trim().toLowerCase();
+                if (!afterUserId) return false;
+                const beforeP = beforeParticipants.find(
+                    (p) => String(p?.userId || "").trim().toLowerCase() === afterUserId
+                );
+                return !beforeP || beforeP.status !== "ringing";
+            })
+            .map((p) => String(p?.userId || "").trim())
+            .filter((id) => id.length > 0);
+
+        const newCallees = [...new Set([
+            ...afterCallees.filter((id) => !beforeCallees.includes(id)),
+            ...ringingCalleesFromParticipants,
+        ])];
+
+        if (
+            newCallees.length > 0 &&
+            newStatus !== "cancelled" &&
+            newStatus !== "rejected" &&
+            newStatus !== "ended"
+        ) {
+            const callerId = afterData.callerId || "";
+            const callerName = afterData.callerName || "Входящий звонок";
+            const callerAvatarUrl = afterData.callerAvatarUrl || "";
+            const callType = afterData.type || "audio";
+            const isGroup = Boolean(afterData.isGroup);
+
+            try {
+                const recipients = await getFcmRecipientTokens(newCallees);
+                if (recipients.length > 0) {
+                    console.log(`[onCallUpdated] Sending incoming_call FCM to ${recipients.length} new callee(s) for call ${callId}`);
+                    const messages: admin.messaging.Message[] = recipients.map(({token, calleeId}) => ({
+                        token,
+                        data: {
+                            type: "incoming_call",
+                            callId: callId,
+                            callerId: callerId,
+                            calleeId: calleeId,
+                            callerName: callerName,
+                            callerAvatarUrl: callerAvatarUrl,
+                            callType: callType,
+                            isGroup: isGroup ? "true" : "false",
+                        },
+                        android: {
+                            priority: "high",
+                        },
+                        apns: {
+                            headers: {
+                                "apns-priority": "10",
+                                "apns-push-type": "background",
+                            },
+                            payload: {
+                                aps: {
+                                    contentAvailable: true,
+                                },
+                            },
+                        },
+                    }));
+
+                    const response = await admin.messaging().sendEach(messages);
+                    console.log(`[onCallUpdated] Call ${callId}: FCM accepted ${response.successCount}/${recipients.length}; failed=${response.failureCount}`);
+                }
+            } catch (error) {
+                console.error(`[onCallUpdated] Error sending incoming_call FCM to new participants for call ${callId}:`, error);
+            }
+        }
+
+        // 2. Если звонок был отменен, отклонен или завершен — закрываем CallKit
         if (
             oldStatus !== newStatus &&
             (newStatus === "cancelled" || newStatus === "rejected" || newStatus === "ended")

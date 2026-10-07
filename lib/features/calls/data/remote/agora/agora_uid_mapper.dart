@@ -7,6 +7,14 @@ class AgoraUidMapper {
     final existing = _userToUid[userId];
     if (existing != null) return existing;
 
+    if (userId.startsWith('user_')) {
+      final parsed = int.tryParse(userId.substring(5));
+      if (parsed != null && parsed > 0) {
+        register(userId, parsed);
+        return parsed;
+      }
+    }
+
     // Use a positive 31-bit integer from hash code
     int uid = userId.hashCode & 0x7FFFFFFF;
     if (uid == 0) uid = 1;

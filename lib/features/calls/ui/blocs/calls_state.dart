@@ -73,13 +73,20 @@ class CallsState extends Equatable {
   ];
 }
 
-/// Emitted after accepting a call from the native CallKit UI.
+/// Emitted after accepting a call from the native CallKit UI or in-app dialog.
 class CallAcceptedState extends CallsState {
   final CallDataEntity callData;
 
   const CallAcceptedState({
     required this.callData,
     required CallSession session,
+    super.activeCall,
+    super.rtcConnectionState,
+    super.isMicrophoneMuted,
+    super.isSpeakerEnabled,
+    super.isCameraEnabled,
+    super.participantMediaStates,
+    super.errorMessage,
     super.currentUserId,
   }) : super(status: CallsStatus.active, session: session);
 

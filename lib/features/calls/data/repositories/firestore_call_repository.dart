@@ -52,31 +52,81 @@ class FirestoreCallRepository implements CallRepository {
     debugPrint('[FirestoreCallRepository] watchIncomingCalls for user: $userId');
     final normalizedUserId = userId.trim().toLowerCase();
 
-    return _firestore
+    final ringingCallsMap = <String, Call>{};
+    final activeCallsMap = <String, Call>{};
+
+    final ringingStream = _firestore
         .collection(_callsCollection)
         .where('calleeIds', arrayContains: normalizedUserId)
         .where('status', isEqualTo: CallStatus.ringing.name)
-        .snapshots()
-        .map((snapshot) {
-          final calls = snapshot.docs
-              .map((doc) => Call.fromMap(doc.data()))
-              .where(
-                (call) => call.participants.any(
-                  (p) =>
-                      p.userId.trim().toLowerCase() == normalizedUserId &&
-                      p.status == CallParticipantStatus.ringing,
-                ),
-              )
-              .toList();
-          debugPrint(
-            '[FirestoreCallRepository] Incoming ringing calls for $userId: ${calls.length}',
-          );
-          return calls;
-        })
-        .handleError((error) {
-          debugPrint('[FirestoreCallRepository] Error in watchIncomingCalls($userId): $error');
-          return <Call>[];
-        });
+        .snapshots();
+
+    final activeStream = _firestore
+        .collection(_callsCollection)
+        .where('calleeIds', arrayContains: normalizedUserId)
+        .where('status', isEqualTo: CallStatus.active.name)
+        .snapshots();
+
+    List<Call> filterAndCombine() {
+      final combined = {...ringingCallsMap, ...activeCallsMap}.values;
+      final filtered = combined
+          .where(
+            (call) => call.participants.any(
+              (p) =>
+                  p.userId.trim().toLowerCase() == normalizedUserId &&
+                  p.status == CallParticipantStatus.ringing,
+            ),
+          )
+          .toList();
+      debugPrint(
+        '[FirestoreCallRepository] Incoming ringing calls for $userId: ${filtered.length}',
+      );
+      return filtered;
+    }
+
+    // ignore: close_sinks
+    final controller = StreamController<List<Call>>.broadcast();
+    StreamSubscription? sub1;
+    StreamSubscription? sub2;
+
+    controller.onListen = () {
+      sub1 = ringingStream.listen(
+        (snapshot) {
+          ringingCallsMap.clear();
+          for (final doc in snapshot.docs) {
+            ringingCallsMap[doc.id] = Call.fromMap(doc.data());
+          }
+          if (!controller.isClosed) {
+            controller.add(filterAndCombine());
+          }
+        },
+        onError: (error) {
+          debugPrint('[FirestoreCallRepository] Error in ringing stream($userId): $error');
+        },
+      );
+
+      sub2 = activeStream.listen(
+        (snapshot) {
+          activeCallsMap.clear();
+          for (final doc in snapshot.docs) {
+            activeCallsMap[doc.id] = Call.fromMap(doc.data());
+          }
+          if (!controller.isClosed) {
+            controller.add(filterAndCombine());
+          }
+        },
+        onError: (error) {
+          debugPrint('[FirestoreCallRepository] Error in active stream($userId): $error');
+        },
+      );
+    };
+
+    controller.onCancel = () {
+      sub1?.cancel();
+      sub2?.cancel();
+    };
+
+    return controller.stream;
   }
 
   @override
@@ -93,7 +143,11 @@ class FirestoreCallRepository implements CallRepository {
     final now = DateTime.now();
     final effectiveCallId = callId ?? _uuid.v4();
     final normalizedCallerId = callerId.trim().toLowerCase();
-    final normalizedCalleeIds = calleeIds.map((id) => id.trim().toLowerCase()).toList();
+    final normalizedCalleeIds = calleeIds
+        .map((id) => id.trim().toLowerCase())
+        .where((id) => id != normalizedCallerId)
+        .toSet()
+        .toList();
 
     debugPrint(
       '[FirestoreCallRepository] startCall: ID=$effectiveCallId, caller=$normalizedCallerId, callees=$normalizedCalleeIds, type=$type',
@@ -111,7 +165,7 @@ class FirestoreCallRepository implements CallRepository {
       ...normalizedCalleeIds.map(
         (id) => CallParticipant(
           userId: id,
-          displayName: 'User $id',
+          displayName: id,
           role: CallParticipantRole.participant,
           status: CallParticipantStatus.ringing,
         ),
@@ -262,9 +316,14 @@ class FirestoreCallRepository implements CallRepository {
       final shouldEnd =
           remainingConnected.isEmpty || (!call.isGroup && remainingConnected.length < 2);
 
+      final updatedCalleeIds = call.calleeIds
+          .where((id) => id.trim().toLowerCase() != normalizedUserId)
+          .toList();
+
       final updatedCall = call.copyWith(
         status: shouldEnd ? CallStatus.ended : call.status,
         endedAt: shouldEnd ? DateTime.now() : null,
+        calleeIds: updatedCalleeIds,
         participants: updatedParticipants,
       );
 
@@ -288,17 +347,35 @@ class FirestoreCallRepository implements CallRepository {
       if (!snapshot.exists || snapshot.data() == null) return;
 
       final call = Call.fromMap(snapshot.data()!);
-      if (call.participants.any((p) => p.userId.trim().toLowerCase() == normalizedUserId)) {
-        return;
-      }
-
-      final newParticipant = CallParticipant(
-        userId: normalizedUserId,
-        displayName: displayName,
-        avatarUrl: avatarUrl,
-        role: CallParticipantRole.participant,
-        status: CallParticipantStatus.ringing,
+      final existingIndex = call.participants.indexWhere(
+        (p) => p.userId.trim().toLowerCase() == normalizedUserId,
       );
+
+      final List<CallParticipant> updatedParticipants;
+      if (existingIndex != -1) {
+        final existing = call.participants[existingIndex];
+        if (existing.status == CallParticipantStatus.connected ||
+            existing.status == CallParticipantStatus.ringing) {
+          return;
+        }
+        final reInvited = existing.copyWith(
+          displayName: displayName.isNotEmpty ? displayName : existing.displayName,
+          avatarUrl: avatarUrl ?? existing.avatarUrl,
+          status: CallParticipantStatus.ringing,
+          role: CallParticipantRole.participant,
+        );
+        updatedParticipants = List<CallParticipant>.from(call.participants);
+        updatedParticipants[existingIndex] = reInvited;
+      } else {
+        final newParticipant = CallParticipant(
+          userId: normalizedUserId,
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+          role: CallParticipantRole.participant,
+          status: CallParticipantStatus.ringing,
+        );
+        updatedParticipants = [...call.participants, newParticipant];
+      }
 
       final updatedCalleeIds = List<String>.from(call.calleeIds);
       if (!updatedCalleeIds.contains(normalizedUserId)) {
@@ -307,7 +384,7 @@ class FirestoreCallRepository implements CallRepository {
 
       final updatedCall = call.copyWith(
         calleeIds: updatedCalleeIds,
-        participants: [...call.participants, newParticipant],
+        participants: updatedParticipants,
       );
 
       transaction.update(docRef, updatedCall.toMap());
@@ -370,6 +447,20 @@ class FirestoreCallRepository implements CallRepository {
       );
     }
 
+    final participantsMap = <String, int>{};
+    if (call != null) {
+      for (final p in call.participants) {
+        participantsMap[p.userId] = _computeAgoraUid(p.userId);
+      }
+      if (call.callerId.isNotEmpty) {
+        participantsMap[call.callerId] = _computeAgoraUid(call.callerId);
+      }
+      for (final calleeId in call.calleeIds) {
+        participantsMap[calleeId] = _computeAgoraUid(calleeId);
+      }
+    }
+    participantsMap[userId] = localUid;
+
     return CallSession(
       callId: callId,
       roomId: callId,
@@ -382,6 +473,7 @@ class FirestoreCallRepository implements CallRepository {
         'appId': AgoraConfig.appId,
         // Pass the int UID so AgoraRtcService uses the same value in joinChannel
         'uid': localUid,
+        'participants': participantsMap,
       },
     );
   }

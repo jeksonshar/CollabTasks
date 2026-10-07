@@ -100,8 +100,9 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
             onPressed: () {
               final id = textController.text.trim();
               if (id.isNotEmpty) {
+                final displayName = id.contains('@') ? id : 'User $id';
                 context.read<CallsBloc>().add(
-                  InviteParticipantRequested(userId: id, displayName: 'User $id'),
+                  InviteParticipantRequested(userId: id, displayName: displayName),
                 );
                 Navigator.of(ctx).pop();
               }
@@ -147,8 +148,14 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 ) ??
                 false);
 
-        // Merge domain participants with RTC media states
-        final participants = state.activeCall?.participants ?? [];
+        // Merge domain participants with RTC media states (excluding participants who left or declined)
+        final participants = (state.activeCall?.participants ?? [])
+            .where(
+              (p) =>
+                  p.status != CallParticipantStatus.left &&
+                  p.status != CallParticipantStatus.declined,
+            )
+            .toList();
 
         final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
 
@@ -279,8 +286,15 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
         final participant = participants[index];
         final isLocal = participant.userId == localUserId;
 
+        final participantUid = participant.userId.hashCode & 0x7FFFFFFF;
+        final expectedFallbackId = 'user_${participantUid == 0 ? 1 : participantUid}';
+
         final mediaState = state.participantMediaStates.firstWhere(
-          (m) => m.participantId == participant.userId || (isLocal && m.isLocal),
+          (m) =>
+              (isLocal && m.isLocal) ||
+              (!isLocal &&
+                  !m.isLocal &&
+                  (m.participantId == participant.userId || m.participantId == expectedFallbackId)),
           orElse: () => RtcParticipantMediaState(
             participantId: participant.userId,
             isLocal: isLocal,
@@ -349,7 +363,11 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isLocal ? '${participant.displayName} (You)' : participant.displayName,
+                        isLocal
+                            ? '${participant.displayName} (You)'
+                            : (participant.status == CallParticipantStatus.ringing
+                                  ? '${participant.displayName} (Calling...)'
+                                  : participant.displayName),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,

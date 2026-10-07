@@ -134,12 +134,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                     tooltip: 'Group Video Call',
                     onPressed: () {
                       final callId = const Uuid().v4();
+                      final myEmail = state.currentUserId.trim().toLowerCase();
+                      final calleeIds = state.participantEmails
+                          .where((e) => e.contains('@') && e.trim().toLowerCase() != myEmail)
+                          .map((e) => e.trim().toLowerCase())
+                          .toSet()
+                          .toList();
                       getIt<CallsBloc>().add(
                         StartCallRequested(
                           callId: callId,
                           callerId: state.currentUserId,
                           callerName: state.currentUserId,
-                          calleeIds: const [],
+                          calleeIds: calleeIds,
                           type: CallType.video,
                           isGroup: true,
                           groupId: widget.groupId,
@@ -162,12 +168,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                     tooltip: 'Group Audio Call',
                     onPressed: () {
                       final callId = const Uuid().v4();
+                      final myEmail = state.currentUserId.trim().toLowerCase();
+                      final calleeIds = state.participantEmails
+                          .where((e) => e.contains('@') && e.trim().toLowerCase() != myEmail)
+                          .map((e) => e.trim().toLowerCase())
+                          .toSet()
+                          .toList();
                       getIt<CallsBloc>().add(
                         StartCallRequested(
                           callId: callId,
                           callerId: state.currentUserId,
                           callerName: state.currentUserId,
-                          calleeIds: const [],
+                          calleeIds: calleeIds,
                           type: CallType.audio,
                           isGroup: true,
                           groupId: widget.groupId,
