@@ -37,3 +37,6 @@ graph LR
         Repo -->|Network Call| API(Remote API / Network)
     end
 ```
+
+## 4. Backend Services & Cloud Infrastructure
+For detailed specifications of external backend servers (`chat-server/` on Render and `functions/` on Firebase Cloud Functions), refer to [`docs/backend_services.md`](backend_services.md).
