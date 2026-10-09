@@ -1,8 +1,11 @@
 enum CallErrorType {
-  permissionDenied,
-  networkError,
-  rtcConnectionFailed,
-  callNotFound,
+  permissionDeniedVideo,
+  permissionDeniedAudio,
   userUnavailable,
+  callTimeout,
+  inviteFailed,
+  rtcConnectionFailed,
+  networkError,
+  callNotFound,
   unknown,
 }

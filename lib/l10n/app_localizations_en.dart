@@ -870,4 +870,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get callParticipantCalling => '(Calling...)';
+
+  @override
+  String get callErrorPermissionDeniedVideo =>
+      'Camera and microphone permissions are required for video calls';
+
+  @override
+  String get callErrorPermissionDeniedAudio =>
+      'Microphone permission is required for calls';
+
+  @override
+  String get callErrorUserUnavailable =>
+      'Unable to identify the call recipient';
+
+  @override
+  String get callErrorTimeout => 'Recipient did not answer';
+
+  @override
+  String get callErrorInviteFailed => 'Failed to invite participant';
+
+  @override
+  String get callErrorRtcFailed =>
+      'RTC connection failed. Check network or RTC settings.';
+
+  @override
+  String get callErrorNetwork => 'Network error. Please check your connection.';
+
+  @override
+  String get callErrorCallNotFound => 'Call not found';
+
+  @override
+  String get callErrorUnknown => 'An error occurred';
 }

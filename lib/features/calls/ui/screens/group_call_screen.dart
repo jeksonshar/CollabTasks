@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
@@ -99,6 +100,20 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
     }
   }
 
+  String _resolveCallError(CallsState state, AppLocalizations l) {
+    return switch (state.errorType) {
+      CallErrorType.permissionDeniedVideo => l.callErrorPermissionDeniedVideo,
+      CallErrorType.permissionDeniedAudio => l.callErrorPermissionDeniedAudio,
+      CallErrorType.userUnavailable => l.callErrorUserUnavailable,
+      CallErrorType.callTimeout => l.callErrorTimeout,
+      CallErrorType.inviteFailed => l.callErrorInviteFailed,
+      CallErrorType.rtcConnectionFailed => l.callErrorRtcFailed,
+      CallErrorType.networkError => l.callErrorNetwork,
+      CallErrorType.callNotFound => l.callErrorCallNotFound,
+      CallErrorType.unknown || null => state.errorMessage ?? l.callErrorUnknown,
+    };
+  }
+
   void _showInviteDialog(BuildContext context, AppLocalizations localization) {
     final textController = TextEditingController();
     showDialog(
@@ -152,7 +167,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? localization.callStatusError),
+              content: Text(_resolveCallError(state, localization)),
               backgroundColor: theme.colorScheme.error,
             ),
           );

@@ -1,5 +1,6 @@
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
@@ -16,6 +17,7 @@ class CallsState extends Equatable {
   final bool isCameraEnabled;
   final bool isSpeakerEnabled;
   final List<RtcParticipantMediaState> participantMediaStates;
+  final CallErrorType? errorType;
   final String? errorMessage;
   final String? currentUserId;
 
@@ -28,6 +30,7 @@ class CallsState extends Equatable {
     this.isSpeakerEnabled = false,
     this.isCameraEnabled = true,
     this.participantMediaStates = const [],
+    this.errorType,
     this.errorMessage,
     this.currentUserId,
   });
@@ -41,6 +44,7 @@ class CallsState extends Equatable {
     bool? isSpeakerEnabled,
     bool? isCameraEnabled,
     List<RtcParticipantMediaState>? participantMediaStates,
+    CallErrorType? Function()? errorType,
     String? Function()? errorMessage,
     String? Function()? currentUserId,
   }) {
@@ -53,6 +57,7 @@ class CallsState extends Equatable {
       isSpeakerEnabled: isSpeakerEnabled ?? this.isSpeakerEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       participantMediaStates: participantMediaStates ?? this.participantMediaStates,
+      errorType: errorType != null ? errorType() : this.errorType,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
       currentUserId: currentUserId != null ? currentUserId() : this.currentUserId,
     );
@@ -68,6 +73,7 @@ class CallsState extends Equatable {
     isSpeakerEnabled,
     isCameraEnabled,
     participantMediaStates,
+    errorType,
     errorMessage,
     currentUserId,
   ];

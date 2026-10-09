@@ -359,5 +359,14 @@
   "callParticipantLabel": "Участник",
   "callActionInvite": "Пригласить",
   "callParticipantYou": "(Вы)",
-  "callParticipantCalling": "(Вызов...)"
+  "callParticipantCalling": "(Вызов...)",
+  "callErrorPermissionDeniedVideo": "Для видеозвонка необходимо предоставить доступ к камере и микрофону",
+  "callErrorPermissionDeniedAudio": "Для звонка необходимо предоставить доступ к микрофону",
+  "callErrorUserUnavailable": "Не удалось определить получателя звонка",
+  "callErrorTimeout": "Собеседник не ответил",
+  "callErrorInviteFailed": "Не удалось пригласить участника",
+  "callErrorRtcFailed": "Ошибка RTC-соединения. Проверьте сеть и настройки.",
+  "callErrorNetwork": "Ошибка сети. Проверьте подключение к интернету.",
+  "callErrorCallNotFound": "Звонок не найден",
+  "callErrorUnknown": "Произошла ошибка"
 }

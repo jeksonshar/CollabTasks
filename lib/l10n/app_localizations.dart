@@ -1707,6 +1707,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'(Calling...)'**
   String get callParticipantCalling;
+
+  /// No description provided for @callErrorPermissionDeniedVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera and microphone permissions are required for video calls'**
+  String get callErrorPermissionDeniedVideo;
+
+  /// No description provided for @callErrorPermissionDeniedAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission is required for calls'**
+  String get callErrorPermissionDeniedAudio;
+
+  /// No description provided for @callErrorUserUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to identify the call recipient'**
+  String get callErrorUserUnavailable;
+
+  /// No description provided for @callErrorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipient did not answer'**
+  String get callErrorTimeout;
+
+  /// No description provided for @callErrorInviteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to invite participant'**
+  String get callErrorInviteFailed;
+
+  /// No description provided for @callErrorRtcFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'RTC connection failed. Check network or RTC settings.'**
+  String get callErrorRtcFailed;
+
+  /// No description provided for @callErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error. Please check your connection.'**
+  String get callErrorNetwork;
+
+  /// No description provided for @callErrorCallNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Call not found'**
+  String get callErrorCallNotFound;
+
+  /// No description provided for @callErrorUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred'**
+  String get callErrorUnknown;
 }
 
 class _AppLocalizationsDelegate

@@ -874,4 +874,36 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get callParticipantCalling => '(Виклик...)';
+
+  @override
+  String get callErrorPermissionDeniedVideo =>
+      'Для відеодзвінка потрібно надати доступ до камери та мікрофону';
+
+  @override
+  String get callErrorPermissionDeniedAudio =>
+      'Для дзвінка потрібно надати доступ до мікрофону';
+
+  @override
+  String get callErrorUserUnavailable =>
+      'Не вдалося визначити одержувача дзвінка';
+
+  @override
+  String get callErrorTimeout => 'Співрозмовник не відповів';
+
+  @override
+  String get callErrorInviteFailed => 'Не вдалося запросити учасника';
+
+  @override
+  String get callErrorRtcFailed =>
+      'Помилка RTC-з\'єднання. Перевірте мережу та налаштування.';
+
+  @override
+  String get callErrorNetwork =>
+      'Помилка мережі. Перевірте підключення до інтернету.';
+
+  @override
+  String get callErrorCallNotFound => 'Дзвінок не знайдено';
+
+  @override
+  String get callErrorUnknown => 'Виникла помилка';
 }

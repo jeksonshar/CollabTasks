@@ -359,5 +359,14 @@
   "callParticipantLabel": "Participant",
   "callActionInvite": "Invite",
   "callParticipantYou": "(You)",
-  "callParticipantCalling": "(Calling...)"
+  "callParticipantCalling": "(Calling...)",
+  "callErrorPermissionDeniedVideo": "Camera and microphone permissions are required for video calls",
+  "callErrorPermissionDeniedAudio": "Microphone permission is required for calls",
+  "callErrorUserUnavailable": "Unable to identify the call recipient",
+  "callErrorTimeout": "Recipient did not answer",
+  "callErrorInviteFailed": "Failed to invite participant",
+  "callErrorRtcFailed": "RTC connection failed. Check network or RTC settings.",
+  "callErrorNetwork": "Network error. Please check your connection.",
+  "callErrorCallNotFound": "Call not found",
+  "callErrorUnknown": "An error occurred"
 }

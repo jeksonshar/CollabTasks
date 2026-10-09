@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
@@ -183,9 +184,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         emit(
           state.copyWith(
             status: CallsStatus.error,
-            errorMessage: () => event.type == CallType.video
-                ? 'Camera and microphone permissions are required for video calls'
-                : 'Microphone permission is required for calls',
+            errorType: () => event.type == CallType.video
+                ? CallErrorType.permissionDeniedVideo
+                : CallErrorType.permissionDeniedAudio,
+            errorMessage: () => null,
           ),
         );
         return;
@@ -197,6 +199,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
           currentUserId: () => event.callerId,
           isCameraEnabled: event.type == CallType.video,
           errorMessage: () => null,
+          errorType: () => null,
         ),
       );
       if (!event.isGroup) {
@@ -238,7 +241,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } catch (e, st) {
       debugPrint('[CallsBloc] Error starting call: $e\n$st');
       await _stopCallAlertSafely();
-      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorType: () => CallErrorType.unknown,
+          errorMessage: () => e.toString(),
+        ),
+      );
     }
   }
 
@@ -265,6 +274,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         status: CallsStatus.ringingIncoming,
         activeCall: () => event.call,
         errorMessage: () => null,
+        errorType: () => null,
       ),
     );
 
@@ -312,9 +322,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         emit(
           state.copyWith(
             status: CallsStatus.error,
-            errorMessage: () => callType == CallType.video
-                ? 'Camera and microphone permissions are required for video calls'
-                : 'Microphone permission is required for calls',
+            errorType: () => callType == CallType.video
+                ? CallErrorType.permissionDeniedVideo
+                : CallErrorType.permissionDeniedAudio,
+            errorMessage: () => null,
           ),
         );
         return;
@@ -359,7 +370,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } catch (e) {
       _acceptedCallKitIds.remove(event.callId);
       await _cleanup();
-      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorType: () => CallErrorType.unknown,
+          errorMessage: () => e.toString(),
+        ),
+      );
     }
   }
 
@@ -443,7 +460,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         emit(
           state.copyWith(
             status: CallsStatus.error,
-            errorMessage: () => 'Failed to invite participant: $e',
+            errorType: () => CallErrorType.inviteFailed,
+            errorMessage: () => e.toString(),
           ),
         );
       }
@@ -642,7 +660,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       emit(
         state.copyWith(
           status: CallsStatus.error,
-          errorMessage: () => 'Unable to identify the call recipient',
+          errorType: () => CallErrorType.userUnavailable,
+          errorMessage: () => null,
         ),
       );
       return;
@@ -656,7 +675,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       _resolvedIncomingCallIds.remove(callId);
       _callKitDismissalsPending.remove(callId);
       debugPrint('[CallsBloc] Failed to decline CallKit call: $error\n$stackTrace');
-      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => error.toString()));
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorType: () => CallErrorType.unknown,
+          errorMessage: () => error.toString(),
+        ),
+      );
     }
   }
 
@@ -698,7 +723,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       emit(
         state.copyWith(
           status: CallsStatus.error,
-          errorMessage: () => 'Unable to identify the call recipient',
+          errorType: () => CallErrorType.userUnavailable,
+          errorMessage: () => null,
         ),
       );
       return;
@@ -711,7 +737,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         emit(
           state.copyWith(
             status: CallsStatus.error,
-            errorMessage: () => 'Call permissions were denied',
+            errorType: () => callData.callType == CallType.video
+                ? CallErrorType.permissionDeniedVideo
+                : CallErrorType.permissionDeniedAudio,
+            errorMessage: () => null,
           ),
         );
         return;
@@ -737,7 +766,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       _callKitDismissalsPending.remove(callData.callId);
       debugPrint('[CallsBloc] Failed to accept CallKit call: $error\n$stackTrace');
       await _cleanup();
-      emit(state.copyWith(status: CallsStatus.error, errorMessage: () => error.toString()));
+      emit(
+        state.copyWith(
+          status: CallsStatus.error,
+          errorType: () => CallErrorType.unknown,
+          errorMessage: () => error.toString(),
+        ),
+      );
     }
   }
 
@@ -808,7 +843,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
 
     await _cleanup();
-    emit(state.copyWith(status: CallsStatus.error, errorMessage: () => 'Recipient did not answer'));
+    emit(
+      state.copyWith(
+        status: CallsStatus.error,
+        errorType: () => CallErrorType.callTimeout,
+        errorMessage: () => null,
+      ),
+    );
   }
 
   void _startOutgoingCallTimeout() {
@@ -872,7 +913,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       } catch (e, st) {
         debugPrint('[CallsBloc] Error joining RTC session: $e\n$st');
         await _cleanup();
-        emit(state.copyWith(status: CallsStatus.error, errorMessage: () => e.toString()));
+        emit(
+          state.copyWith(
+            status: CallsStatus.error,
+            errorType: () => CallErrorType.unknown,
+            errorMessage: () => e.toString(),
+          ),
+        );
       }
     } else if (call.status == CallStatus.rejected) {
       debugPrint('[CallsBloc] Call was rejected by recipient');
@@ -913,7 +960,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       emit(
         state.copyWith(
           status: CallsStatus.error,
-          errorMessage: () => 'RTC connection failed. Check network or RTC settings.',
+          errorType: () => CallErrorType.rtcConnectionFailed,
+          errorMessage: () => null,
         ),
       );
     }

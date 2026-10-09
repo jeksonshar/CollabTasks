@@ -3,6 +3,7 @@ import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_rep
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/services/fake_call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
@@ -150,7 +151,7 @@ void main() {
       expect: () => [
         isA<CallsState>()
             .having((s) => s.status, 'status', CallsStatus.error)
-            .having((s) => s.errorMessage, 'errorMessage', contains('Microphone permission')),
+            .having((s) => s.errorType, 'errorType', CallErrorType.permissionDeniedAudio),
       ],
     );
 

@@ -870,4 +870,36 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get callParticipantCalling => '(Вызов...)';
+
+  @override
+  String get callErrorPermissionDeniedVideo =>
+      'Для видеозвонка необходимо предоставить доступ к камере и микрофону';
+
+  @override
+  String get callErrorPermissionDeniedAudio =>
+      'Для звонка необходимо предоставить доступ к микрофону';
+
+  @override
+  String get callErrorUserUnavailable =>
+      'Не удалось определить получателя звонка';
+
+  @override
+  String get callErrorTimeout => 'Собеседник не ответил';
+
+  @override
+  String get callErrorInviteFailed => 'Не удалось пригласить участника';
+
+  @override
+  String get callErrorRtcFailed =>
+      'Ошибка RTC-соединения. Проверьте сеть и настройки.';
+
+  @override
+  String get callErrorNetwork =>
+      'Ошибка сети. Проверьте подключение к интернету.';
+
+  @override
+  String get callErrorCallNotFound => 'Звонок не найден';
+
+  @override
+  String get callErrorUnknown => 'Произошла ошибка';
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
@@ -80,6 +81,20 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     context.read<CallsBloc>().add(EndCallRequested(callId: activeCallId));
   }
 
+  String _resolveCallError(CallsState state, AppLocalizations l) {
+    return switch (state.errorType) {
+      CallErrorType.permissionDeniedVideo => l.callErrorPermissionDeniedVideo,
+      CallErrorType.permissionDeniedAudio => l.callErrorPermissionDeniedAudio,
+      CallErrorType.userUnavailable => l.callErrorUserUnavailable,
+      CallErrorType.callTimeout => l.callErrorTimeout,
+      CallErrorType.inviteFailed => l.callErrorInviteFailed,
+      CallErrorType.rtcConnectionFailed => l.callErrorRtcFailed,
+      CallErrorType.networkError => l.callErrorNetwork,
+      CallErrorType.callNotFound => l.callErrorCallNotFound,
+      CallErrorType.unknown || null => state.errorMessage ?? l.callErrorUnknown,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -100,7 +115,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? localization.callStatusFailed),
+              content: Text(_resolveCallError(state, localization)),
               backgroundColor: theme.colorScheme.error,
             ),
           );
