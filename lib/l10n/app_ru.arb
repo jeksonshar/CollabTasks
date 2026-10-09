@@ -312,5 +312,52 @@
   "biometricOfferEnable": "Включить",
   "biometricOfferSkip": "Пропустить",
   "biometricSettingsTitle": "Биометрическая аутентификация",
-  "biometricSettingsSubtitle": "Использовать Face ID / отпечаток для разблокировки"
+  "biometricSettingsSubtitle": "Использовать Face ID / отпечаток для разблокировки",
+
+  "callIncomingAudio": "Входящий аудиозвонок...",
+  "callIncomingVideo": "Входящий видеозвонок...",
+  "callIncomingGroupAudio": "Входящий групповой аудиозвонок...",
+  "callIncomingGroupVideo": "Входящий групповой видеозвонок...",
+  "callActionDecline": "Отклонить",
+  "callActionAccept": "Ответить",
+  "callStatusCalling": "Вызов...",
+  "callStatusRinging": "Идут гудки...",
+  "callStatusConnecting": "Подключение...",
+  "callStatusConnectingAudio": "Подключение аудио...",
+  "callStatusConnected": "Подключено",
+  "callStatusReconnecting": "Переподключение...",
+  "callStatusConnectionUnstable": "Нестабильное соединение, переподключение...",
+  "callStatusConnectionFailed": "Ошибка подключения",
+  "callStatusDisconnected": "Отключено",
+  "callStatusEnding": "Завершение звонка...",
+  "callStatusFailed": "Ошибка звонка",
+  "callStatusError": "Ошибка звонка",
+  "callUserFallback": "Пользователь",
+  "callActionMuteMic": "Выключить микрофон",
+  "callActionUnmuteMic": "Включить микрофон",
+  "callActionEnableCamera": "Включить камеру",
+  "callActionDisableCamera": "Выключить камеру",
+  "callActionSwitchCamera": "Переключить камеру",
+  "callActionSpeaker": "Динамик",
+  "callActionEndCall": "Завершить звонок",
+  "callActionLeave": "Покинуть",
+  "callActionLeaveCall": "Покинуть звонок",
+  "callActionEndForAll": "Завершить для всех",
+  "callCameraOff": "Камера выкл",
+  "callCameraIsTurnedOff": "Камера выключена",
+  "callParticipantsCount": "{count} участников",
+  "@callParticipantsCount": {
+    "description": "Количество участников группового звонка",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "callInviteParticipant": "Пригласить участника",
+  "callEnterUserIdOrName": "Введите ID или имя пользователя",
+  "callParticipantLabel": "Участник",
+  "callActionInvite": "Пригласить",
+  "callParticipantYou": "(Вы)",
+  "callParticipantCalling": "(Вызов...)"
 }

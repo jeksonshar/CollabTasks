@@ -753,4 +753,121 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get biometricSettingsSubtitle =>
       'Использовать Face ID / отпечаток для разблокировки';
+
+  @override
+  String get callIncomingAudio => 'Входящий аудиозвонок...';
+
+  @override
+  String get callIncomingVideo => 'Входящий видеозвонок...';
+
+  @override
+  String get callIncomingGroupAudio => 'Входящий групповой аудиозвонок...';
+
+  @override
+  String get callIncomingGroupVideo => 'Входящий групповой видеозвонок...';
+
+  @override
+  String get callActionDecline => 'Отклонить';
+
+  @override
+  String get callActionAccept => 'Ответить';
+
+  @override
+  String get callStatusCalling => 'Вызов...';
+
+  @override
+  String get callStatusRinging => 'Идут гудки...';
+
+  @override
+  String get callStatusConnecting => 'Подключение...';
+
+  @override
+  String get callStatusConnectingAudio => 'Подключение аудио...';
+
+  @override
+  String get callStatusConnected => 'Подключено';
+
+  @override
+  String get callStatusReconnecting => 'Переподключение...';
+
+  @override
+  String get callStatusConnectionUnstable =>
+      'Нестабильное соединение, переподключение...';
+
+  @override
+  String get callStatusConnectionFailed => 'Ошибка подключения';
+
+  @override
+  String get callStatusDisconnected => 'Отключено';
+
+  @override
+  String get callStatusEnding => 'Завершение звонка...';
+
+  @override
+  String get callStatusFailed => 'Ошибка звонка';
+
+  @override
+  String get callStatusError => 'Ошибка звонка';
+
+  @override
+  String get callUserFallback => 'Пользователь';
+
+  @override
+  String get callActionMuteMic => 'Выключить микрофон';
+
+  @override
+  String get callActionUnmuteMic => 'Включить микрофон';
+
+  @override
+  String get callActionEnableCamera => 'Включить камеру';
+
+  @override
+  String get callActionDisableCamera => 'Выключить камеру';
+
+  @override
+  String get callActionSwitchCamera => 'Переключить камеру';
+
+  @override
+  String get callActionSpeaker => 'Динамик';
+
+  @override
+  String get callActionEndCall => 'Завершить звонок';
+
+  @override
+  String get callActionLeave => 'Покинуть';
+
+  @override
+  String get callActionLeaveCall => 'Покинуть звонок';
+
+  @override
+  String get callActionEndForAll => 'Завершить для всех';
+
+  @override
+  String get callCameraOff => 'Камера выкл';
+
+  @override
+  String get callCameraIsTurnedOff => 'Камера выключена';
+
+  @override
+  String callParticipantsCount(int count) {
+    return '$count участников';
+  }
+
+  @override
+  String get callInviteParticipant => 'Пригласить участника';
+
+  @override
+  String get callEnterUserIdOrName => 'Введите ID или имя пользователя';
+
+  @override
+  String get callParticipantLabel => 'Участник';
+
+  @override
+  String get callActionInvite => 'Пригласить';
+
+  @override
+  String get callParticipantYou => '(Вы)';
+
+  @override
+  String get callParticipantCalling => '(Вызов...)';
 }

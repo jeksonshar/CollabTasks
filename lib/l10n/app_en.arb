@@ -312,5 +312,52 @@
   "biometricOfferEnable": "Enable",
   "biometricOfferSkip": "Skip",
   "biometricSettingsTitle": "Biometric authentication",
-  "biometricSettingsSubtitle": "Use Face ID / fingerprint to unlock"
+  "biometricSettingsSubtitle": "Use Face ID / fingerprint to unlock",
+
+  "callIncomingAudio": "Incoming audio call...",
+  "callIncomingVideo": "Incoming video call...",
+  "callIncomingGroupAudio": "Incoming group audio call...",
+  "callIncomingGroupVideo": "Incoming group video call...",
+  "callActionDecline": "Decline",
+  "callActionAccept": "Accept",
+  "callStatusCalling": "Calling...",
+  "callStatusRinging": "Ringing...",
+  "callStatusConnecting": "Connecting...",
+  "callStatusConnectingAudio": "Connecting audio...",
+  "callStatusConnected": "Connected",
+  "callStatusReconnecting": "Reconnecting...",
+  "callStatusConnectionUnstable": "Connection unstable, reconnecting...",
+  "callStatusConnectionFailed": "Connection failed",
+  "callStatusDisconnected": "Disconnected",
+  "callStatusEnding": "Ending call...",
+  "callStatusFailed": "Call failed",
+  "callStatusError": "Call error",
+  "callUserFallback": "User",
+  "callActionMuteMic": "Mute",
+  "callActionUnmuteMic": "Unmute",
+  "callActionEnableCamera": "Enable Camera",
+  "callActionDisableCamera": "Disable Camera",
+  "callActionSwitchCamera": "Switch Camera",
+  "callActionSpeaker": "Speaker",
+  "callActionEndCall": "End Call",
+  "callActionLeave": "Leave",
+  "callActionLeaveCall": "Leave Call",
+  "callActionEndForAll": "End for All",
+  "callCameraOff": "Camera off",
+  "callCameraIsTurnedOff": "Camera is turned off",
+  "callParticipantsCount": "{count} participants",
+  "@callParticipantsCount": {
+    "description": "Number of participants in group call",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "callInviteParticipant": "Invite Participant",
+  "callEnterUserIdOrName": "Enter user ID or name",
+  "callParticipantLabel": "Participant",
+  "callActionInvite": "Invite",
+  "callParticipantYou": "(You)",
+  "callParticipantCalling": "(Calling...)"
 }

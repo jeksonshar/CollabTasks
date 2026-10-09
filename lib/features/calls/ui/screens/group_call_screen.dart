@@ -8,6 +8,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -80,34 +81,52 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
     context.read<CallsBloc>().add(EndCallRequested(callId: activeCallId));
   }
 
-  void _showInviteDialog(BuildContext context) {
+  String _formatRtcConnectionState(
+    RtcConnectionState connectionState,
+    AppLocalizations localization,
+  ) {
+    switch (connectionState) {
+      case RtcConnectionState.connecting:
+        return localization.callStatusConnecting;
+      case RtcConnectionState.connected:
+        return localization.callStatusConnected;
+      case RtcConnectionState.reconnecting:
+        return localization.callStatusReconnecting;
+      case RtcConnectionState.failed:
+        return localization.callStatusConnectionFailed;
+      case RtcConnectionState.disconnected:
+        return localization.callStatusDisconnected;
+    }
+  }
+
+  void _showInviteDialog(BuildContext context, AppLocalizations localization) {
     final textController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Invite Participant'),
+        title: Text(localization.callInviteParticipant),
         content: TextField(
           controller: textController,
-          decoration: const InputDecoration(
-            hintText: 'Enter user ID or name',
-            labelText: 'Participant',
+          decoration: InputDecoration(
+            hintText: localization.callEnterUserIdOrName,
+            labelText: localization.callParticipantLabel,
           ),
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(localization.cancel)),
           FilledButton(
             onPressed: () {
               final id = textController.text.trim();
               if (id.isNotEmpty) {
-                final displayName = id.contains('@') ? id : 'User $id';
+                final displayName = id.contains('@') ? id : '${localization.callUserFallback} $id';
                 context.read<CallsBloc>().add(
                   InviteParticipantRequested(userId: id, displayName: displayName),
                 );
                 Navigator.of(ctx).pop();
               }
             },
-            child: const Text('Invite'),
+            child: Text(localization.callActionInvite),
           ),
         ],
       ),
@@ -117,6 +136,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final localization = AppLocalizations.of(context)!;
 
     return BlocConsumer<CallsBloc, CallsState>(
       listener: (context, state) {
@@ -132,7 +152,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? 'Call error'),
+              content: Text(state.errorMessage ?? localization.callStatusError),
               backgroundColor: theme.colorScheme.error,
             ),
           );
@@ -190,7 +210,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                       Text(
                         state.rtcConnectionState == RtcConnectionState.connected
                             ? _formatDuration(_elapsedSeconds)
-                            : state.rtcConnectionState.name,
+                            : _formatRtcConnectionState(state.rtcConnectionState, localization),
                         style: TextStyle(
                           color: state.rtcConnectionState == RtcConnectionState.connected
                               ? Colors.greenAccent
@@ -206,7 +226,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '${participants.length} participants',
+                          localization.callParticipantsCount(participants.length),
                           style: const TextStyle(color: Colors.white70, fontSize: 10),
                         ),
                       ),
@@ -217,12 +237,12 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               actions: [
                 IconButton(
                   icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
-                  tooltip: 'Invite',
-                  onPressed: () => _showInviteDialog(context),
+                  tooltip: localization.callActionInvite,
+                  onPressed: () => _showInviteDialog(context, localization),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
-                  tooltip: 'Leave Call',
+                  tooltip: localization.callActionLeaveCall,
                   onPressed: _onLeaveCallPressed,
                 ),
               ],
@@ -235,10 +255,10 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                     width: double.infinity,
                     color: Colors.amber.shade900,
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: const Text(
-                      'Reconnecting...',
+                    child: Text(
+                      localization.callStatusReconnecting,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
 
@@ -246,12 +266,18 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: _buildParticipantGrid(context, state, participants, localUserId),
+                    child: _buildParticipantGrid(
+                      context,
+                      state,
+                      participants,
+                      localUserId,
+                      localization,
+                    ),
                   ),
                 ),
 
                 // Controls Bar
-                _buildControlsBar(context, state, isHost),
+                _buildControlsBar(context, state, isHost, localization),
               ],
             ),
           ),
@@ -265,6 +291,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
     CallsState state,
     List<CallParticipant> participants,
     String localUserId,
+    AppLocalizations localization,
   ) {
     if (participants.isEmpty) {
       return const Center(child: CircularProgressIndicator(color: Colors.white54));
@@ -371,7 +398,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Calling...',
+                                localization.callStatusCalling,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: crossAxisCount == 2 ? 10 : 11,
@@ -407,9 +434,9 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                           ),
                           child: Text(
                             isLocal
-                                ? '${participant.displayName} (You)'
+                                ? '${participant.displayName} ${localization.callParticipantYou}'
                                 : (participant.status == CallParticipantStatus.ringing
-                                      ? '${participant.displayName} (Calling...)'
+                                      ? '${participant.displayName} ${localization.callParticipantCalling}'
                                       : participant.displayName),
                             style: TextStyle(
                               color: Colors.white,
@@ -448,7 +475,12 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildControlsBar(BuildContext context, CallsState state, bool isHost) {
+  Widget _buildControlsBar(
+    BuildContext context,
+    CallsState state,
+    bool isHost,
+    AppLocalizations localization,
+  ) {
     return Container(
       color: Colors.black87,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
@@ -470,7 +502,9 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 state.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
                 color: state.isMicrophoneMuted ? Colors.redAccent : Colors.white,
               ),
-              tooltip: state.isMicrophoneMuted ? 'Unmute' : 'Mute',
+              tooltip: state.isMicrophoneMuted
+                  ? localization.callActionUnmuteMic
+                  : localization.callActionMuteMic,
               onPressed: () {
                 context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
               },
@@ -490,7 +524,9 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                   state.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
                   color: !state.isCameraEnabled ? Colors.redAccent : Colors.white,
                 ),
-                tooltip: state.isCameraEnabled ? 'Disable Camera' : 'Enable Camera',
+                tooltip: state.isCameraEnabled
+                    ? localization.callActionDisableCamera
+                    : localization.callActionEnableCamera,
                 onPressed: () {
                   context.read<CallsBloc>().add(const ToggleCameraRequested());
                 },
@@ -500,7 +536,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 padding: const EdgeInsets.all(10),
                 style: IconButton.styleFrom(backgroundColor: Colors.white24),
                 icon: const Icon(Icons.cameraswitch, color: Colors.white),
-                tooltip: 'Switch Camera',
+                tooltip: localization.callActionSwitchCamera,
                 onPressed: state.isCameraEnabled
                     ? () {
                         context.read<CallsBloc>().add(const SwitchCameraRequested());
@@ -518,7 +554,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               ),
               onPressed: _onLeaveCallPressed,
               icon: const Icon(Icons.call_end, size: 20),
-              label: const Text('Leave'),
+              label: Text(localization.callActionLeave),
             ),
 
             // End call for all (Host only)
@@ -526,7 +562,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               IconButton.filled(
                 style: IconButton.styleFrom(backgroundColor: Colors.red),
                 icon: const Icon(Icons.power_settings_new, color: Colors.white),
-                tooltip: 'End for All',
+                tooltip: localization.callActionEndForAll,
                 onPressed: _onEndCallPressed,
               ),
           ],

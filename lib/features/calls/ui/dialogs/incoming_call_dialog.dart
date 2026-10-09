@@ -3,6 +3,7 @@ import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -55,6 +56,18 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final localization = AppLocalizations.of(context)!;
+
+    final String callSubtitle;
+    if (widget.call.isGroup) {
+      callSubtitle = widget.call.type == CallType.video
+          ? localization.callIncomingGroupVideo
+          : localization.callIncomingGroupAudio;
+    } else {
+      callSubtitle = widget.call.type == CallType.video
+          ? localization.callIncomingVideo
+          : localization.callIncomingAudio;
+    }
 
     return BlocListener<CallsBloc, CallsState>(
       // Caller cancel / error closes the dialog here; accepted calls are
@@ -122,9 +135,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    widget.call.isGroup
-                        ? 'Incoming group ${widget.call.type.name} call...'
-                        : 'Incoming ${widget.call.type.name} call...',
+                    callSubtitle,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -155,7 +166,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                         child: const Icon(Icons.call_end, color: Colors.white, size: 28),
                       ),
                       const SizedBox(height: 8),
-                      const Text('Decline', style: TextStyle(fontSize: 12)),
+                      Text(localization.callActionDecline, style: const TextStyle(fontSize: 12)),
                     ],
                   ),
                   const SizedBox(width: 32),
@@ -182,7 +193,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text('Accept', style: TextStyle(fontSize: 12)),
+                      Text(localization.callActionAccept, style: const TextStyle(fontSize: 12)),
                     ],
                   ),
                 ],

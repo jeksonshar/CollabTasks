@@ -150,7 +150,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                 if (state is ChatLoaded) ...[
                   IconButton(
                     icon: const Icon(Icons.videocam),
-                    tooltip: 'Video Call',
+                    tooltip: localization.group_details_participantVideoCall,
                     onPressed: () {
                       final callId = const Uuid().v4();
                       final callerId = state.currentUserId;
@@ -180,7 +180,7 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                   ),
                   IconButton(
                     icon: const Icon(Icons.phone),
-                    tooltip: 'Audio Call',
+                    tooltip: localization.group_details_participantAudioCall,
                     onPressed: () {
                       final callId = const Uuid().v4();
                       final callerId = state.currentUserId;

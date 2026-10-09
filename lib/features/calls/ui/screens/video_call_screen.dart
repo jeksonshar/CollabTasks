@@ -6,6 +6,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -82,7 +83,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayName = widget.opponentName ?? 'User';
+    final localization = AppLocalizations.of(context)!;
+    final displayName = widget.opponentName ?? localization.callUserFallback;
 
     return BlocConsumer<CallsBloc, CallsState>(
       listener: (context, state) {
@@ -98,7 +100,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? 'Call failed'),
+              content: Text(state.errorMessage ?? localization.callStatusFailed),
               backgroundColor: theme.colorScheme.error,
             ),
           );
@@ -144,7 +146,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                 Positioned.fill(
                   child: isRemoteVideoActive
                       ? RtcVideoView(participantId: opponentId, isLocal: false, fit: BoxFit.cover)
-                      : _buildRemoteFallback(context, displayName, state),
+                      : _buildRemoteFallback(context, displayName, state, localization),
                 ),
 
                 // 2. Top Header with Call Info & Status
@@ -178,7 +180,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                _buildStatusHeader(context, state),
+                                _buildStatusHeader(context, state, localization),
                               ],
                             ),
                           ),
@@ -199,7 +201,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                   right: 16,
                   width: 110,
                   height: 160,
-                  child: _buildLocalPip(context, state, localUserId),
+                  child: _buildLocalPip(context, state, localUserId, localization),
                 ),
 
                 // 4. Reconnecting banner overlay
@@ -214,18 +216,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                         color: Colors.amber.shade900.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(
+                          const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Text(
-                            'Connection unstable, reconnecting...',
-                            style: TextStyle(color: Colors.white, fontSize: 13),
+                            localization.callStatusConnectionUnstable,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
                           ),
                         ],
                       ),
@@ -247,7 +249,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                           colors: [Colors.black87, Colors.transparent],
                         ),
                       ),
-                      child: _buildControlsBar(context, state),
+                      child: _buildControlsBar(context, state, localization),
                     ),
                   ),
                 ),
@@ -259,7 +261,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildRemoteFallback(BuildContext context, String displayName, CallsState state) {
+  Widget _buildRemoteFallback(
+    BuildContext context,
+    String displayName,
+    CallsState state,
+    AppLocalizations localization,
+  ) {
     return Container(
       color: const Color(0xFF14141E),
       child: Center(
@@ -294,11 +301,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
             ),
             const SizedBox(height: 8),
             if (state.status == CallsStatus.ringingOutgoing)
-              const Text('Ringing...', style: TextStyle(color: Colors.white70, fontSize: 14))
+              Text(
+                localization.callStatusRinging,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              )
             else
-              const Text(
-                'Camera is turned off',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+              Text(
+                localization.callCameraIsTurnedOff,
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
           ],
         ),
@@ -306,9 +316,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildStatusHeader(BuildContext context, CallsState state) {
+  Widget _buildStatusHeader(BuildContext context, CallsState state, AppLocalizations localization) {
     if (state.status == CallsStatus.ringingOutgoing) {
-      return const Text('Calling...', style: TextStyle(color: Colors.white70, fontSize: 13));
+      return Text(
+        localization.callStatusCalling,
+        style: const TextStyle(color: Colors.white70, fontSize: 13),
+      );
     }
     if (state.status == CallsStatus.active) {
       if (state.rtcConnectionState == RtcConnectionState.connected) {
@@ -321,18 +334,26 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
           ),
         );
       } else if (state.rtcConnectionState == RtcConnectionState.connecting) {
-        return const Text('Connecting...', style: TextStyle(color: Colors.white70, fontSize: 13));
+        return Text(
+          localization.callStatusConnecting,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        );
       } else if (state.rtcConnectionState == RtcConnectionState.reconnecting) {
-        return const Text(
-          'Reconnecting...',
-          style: TextStyle(color: Colors.amberAccent, fontSize: 13),
+        return Text(
+          localization.callStatusReconnecting,
+          style: const TextStyle(color: Colors.amberAccent, fontSize: 13),
         );
       }
     }
     return const SizedBox.shrink();
   }
 
-  Widget _buildLocalPip(BuildContext context, CallsState state, String localUserId) {
+  Widget _buildLocalPip(
+    BuildContext context,
+    CallsState state,
+    String localUserId,
+    AppLocalizations localization,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF222233),
@@ -345,13 +366,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
           ? RtcVideoView(participantId: localUserId, isLocal: true, mirror: true, fit: BoxFit.cover)
           : Container(
               color: Colors.black87,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.videocam_off, color: Colors.white54, size: 28),
-                    SizedBox(height: 4),
-                    Text('Camera off', style: TextStyle(color: Colors.white54, fontSize: 10)),
+                    const Icon(Icons.videocam_off, color: Colors.white54, size: 28),
+                    const SizedBox(height: 4),
+                    Text(
+                      localization.callCameraOff,
+                      style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    ),
                   ],
                 ),
               ),
@@ -359,7 +383,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildControlsBar(BuildContext context, CallsState state) {
+  Widget _buildControlsBar(BuildContext context, CallsState state, AppLocalizations localization) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -376,7 +400,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
             state.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
             color: state.isMicrophoneMuted ? Colors.redAccent : Colors.white,
           ),
-          tooltip: state.isMicrophoneMuted ? 'Unmute' : 'Mute',
+          tooltip: state.isMicrophoneMuted
+              ? localization.callActionUnmuteMic
+              : localization.callActionMuteMic,
           onPressed: () {
             context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
           },
@@ -395,7 +421,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
             state.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
             color: !state.isCameraEnabled ? Colors.redAccent : Colors.white,
           ),
-          tooltip: state.isCameraEnabled ? 'Disable Camera' : 'Enable Camera',
+          tooltip: state.isCameraEnabled
+              ? localization.callActionDisableCamera
+              : localization.callActionEnableCamera,
           onPressed: () {
             context.read<CallsBloc>().add(const ToggleCameraRequested());
           },
@@ -407,7 +435,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
           padding: const EdgeInsets.all(14),
           style: IconButton.styleFrom(backgroundColor: Colors.white24),
           icon: const Icon(Icons.cameraswitch, color: Colors.white),
-          tooltip: 'Switch Camera',
+          tooltip: localization.callActionSwitchCamera,
           onPressed: state.isCameraEnabled
               ? () {
                   context.read<CallsBloc>().add(const SwitchCameraRequested());

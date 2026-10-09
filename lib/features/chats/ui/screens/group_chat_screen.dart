@@ -131,7 +131,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                 if (state is GroupChatSuccess) ...[
                   IconButton(
                     icon: const Icon(Icons.videocam),
-                    tooltip: 'Group Video Call',
+                    tooltip: localizations.group_chat_videoCallTitle,
                     onPressed: () {
                       final callId = const Uuid().v4();
                       final myEmail = state.currentUserId.trim().toLowerCase();
@@ -165,7 +165,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                   ),
                   IconButton(
                     icon: const Icon(Icons.phone),
-                    tooltip: 'Group Audio Call',
+                    tooltip: localizations.group_chat_audioCallTitle,
                     onPressed: () {
                       final callId = const Uuid().v4();
                       final myEmail = state.currentUserId.trim().toLowerCase();

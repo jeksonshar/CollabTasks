@@ -310,5 +310,52 @@
   "biometricOfferEnable": "Увімкнути",
   "biometricOfferSkip": "Пропустити",
   "biometricSettingsTitle": "Біометрична аутентифікація",
-  "biometricSettingsSubtitle": "Використовувати Face ID / відбиток для розблокування"
+  "biometricSettingsSubtitle": "Використовувати Face ID / відбиток для розблокування",
+
+  "callIncomingAudio": "Вхідний аудіодзвінок...",
+  "callIncomingVideo": "Вхідний відеодзвінок...",
+  "callIncomingGroupAudio": "Вхідний груповий аудіодзвінок...",
+  "callIncomingGroupVideo": "Вхідний груповий відеодзвінок...",
+  "callActionDecline": "Відхилити",
+  "callActionAccept": "Відповісти",
+  "callStatusCalling": "Виклик...",
+  "callStatusRinging": "Йдуть гудки...",
+  "callStatusConnecting": "Підключення...",
+  "callStatusConnectingAudio": "Підключення аудіо...",
+  "callStatusConnected": "Підключено",
+  "callStatusReconnecting": "Перепідключення...",
+  "callStatusConnectionUnstable": "Нестабільне з'єднання, перепідключення...",
+  "callStatusConnectionFailed": "Помилка підключення",
+  "callStatusDisconnected": "Відключено",
+  "callStatusEnding": "Завершення дзвінка...",
+  "callStatusFailed": "Помилка дзвінка",
+  "callStatusError": "Помилка дзвінка",
+  "callUserFallback": "Користувач",
+  "callActionMuteMic": "Вимкнути мікрофон",
+  "callActionUnmuteMic": "Увімкнути мікрофон",
+  "callActionEnableCamera": "Увімкнути камеру",
+  "callActionDisableCamera": "Вимкнути камеру",
+  "callActionSwitchCamera": "Перемкнути камеру",
+  "callActionSpeaker": "Динамік",
+  "callActionEndCall": "Завершити дзвінок",
+  "callActionLeave": "Залишити",
+  "callActionLeaveCall": "Залишити дзвінок",
+  "callActionEndForAll": "Завершити для всіх",
+  "callCameraOff": "Камеру вимкнено",
+  "callCameraIsTurnedOff": "Камеру вимкнено",
+  "callParticipantsCount": "{count} учасників",
+  "@callParticipantsCount": {
+    "description": "Кількість учасників групового дзвінка",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "callInviteParticipant": "Запросити учасника",
+  "callEnterUserIdOrName": "Введіть ID або ім'я користувача",
+  "callParticipantLabel": "Учасник",
+  "callActionInvite": "Запросити",
+  "callParticipantYou": "(Ви)",
+  "callParticipantCalling": "(Виклик...)"
 }

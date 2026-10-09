@@ -35,6 +35,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -161,6 +162,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<CallsBloc>.value(
           value: callsBloc,
           child: const VideoCallScreen(
@@ -225,6 +228,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<CallsBloc>.value(
           value: callsBloc,
           child: const GroupCallScreen(
@@ -283,6 +288,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<CallsBloc>.value(
           value: callsBloc,
           child: const GroupCallScreen(
@@ -357,6 +364,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: BlocProvider<CallsBloc>.value(
             value: callsBloc,
             child: const GroupCallScreen(

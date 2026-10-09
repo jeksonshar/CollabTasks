@@ -4,6 +4,7 @@ import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.d
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -63,7 +64,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayName = widget.opponentName ?? 'User';
+    final localization = AppLocalizations.of(context)!;
+    final displayName = widget.opponentName ?? localization.callUserFallback;
 
     return BlocConsumer<CallsBloc, CallsState>(
       listener: (context, state) {
@@ -80,7 +82,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         } else if (state.status == CallsStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.errorMessage ?? 'Call failed'),
+              content: Text(state.errorMessage ?? localization.callStatusFailed),
               backgroundColor: theme.colorScheme.error,
             ),
           );
@@ -160,10 +162,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                   ),
                   const SizedBox(height: 12),
                   // Call status & connection state
-                  _buildStatusIndicator(context, state),
+                  _buildStatusIndicator(context, state, localization),
                   const Spacer(flex: 2),
                   // Bottom controls bar
-                  _buildControlsBar(context, state),
+                  _buildControlsBar(context, state, localization),
                   const SizedBox(height: 36),
                 ],
               ),
@@ -174,7 +176,11 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     );
   }
 
-  Widget _buildStatusIndicator(BuildContext context, CallsState state) {
+  Widget _buildStatusIndicator(
+    BuildContext context,
+    CallsState state,
+    AppLocalizations localization,
+  ) {
     final theme = Theme.of(context);
 
     if (state.status == CallsStatus.ringingOutgoing) {
@@ -184,7 +190,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
           const SizedBox(width: 8),
           Text(
-            'Calling...',
+            localization.callStatusCalling,
             style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
@@ -195,7 +201,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       switch (state.rtcConnectionState) {
         case RtcConnectionState.connecting:
           return Text(
-            'Connecting audio...',
+            localization.callStatusConnectingAudio,
             style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           );
         case RtcConnectionState.connected:
@@ -209,7 +215,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text('Connected', style: TextStyle(fontSize: 12, color: Colors.green)),
+              Text(
+                localization.callStatusConnected,
+                style: const TextStyle(fontSize: 12, color: Colors.green),
+              ),
             ],
           );
         case RtcConnectionState.reconnecting:
@@ -223,19 +232,19 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Reconnecting...',
+                localization.callStatusReconnecting,
                 style: theme.textTheme.titleMedium?.copyWith(color: Colors.amber[800]),
               ),
             ],
           );
         case RtcConnectionState.failed:
           return Text(
-            'Connection failed',
+            localization.callStatusConnectionFailed,
             style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.error),
           );
         case RtcConnectionState.disconnected:
           return Text(
-            'Disconnected',
+            localization.callStatusDisconnected,
             style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           );
       }
@@ -243,7 +252,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
     if (state.status == CallsStatus.terminating) {
       return Text(
-        'Ending call...',
+        localization.callStatusEnding,
         style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       );
     }
@@ -251,7 +260,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildControlsBar(BuildContext context, CallsState state) {
+  Widget _buildControlsBar(BuildContext context, CallsState state, AppLocalizations localization) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -266,7 +275,9 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
             state.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
             color: state.isMicrophoneMuted ? Colors.red : null,
           ),
-          tooltip: state.isMicrophoneMuted ? 'Unmute Mic' : 'Mute Mic',
+          tooltip: state.isMicrophoneMuted
+              ? localization.callActionUnmuteMic
+              : localization.callActionMuteMic,
           onPressed: () {
             context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
           },
@@ -284,7 +295,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           iconSize: 32,
           padding: const EdgeInsets.all(16),
           icon: Icon(state.isSpeakerEnabled ? Icons.volume_up : Icons.phone),
-          tooltip: 'Speaker',
+          tooltip: localization.callActionSpeaker,
           onPressed: () {
             context.read<CallsBloc>().add(const ToggleSpeakerRequested());
           },

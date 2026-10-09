@@ -753,4 +753,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get biometricSettingsSubtitle => 'Use Face ID / fingerprint to unlock';
+
+  @override
+  String get callIncomingAudio => 'Incoming audio call...';
+
+  @override
+  String get callIncomingVideo => 'Incoming video call...';
+
+  @override
+  String get callIncomingGroupAudio => 'Incoming group audio call...';
+
+  @override
+  String get callIncomingGroupVideo => 'Incoming group video call...';
+
+  @override
+  String get callActionDecline => 'Decline';
+
+  @override
+  String get callActionAccept => 'Accept';
+
+  @override
+  String get callStatusCalling => 'Calling...';
+
+  @override
+  String get callStatusRinging => 'Ringing...';
+
+  @override
+  String get callStatusConnecting => 'Connecting...';
+
+  @override
+  String get callStatusConnectingAudio => 'Connecting audio...';
+
+  @override
+  String get callStatusConnected => 'Connected';
+
+  @override
+  String get callStatusReconnecting => 'Reconnecting...';
+
+  @override
+  String get callStatusConnectionUnstable =>
+      'Connection unstable, reconnecting...';
+
+  @override
+  String get callStatusConnectionFailed => 'Connection failed';
+
+  @override
+  String get callStatusDisconnected => 'Disconnected';
+
+  @override
+  String get callStatusEnding => 'Ending call...';
+
+  @override
+  String get callStatusFailed => 'Call failed';
+
+  @override
+  String get callStatusError => 'Call error';
+
+  @override
+  String get callUserFallback => 'User';
+
+  @override
+  String get callActionMuteMic => 'Mute';
+
+  @override
+  String get callActionUnmuteMic => 'Unmute';
+
+  @override
+  String get callActionEnableCamera => 'Enable Camera';
+
+  @override
+  String get callActionDisableCamera => 'Disable Camera';
+
+  @override
+  String get callActionSwitchCamera => 'Switch Camera';
+
+  @override
+  String get callActionSpeaker => 'Speaker';
+
+  @override
+  String get callActionEndCall => 'End Call';
+
+  @override
+  String get callActionLeave => 'Leave';
+
+  @override
+  String get callActionLeaveCall => 'Leave Call';
+
+  @override
+  String get callActionEndForAll => 'End for All';
+
+  @override
+  String get callCameraOff => 'Camera off';
+
+  @override
+  String get callCameraIsTurnedOff => 'Camera is turned off';
+
+  @override
+  String callParticipantsCount(int count) {
+    return '$count participants';
+  }
+
+  @override
+  String get callInviteParticipant => 'Invite Participant';
+
+  @override
+  String get callEnterUserIdOrName => 'Enter user ID or name';
+
+  @override
+  String get callParticipantLabel => 'Participant';
+
+  @override
+  String get callActionInvite => 'Invite';
+
+  @override
+  String get callParticipantYou => '(You)';
+
+  @override
+  String get callParticipantCalling => '(Calling...)';
 }

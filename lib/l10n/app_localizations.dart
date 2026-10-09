@@ -1479,6 +1479,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use Face ID / fingerprint to unlock'**
   String get biometricSettingsSubtitle;
+
+  /// No description provided for @callIncomingAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming audio call...'**
+  String get callIncomingAudio;
+
+  /// No description provided for @callIncomingVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming video call...'**
+  String get callIncomingVideo;
+
+  /// No description provided for @callIncomingGroupAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming group audio call...'**
+  String get callIncomingGroupAudio;
+
+  /// No description provided for @callIncomingGroupVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming group video call...'**
+  String get callIncomingGroupVideo;
+
+  /// No description provided for @callActionDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get callActionDecline;
+
+  /// No description provided for @callActionAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get callActionAccept;
+
+  /// No description provided for @callStatusCalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Calling...'**
+  String get callStatusCalling;
+
+  /// No description provided for @callStatusRinging.
+  ///
+  /// In en, this message translates to:
+  /// **'Ringing...'**
+  String get callStatusRinging;
+
+  /// No description provided for @callStatusConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting...'**
+  String get callStatusConnecting;
+
+  /// No description provided for @callStatusConnectingAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting audio...'**
+  String get callStatusConnectingAudio;
+
+  /// No description provided for @callStatusConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get callStatusConnected;
+
+  /// No description provided for @callStatusReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting...'**
+  String get callStatusReconnecting;
+
+  /// No description provided for @callStatusConnectionUnstable.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection unstable, reconnecting...'**
+  String get callStatusConnectionUnstable;
+
+  /// No description provided for @callStatusConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed'**
+  String get callStatusConnectionFailed;
+
+  /// No description provided for @callStatusDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get callStatusDisconnected;
+
+  /// No description provided for @callStatusEnding.
+  ///
+  /// In en, this message translates to:
+  /// **'Ending call...'**
+  String get callStatusEnding;
+
+  /// No description provided for @callStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Call failed'**
+  String get callStatusFailed;
+
+  /// No description provided for @callStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Call error'**
+  String get callStatusError;
+
+  /// No description provided for @callUserFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get callUserFallback;
+
+  /// No description provided for @callActionMuteMic.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get callActionMuteMic;
+
+  /// No description provided for @callActionUnmuteMic.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get callActionUnmuteMic;
+
+  /// No description provided for @callActionEnableCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Camera'**
+  String get callActionEnableCamera;
+
+  /// No description provided for @callActionDisableCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable Camera'**
+  String get callActionDisableCamera;
+
+  /// No description provided for @callActionSwitchCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Camera'**
+  String get callActionSwitchCamera;
+
+  /// No description provided for @callActionSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaker'**
+  String get callActionSpeaker;
+
+  /// No description provided for @callActionEndCall.
+  ///
+  /// In en, this message translates to:
+  /// **'End Call'**
+  String get callActionEndCall;
+
+  /// No description provided for @callActionLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get callActionLeave;
+
+  /// No description provided for @callActionLeaveCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Call'**
+  String get callActionLeaveCall;
+
+  /// No description provided for @callActionEndForAll.
+  ///
+  /// In en, this message translates to:
+  /// **'End for All'**
+  String get callActionEndForAll;
+
+  /// No description provided for @callCameraOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera off'**
+  String get callCameraOff;
+
+  /// No description provided for @callCameraIsTurnedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera is turned off'**
+  String get callCameraIsTurnedOff;
+
+  /// Number of participants in group call
+  ///
+  /// In en, this message translates to:
+  /// **'{count} participants'**
+  String callParticipantsCount(int count);
+
+  /// No description provided for @callInviteParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Participant'**
+  String get callInviteParticipant;
+
+  /// No description provided for @callEnterUserIdOrName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter user ID or name'**
+  String get callEnterUserIdOrName;
+
+  /// No description provided for @callParticipantLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Participant'**
+  String get callParticipantLabel;
+
+  /// No description provided for @callActionInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get callActionInvite;
+
+  /// No description provided for @callParticipantYou.
+  ///
+  /// In en, this message translates to:
+  /// **'(You)'**
+  String get callParticipantYou;
+
+  /// No description provided for @callParticipantCalling.
+  ///
+  /// In en, this message translates to:
+  /// **'(Calling...)'**
+  String get callParticipantCalling;
 }
 
 class _AppLocalizationsDelegate
