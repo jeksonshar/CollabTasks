@@ -299,4 +299,79 @@ void main() {
     expect(find.text('Leaver User'), findsNothing);
     expect(find.text('Declined User'), findsNothing);
   });
+
+  testWidgets(
+    'GroupCallScreen renders >2 participants with long emails in 2-column grid without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final activeCall = Call(
+        id: 'group-multi',
+        callerId: 'user-host',
+        callerName: 'Team Standup',
+        calleeIds: const ['user-1', 'user-2', 'user-3'],
+        type: CallType.video,
+        status: CallStatus.active,
+        isGroup: true,
+        participants: [
+          CallParticipant(
+            userId: 'user-host',
+            displayName: 'hostverylongemail123@gmail.com',
+            role: CallParticipantRole.host,
+            status: CallParticipantStatus.connected,
+            joinedAt: DateTime.now(),
+          ),
+          const CallParticipant(
+            userId: 'user-1',
+            displayName: 'jeksonshar+005@gmail.com',
+            status: CallParticipantStatus.ringing,
+          ),
+          const CallParticipant(
+            userId: 'user-2',
+            displayName: 'anotherparticipant456@gmail.com',
+            status: CallParticipantStatus.connected,
+          ),
+          const CallParticipant(
+            userId: 'user-3',
+            displayName: 'thirdparticipant789@gmail.com',
+            status: CallParticipantStatus.connected,
+          ),
+        ],
+        createdAt: DateTime.now(),
+      );
+
+      callsBloc.emitState(
+        CallsState(
+          status: CallsStatus.active,
+          currentUserId: 'user-host',
+          activeCall: activeCall,
+          rtcConnectionState: RtcConnectionState.connected,
+          isMicrophoneMuted: true,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<CallsBloc>.value(
+            value: callsBloc,
+            child: const GroupCallScreen(
+              callId: 'group-multi',
+              groupName: 'Team Standup',
+              callType: CallType.video,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('4 participants'), findsOneWidget);
+      expect(find.text('hostverylongemail123@gmail.com (You)'), findsOneWidget);
+      expect(find.text('Calling...'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

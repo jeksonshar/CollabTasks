@@ -328,66 +328,116 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 )
               else
                 Center(
-                  child: CircleAvatar(
-                    radius: 36,
-                    backgroundColor: Colors.white12,
-                    backgroundImage: participant.avatarUrl != null
-                        ? NetworkImage(participant.avatarUrl!)
-                        : null,
-                    child: participant.avatarUrl == null
-                        ? Text(
-                            participant.displayName.isNotEmpty
-                                ? participant.displayName[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: crossAxisCount == 2 ? 28 : 36,
+                        backgroundColor: Colors.white12,
+                        backgroundImage: participant.avatarUrl != null
+                            ? NetworkImage(participant.avatarUrl!)
+                            : null,
+                        child: participant.avatarUrl == null
+                            ? Text(
+                                participant.displayName.isNotEmpty
+                                    ? participant.displayName[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  fontSize: crossAxisCount == 2 ? 22 : 28,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                      if (participant.status == CallParticipantStatus.ringing) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade900.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: crossAxisCount == 2 ? 8 : 10,
+                                height: crossAxisCount == 2 ? 8 : 10,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Calling...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: crossAxisCount == 2 ? 10 : 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
 
-              // Bottom participant name tag
+              // Bottom participant name tag & indicators
               Positioned(
                 bottom: 8,
                 left: 8,
                 right: 8,
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isLocal
-                            ? '${participant.displayName} (You)'
-                            : (participant.status == CallParticipantStatus.ringing
-                                  ? '${participant.displayName} (Calling...)'
-                                  : participant.displayName),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: crossAxisCount == 2 ? 6 : 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isLocal
+                                ? '${participant.displayName} (You)'
+                                : (participant.status == CallParticipantStatus.ringing
+                                      ? '${participant.displayName} (Calling...)'
+                                      : participant.displayName),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: crossAxisCount == 2 ? 11 : 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
                     // Mute icon
-                    if (isLocal ? state.isMicrophoneMuted : mediaState.isAudioMuted)
+                    if (isLocal ? state.isMicrophoneMuted : mediaState.isAudioMuted) ...[
+                      const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.8),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.mic_off, size: 14, color: Colors.white),
+                        child: Icon(
+                          Icons.mic_off,
+                          size: crossAxisCount == 2 ? 12 : 14,
+                          color: Colors.white,
+                        ),
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -401,7 +451,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   Widget _buildControlsBar(BuildContext context, CallsState state, bool isHost) {
     return Container(
       color: Colors.black87,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       child: SafeArea(
         top: false,
         child: Row(
@@ -410,7 +460,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
             // Mic mute toggle
             IconButton.filledTonal(
               iconSize: 26,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               style: IconButton.styleFrom(
                 backgroundColor: state.isMicrophoneMuted
                     ? Colors.red.withValues(alpha: 0.3)
@@ -430,7 +480,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
             if (widget.callType == CallType.video) ...[
               IconButton.filledTonal(
                 iconSize: 26,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 style: IconButton.styleFrom(
                   backgroundColor: !state.isCameraEnabled
                       ? Colors.red.withValues(alpha: 0.3)
@@ -447,7 +497,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               ),
               IconButton.filledTonal(
                 iconSize: 26,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 style: IconButton.styleFrom(backgroundColor: Colors.white24),
                 icon: const Icon(Icons.cameraswitch, color: Colors.white),
                 tooltip: 'Switch Camera',
@@ -464,6 +514,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.amber.shade900,
                 foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               onPressed: _onLeaveCallPressed,
               icon: const Icon(Icons.call_end, size: 20),

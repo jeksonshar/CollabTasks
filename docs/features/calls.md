@@ -27,6 +27,7 @@
 
 ### Presentation Layer (UI & Bloc)
 - **Native Actions:** Use cases can be called from native CallKit action callbacks without requiring the in-app call UI.
+- **Responsive Group Call Grid & Controls:** `GroupCallScreen` renders 1-2 participants in single-column layout and switches to a 2-column `GridView` for 3+ participants. Grid cells responsively scale avatar radius, text sizes, and padding depending on column count. Participant name tags wrap in an `Expanded` container with `TextOverflow.ellipsis`, ensuring long email addresses and suffixes (`(You)`, `(Calling...)`) never trigger `RenderFlex` overflows. For ringing participants, a prominent status badge with spinner renders below the center avatar. The bottom controls bar uses an evenly-spaced full-width row with compact padding, ensuring comfortable button distribution across the entire screen width without unwanted margins.
 
 ## 3. Testing Matrix
 - [ ] **Unit:** Verify repository calls, RTC session result, alert stop, and CallKit dismissal.
