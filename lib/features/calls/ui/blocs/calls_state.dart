@@ -16,6 +16,11 @@ class CallsState extends Equatable {
   final bool isMicrophoneMuted;
   final bool isCameraEnabled;
   final bool isSpeakerEnabled;
+
+  /// True only when the user explicitly disabled the camera via the UI toggle.
+  /// The lifecycle handler uses this to avoid restoring a camera that the user
+  /// intentionally turned off before backgrounding the app.
+  final bool isCameraManuallyDisabled;
   final List<RtcParticipantMediaState> participantMediaStates;
   final CallErrorType? errorType;
   final String? errorMessage;
@@ -29,6 +34,7 @@ class CallsState extends Equatable {
     this.isMicrophoneMuted = false,
     this.isSpeakerEnabled = false,
     this.isCameraEnabled = true,
+    this.isCameraManuallyDisabled = false,
     this.participantMediaStates = const [],
     this.errorType,
     this.errorMessage,
@@ -43,6 +49,7 @@ class CallsState extends Equatable {
     bool? isMicrophoneMuted,
     bool? isSpeakerEnabled,
     bool? isCameraEnabled,
+    bool? isCameraManuallyDisabled,
     List<RtcParticipantMediaState>? participantMediaStates,
     CallErrorType? Function()? errorType,
     String? Function()? errorMessage,
@@ -56,6 +63,7 @@ class CallsState extends Equatable {
       isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
       isSpeakerEnabled: isSpeakerEnabled ?? this.isSpeakerEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
+      isCameraManuallyDisabled: isCameraManuallyDisabled ?? this.isCameraManuallyDisabled,
       participantMediaStates: participantMediaStates ?? this.participantMediaStates,
       errorType: errorType != null ? errorType() : this.errorType,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
@@ -72,6 +80,7 @@ class CallsState extends Equatable {
     isMicrophoneMuted,
     isSpeakerEnabled,
     isCameraEnabled,
+    isCameraManuallyDisabled,
     participantMediaStates,
     errorType,
     errorMessage,

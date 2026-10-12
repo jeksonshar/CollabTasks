@@ -474,13 +474,23 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     switch (event.lifecycleState) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        // Disable the camera when backgrounded, but only if the user had not
+        // already turned it off manually (avoid double-toggling Agora SDK).
         if (state.isCameraEnabled && state.activeCall?.type == CallType.video) {
           await _toggleCameraUseCase(false);
+          // Do NOT set isCameraManuallyDisabled here — this is a system pause,
+          // not a user action. The flag remains as it was so resumed can restore
+          // the camera if the user had not explicitly disabled it.
           emit(state.copyWith(isCameraEnabled: false));
         }
         break;
       case AppLifecycleState.resumed:
-        if (!state.isCameraEnabled && state.activeCall?.type == CallType.video) {
+        // Restore the camera only if:
+        //   1. it is currently off (was paused by the system), AND
+        //   2. the user did NOT manually disable it before backgrounding.
+        if (!state.isCameraEnabled &&
+            !state.isCameraManuallyDisabled &&
+            state.activeCall?.type == CallType.video) {
           await _toggleCameraUseCase(true);
           emit(state.copyWith(isCameraEnabled: true));
         }
@@ -516,7 +526,14 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     final newEnabled = !state.isCameraEnabled;
     try {
       await _toggleCameraUseCase(newEnabled);
-      emit(state.copyWith(isCameraEnabled: newEnabled));
+      emit(
+        state.copyWith(
+          isCameraEnabled: newEnabled,
+          // Track that the user explicitly disabled/enabled the camera so
+          // the lifecycle handler does not restore it against the user's intent.
+          isCameraManuallyDisabled: !newEnabled,
+        ),
+      );
     } catch (e, st) {
       debugPrint('[CallsBloc] Failed to toggle camera: $e\n$st');
       emit(
