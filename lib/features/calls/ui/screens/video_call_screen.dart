@@ -120,6 +120,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
             ),
           );
           Navigator.of(context).pop();
+        } else if (state.errorType != null && state.status == CallsStatus.active) {
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(_resolveCallError(state, localization)),
+                backgroundColor: theme.colorScheme.error,
+                duration: const Duration(seconds: 3),
+              ),
+            );
         }
       },
       builder: (context, state) {

@@ -172,6 +172,18 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
             ),
           );
           Navigator.of(context).pop();
+        } else if (state.errorType != null && state.status == CallsStatus.active) {
+          // Non-fatal error during an active call (e.g. toggle mic/camera failed).
+          // Show a SnackBar but do NOT pop the screen — the call continues.
+          ScaffoldMessenger.of(context)
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(_resolveCallError(state, localization)),
+                backgroundColor: theme.colorScheme.error,
+                duration: const Duration(seconds: 3),
+              ),
+            );
         }
       },
       builder: (context, state) {

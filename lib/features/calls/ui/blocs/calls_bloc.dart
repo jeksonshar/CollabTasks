@@ -498,24 +498,64 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     Emitter<CallsState> emit,
   ) async {
     final newMuted = !state.isMicrophoneMuted;
-    await _toggleMicrophoneUseCase(newMuted);
-    emit(state.copyWith(isMicrophoneMuted: newMuted));
+    try {
+      await _toggleMicrophoneUseCase(newMuted);
+      emit(state.copyWith(isMicrophoneMuted: newMuted));
+    } catch (e, st) {
+      debugPrint('[CallsBloc] Failed to toggle microphone: $e\n$st');
+      emit(
+        state.copyWith(
+          errorType: () => CallErrorType.rtcConnectionFailed,
+          errorMessage: () => e.toString(),
+        ),
+      );
+    }
   }
 
   Future<void> _onToggleCamera(ToggleCameraRequested event, Emitter<CallsState> emit) async {
     final newEnabled = !state.isCameraEnabled;
-    await _toggleCameraUseCase(newEnabled);
-    emit(state.copyWith(isCameraEnabled: newEnabled));
+    try {
+      await _toggleCameraUseCase(newEnabled);
+      emit(state.copyWith(isCameraEnabled: newEnabled));
+    } catch (e, st) {
+      debugPrint('[CallsBloc] Failed to toggle camera: $e\n$st');
+      emit(
+        state.copyWith(
+          errorType: () => CallErrorType.rtcConnectionFailed,
+          errorMessage: () => e.toString(),
+        ),
+      );
+    }
   }
 
   Future<void> _onToggleSpeaker(ToggleSpeakerRequested event, Emitter<CallsState> emit) async {
     final newEnabled = !state.isSpeakerEnabled;
-    await _toggleSpeakerUseCase(newEnabled);
-    emit(state.copyWith(isSpeakerEnabled: newEnabled));
+    try {
+      await _toggleSpeakerUseCase(newEnabled);
+      emit(state.copyWith(isSpeakerEnabled: newEnabled));
+    } catch (e, st) {
+      debugPrint('[CallsBloc] Failed to toggle speaker: $e\n$st');
+      emit(
+        state.copyWith(
+          errorType: () => CallErrorType.rtcConnectionFailed,
+          errorMessage: () => e.toString(),
+        ),
+      );
+    }
   }
 
   Future<void> _onSwitchCamera(SwitchCameraRequested event, Emitter<CallsState> emit) async {
-    await _switchCameraUseCase();
+    try {
+      await _switchCameraUseCase();
+    } catch (e, st) {
+      debugPrint('[CallsBloc] Failed to switch camera: $e\n$st');
+      emit(
+        state.copyWith(
+          errorType: () => CallErrorType.rtcConnectionFailed,
+          errorMessage: () => e.toString(),
+        ),
+      );
+    }
   }
 
   void _onListenIncomingCallsStarted(ListenIncomingCallsStarted event, Emitter<CallsState> emit) {
