@@ -1,0 +1,198 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function authIds() {
+      return request.auth.token.keys().hasAny(['email'])
+        ? [request.auth.uid, request.auth.token.email.lower()]
+        : [request.auth.uid];
+    }
+
+    function isIdentity(value) {
+      return signedIn() && value is string && value in authIds();
+    }
+
+    function isCallCaller(call) {
+      return isIdentity(call.callerId);
+    }
+
+    function isCallMember(call) {
+      return signedIn() && (
+        isCallCaller(call) ||
+        call.calleeIds.hasAny(authIds())
+      );
+    }
+
+    function validCallCreate(callId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'id', 'callerId', 'callerName', 'callerAvatarUrl', 'calleeIds',
+          'type', 'status', 'isGroup', 'groupId', 'participants',
+          'createdAtMillis', 'startedAtMillis', 'endedAtMillis'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'callerId', 'callerName', 'callerAvatarUrl', 'calleeIds',
+          'type', 'status', 'isGroup', 'groupId', 'participants',
+          'createdAtMillis', 'startedAtMillis', 'endedAtMillis'
+        ]) &&
+        data.id == callId &&
+        isIdentity(data.callerId) &&
+        data.callerName is string &&
+        (data.callerAvatarUrl == null || data.callerAvatarUrl is string) &&
+        data.calleeIds is list && data.calleeIds.size() > 0 && data.calleeIds.size() <= 50 &&
+        data.calleeIds.toSet().size() == data.calleeIds.size() &&
+        !data.calleeIds.hasAny([data.callerId]) &&
+        data.type in ['audio', 'video'] &&
+        data.status == 'ringing' &&
+        data.isGroup is bool &&
+        (data.groupId == null || data.groupId is string) &&
+        data.participants is list && data.participants.size() == data.calleeIds.size() + 1 &&
+        data.participants[0].keys().hasOnly([
+          'userId', 'displayName', 'avatarUrl', 'role', 'status', 'joinedAtMillis'
+        ]) &&
+        data.participants[0].userId == data.callerId &&
+        data.participants[0].role == 'host' &&
+        data.participants[0].status == 'connected' &&
+        data.participants[0].joinedAtMillis is int &&
+        data.createdAtMillis is int &&
+        data.startedAtMillis == null && data.endedAtMillis == null;
+    }
+
+    function changedFields() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+
+    function calleeAction() {
+      return resource.data.calleeIds.hasAny(authIds());
+    }
+
+    function acceptCall() {
+      return calleeAction() &&
+        resource.data.status == 'ringing' &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.startedAtMillis is int &&
+        (resource.data.startedAtMillis == null ||
+          request.resource.data.startedAtMillis == resource.data.startedAtMillis) &&
+        changedFields().hasOnly(['status', 'startedAtMillis', 'participants']);
+    }
+
+    function rejectCall() {
+      return calleeAction() &&
+        resource.data.status in ['ringing', 'active'] &&
+        request.resource.data.status in [resource.data.status, 'rejected'] &&
+        changedFields().hasOnly(['status', 'endedAtMillis', 'participants']) &&
+        (request.resource.data.status == 'rejected'
+          ? request.resource.data.endedAtMillis is int
+          : request.resource.data.endedAtMillis == resource.data.endedAtMillis);
+    }
+
+    function cancelCall() {
+      return isCallCaller(resource.data) &&
+        resource.data.status == 'ringing' &&
+        request.resource.data.status == 'cancelled' &&
+        request.resource.data.endedAtMillis is int &&
+        changedFields().hasOnly(['status', 'endedAtMillis']);
+    }
+
+    function endCall() {
+      return isCallMember(resource.data) &&
+        resource.data.status in ['ringing', 'active'] &&
+        request.resource.data.status == 'ended' &&
+        request.resource.data.endedAtMillis is int &&
+        changedFields().hasOnly(['status', 'endedAtMillis']);
+    }
+
+    function leaveCall() {
+      return isCallMember(resource.data) &&
+        resource.data.status in ['ringing', 'active'] &&
+        request.resource.data.status in [resource.data.status, 'ended'] &&
+        request.resource.data.calleeIds is list &&
+        request.resource.data.participants is list &&
+        request.resource.data.calleeIds.toSet()
+          .difference(resource.data.calleeIds.toSet()).size() == 0 &&
+        (isCallCaller(resource.data)
+          ? request.resource.data.calleeIds.toSet()
+              .difference(resource.data.calleeIds.toSet()).size() == 0
+          : resource.data.calleeIds.hasAny(authIds()) &&
+            !request.resource.data.calleeIds.hasAny(authIds()) &&
+            resource.data.calleeIds.toSet()
+              .difference(request.resource.data.calleeIds.toSet()).size() == 1) &&
+        changedFields().hasOnly([
+          'status', 'endedAtMillis', 'calleeIds', 'participants'
+        ]) &&
+        (request.resource.data.status == 'ended'
+          ? request.resource.data.endedAtMillis is int
+          : request.resource.data.endedAtMillis == resource.data.endedAtMillis);
+    }
+
+    function inviteParticipant() {
+      return isCallCaller(resource.data) &&
+        resource.data.status in ['ringing', 'active'] &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.calleeIds is list &&
+        request.resource.data.participants is list &&
+        request.resource.data.calleeIds.size() <= 50 &&
+        request.resource.data.participants.size() <= 51 &&
+        request.resource.data.calleeIds.toSet().size() ==
+          request.resource.data.calleeIds.size() &&
+        request.resource.data.calleeIds.toSet()
+          .difference(resource.data.calleeIds.toSet()).size() <= 1 &&
+        resource.data.calleeIds.toSet()
+          .difference(request.resource.data.calleeIds.toSet()).size() == 0 &&
+        request.resource.data.participants.size() in [
+          resource.data.participants.size(), resource.data.participants.size() + 1
+        ] &&
+        changedFields().hasOnly(['calleeIds', 'participants']);
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /tasks/{taskId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /tokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null;
+
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    match /workingGroups/{groupId} {
+      allow read, write: if request.auth != null;
+
+      match /participants/{participantId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /tasks/{taskId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    match /calls/{callId} {
+      allow get, list: if isCallMember(resource.data);
+      allow create: if signedIn() && !exists(/databases/$(database)/documents/calls/$(callId)) &&
+        validCallCreate(callId);
+      allow update: if acceptCall() || rejectCall() || cancelCall() || endCall() ||
+        leaveCall() || inviteParticipant();
+      allow delete: if false;
+    }
+  }
+}
