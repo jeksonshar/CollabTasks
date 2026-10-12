@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_kit_service.dart';
-import 'package:collab_tasks/features/calls/domain/usecases/decline_incoming_call_usecase.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/decline_incoming_call_usecase.dart';
 import 'package:collab_tasks/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
