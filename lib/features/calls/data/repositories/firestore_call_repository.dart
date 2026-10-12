@@ -84,47 +84,51 @@ class FirestoreCallRepository implements CallRepository {
       return filtered;
     }
 
-    // ignore: close_sinks
-    final controller = StreamController<List<Call>>.broadcast();
+    // Single-subscription controller: onListen starts both Firestore
+    // subscriptions; onCancel cancels them and closes the controller so no
+    // resources are retained after the sole listener unsubscribes.
+    late final StreamController<List<Call>> controller;
     StreamSubscription? sub1;
     StreamSubscription? sub2;
 
-    controller.onListen = () {
-      sub1 = ringingStream.listen(
-        (snapshot) {
-          ringingCallsMap.clear();
-          for (final doc in snapshot.docs) {
-            ringingCallsMap[doc.id] = Call.fromMap(doc.data());
-          }
-          if (!controller.isClosed) {
-            controller.add(filterAndCombine());
-          }
-        },
-        onError: (error) {
-          debugPrint('[FirestoreCallRepository] Error in ringing stream($userId): $error');
-        },
-      );
+    controller = StreamController<List<Call>>(
+      onListen: () {
+        sub1 = ringingStream.listen(
+          (snapshot) {
+            ringingCallsMap.clear();
+            for (final doc in snapshot.docs) {
+              ringingCallsMap[doc.id] = Call.fromMap(doc.data());
+            }
+            if (!controller.isClosed) {
+              controller.add(filterAndCombine());
+            }
+          },
+          onError: (error) {
+            debugPrint('[FirestoreCallRepository] Error in ringing stream($userId): $error');
+          },
+        );
 
-      sub2 = activeStream.listen(
-        (snapshot) {
-          activeCallsMap.clear();
-          for (final doc in snapshot.docs) {
-            activeCallsMap[doc.id] = Call.fromMap(doc.data());
-          }
-          if (!controller.isClosed) {
-            controller.add(filterAndCombine());
-          }
-        },
-        onError: (error) {
-          debugPrint('[FirestoreCallRepository] Error in active stream($userId): $error');
-        },
-      );
-    };
-
-    controller.onCancel = () {
-      sub1?.cancel();
-      sub2?.cancel();
-    };
+        sub2 = activeStream.listen(
+          (snapshot) {
+            activeCallsMap.clear();
+            for (final doc in snapshot.docs) {
+              activeCallsMap[doc.id] = Call.fromMap(doc.data());
+            }
+            if (!controller.isClosed) {
+              controller.add(filterAndCombine());
+            }
+          },
+          onError: (error) {
+            debugPrint('[FirestoreCallRepository] Error in active stream($userId): $error');
+          },
+        );
+      },
+      onCancel: () {
+        sub1?.cancel();
+        sub2?.cancel();
+        controller.close();
+      },
+    );
 
     return controller.stream;
   }
