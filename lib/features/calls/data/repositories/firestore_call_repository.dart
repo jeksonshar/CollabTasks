@@ -474,6 +474,8 @@ class FirestoreCallRepository implements CallRepository {
       extra: {
         'provider': 'agora',
         'mediaType': mediaType,
+        'isGroup': call?.isGroup ?? false,
+        'callName': call?.callerName ?? '',
         'appId': AgoraConfig.appId,
         // Pass the int UID so AgoraRtcService uses the same value in joinChannel
         'uid': localUid,

@@ -430,7 +430,13 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
       navigator.pop();
       _incomingCallDialogId = null;
     }
-    final route = callData.isGroup
+    final activeCall = context.read<CallsBloc>().state.activeCall;
+    final isGroupCall =
+        callData.isGroup || (activeCall?.id == callData.callId && activeCall!.isGroup);
+    debugPrint(
+      '[CallNavigation] Resolved call ${callData.callId}: isGroup=$isGroupCall, type=${callData.callType}',
+    );
+    final route = isGroupCall
         ? MaterialPageRoute<void>(
             builder: (_) => GroupCallScreen(
               callId: callData.callId,

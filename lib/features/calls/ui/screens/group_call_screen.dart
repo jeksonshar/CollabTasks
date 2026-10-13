@@ -45,6 +45,21 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncCallTimer(context.read<CallsBloc>().state);
+  }
+
+  void _syncCallTimer(CallsState state) {
+    if (state.status == CallsStatus.active &&
+        state.rtcConnectionState == RtcConnectionState.connected) {
+      _startTimerIfNeeded();
+    } else if (state.status != CallsStatus.active) {
+      _stopTimer();
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _durationTimer?.cancel();
@@ -158,15 +173,13 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
           (previous.status != current.status &&
               (current.status == CallsStatus.idle || current.status == CallsStatus.error)) ||
           (current.status == CallsStatus.active &&
+              (previous.status != CallsStatus.active ||
+                  previous.rtcConnectionState != current.rtcConnectionState)) ||
+          (current.status == CallsStatus.active &&
               current.errorType != null &&
               previous.errorType != current.errorType),
       listener: (context, state) {
-        if (state.status == CallsStatus.active &&
-            state.rtcConnectionState == RtcConnectionState.connected) {
-          _startTimerIfNeeded();
-        } else if (state.status != CallsStatus.active) {
-          _stopTimer();
-        }
+        _syncCallTimer(state);
 
         if (state.status == CallsStatus.idle || state.status == CallsStatus.error) {
           Navigator.of(context).pop();
@@ -194,13 +207,30 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                 false);
 
         // Merge domain participants with RTC media states (excluding participants who left or declined)
-        final participants = (state.activeCall?.participants ?? [])
+        final callParticipants = (state.activeCall?.participants ?? [])
             .where(
               (p) =>
                   p.status != CallParticipantStatus.left &&
                   p.status != CallParticipantStatus.declined,
             )
             .toList();
+        // CallKit can navigate to the group screen before the first Firestore
+        // snapshot arrives. RTC may already know about local/remote users, so
+        // render those tiles instead of keeping the whole grid on a spinner.
+        final participants = callParticipants.isNotEmpty
+            ? callParticipants
+            : state.participantMediaStates
+                  .map(
+                    (mediaState) => CallParticipant(
+                      userId: mediaState.isLocal ? localUserId : mediaState.participantId,
+                      displayName: mediaState.isLocal ? localUserId : mediaState.participantId,
+                      role: mediaState.isLocal
+                          ? CallParticipantRole.host
+                          : CallParticipantRole.participant,
+                      status: CallParticipantStatus.connected,
+                    ),
+                  )
+                  .toList();
 
         final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
 

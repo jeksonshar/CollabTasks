@@ -151,7 +151,11 @@ Map<String, Object?> _callDataMap(CallDataEntity callData) => {
 
 @pragma('vm:entry-point')
 void callKitAcceptedFromKilledHandler(Map<dynamic, dynamic> body) {
-  final callData = CallDataEntity.fromMap(Map<String, dynamic>.from(body));
+  final extras = body['extra'];
+  final callData = CallDataEntity.fromMap({
+    if (extras is Map) ...Map<String, dynamic>.from(extras),
+    ...Map<String, dynamic>.from(body),
+  });
   if (callData.callId.isEmpty) return;
   _callKitAcceptedActionController.add(callData);
   unawaited(_persistAcceptedCall(callData));

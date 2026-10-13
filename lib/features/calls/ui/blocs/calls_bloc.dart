@@ -76,6 +76,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   Timer? _outgoingCallTimeoutTimer;
   final Set<String> _callKitDismissalsPending = {};
   final Set<String> _acceptedCallKitIds = {};
+  final Set<String> _joiningOrJoinedCallIds = {};
   final Set<String> _pendingCallKitAcceptIds = {};
   final Set<String> _resolvedIncomingCallIds = {};
   final List<CallEvent> _pendingCallKitEvents = [];
@@ -764,6 +765,22 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _acceptCallKitData(CallDataEntity callData, Emitter<CallsState> emit) async {
+    final trackedCallId = _trackedCallId;
+    final competingAcceptId = {
+      ..._acceptedCallKitIds,
+      ..._pendingCallKitAcceptIds,
+    }.firstWhere((pendingCallId) => pendingCallId != callData.callId, orElse: () => '');
+    final callIdBeingHandled =
+        trackedCallId ?? (competingAcceptId.isEmpty ? null : competingAcceptId);
+    if (callIdBeingHandled != null && callIdBeingHandled != callData.callId) {
+      debugPrint(
+        '[CallsBloc] Ignoring stale CallKit accept for ${callData.callId}; '
+        'currently handling $callIdBeingHandled',
+      );
+      _pendingCallKitAcceptIds.remove(callData.callId);
+      await _dismissCallKitCall(callData.callId);
+      return;
+    }
     if (!_acceptedCallKitIds.add(callData.callId)) return;
     _pendingCallKitAcceptIds.remove(callData.callId);
     _resolvedIncomingCallIds.add(callData.callId);
@@ -801,9 +818,26 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       // to observe the caller ending the accepted call.
       await _subscribeToActiveCall(callData.callId);
       final session = await useCase(callData: callData, userId: userId);
+      if (session == null) {
+        debugPrint('[CallsBloc] Ignoring stale CallKit accept for ${callData.callId}');
+        await _finishCall(emit, callId: callData.callId, currentUserId: userId);
+        return;
+      }
+      final resolvedCallData = callData.copyWith(
+        callType: session.extra['mediaType'] == CallType.video.name
+            ? CallType.video
+            : CallType.audio,
+        isGroup: session.extra['isGroup'] is bool
+            ? session.extra['isGroup'] as bool
+            : callData.isGroup,
+        displayName:
+            session.extra['callName'] is String && (session.extra['callName'] as String).isNotEmpty
+            ? session.extra['callName'] as String
+            : callData.displayName,
+      );
       emit(
         CallAcceptedState(
-          callData: callData,
+          callData: resolvedCallData,
           session: session,
           activeCall: state.activeCall,
           currentUserId: userId,
@@ -911,8 +945,28 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   Future<void> _onActiveCallUpdated(ActiveCallUpdated event, Emitter<CallsState> emit) async {
     final call = event.call;
-    if (state.status == CallsStatus.idle && state.activeCall == null && state.session == null) {
+    final watchedCallId = event.watchedCallId ?? call?.id;
+    final trackedCallId = _trackedCallId;
+    if (watchedCallId != null && trackedCallId != null && watchedCallId != trackedCallId) {
+      debugPrint(
+        '[CallsBloc] Ignoring stale active-call update for $watchedCallId; '
+        'currently handling $trackedCallId',
+      );
+      return;
+    }
+    if (call != null && watchedCallId != null && call.id != watchedCallId) {
+      debugPrint('[CallsBloc] Ignoring mismatched active-call snapshot for $watchedCallId');
+      return;
+    }
+    if (state.status == CallsStatus.idle && call == null) {
       debugPrint('[CallsBloc] Ignoring stale active-call update while idle');
+      return;
+    }
+    if (state.status == CallsStatus.idle &&
+        state.activeCall == null &&
+        state.session == null &&
+        call?.id == state.terminalCallId) {
+      debugPrint('[CallsBloc] Ignoring terminal update for ${call?.id} while idle');
       return;
     }
     if (call == null) {
@@ -925,7 +979,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     emit(state.copyWith(activeCall: () => call));
 
     // Caller scenario: callee accepted -> transition from ringing to active & join RTC
-    if (state.status == CallsStatus.ringingOutgoing && call.status == CallStatus.active) {
+    if (state.status == CallsStatus.ringingOutgoing &&
+        state.activeCall?.id == call.id &&
+        !_acceptedCallKitIds.contains(call.id) &&
+        call.status == CallStatus.active) {
       _stopOutgoingCallTimeout();
       await _stopCallAlertSafely();
       final userId = state.currentUserId ?? call.callerId;
@@ -1013,17 +1070,37 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     debugPrint('[CallsBloc] Subscribing to active call: $callId');
     await _activeCallSubscription?.cancel();
     _activeCallSubscription = _watchActiveCallUseCase(callId).listen(
-      (call) => add(ActiveCallUpdated(call)),
+      (call) => add(ActiveCallUpdated(call, watchedCallId: callId)),
       onError: (err) {
         debugPrint('[CallsBloc] Error watching active call: $err');
-        add(const ActiveCallUpdated(null));
+        add(ActiveCallUpdated(null, watchedCallId: callId));
       },
     );
   }
 
+  String? get _trackedCallId =>
+      state.session?.callId ??
+      state.acceptedCallData?.callId ??
+      state.activeCall?.id ??
+      (_acceptedCallKitIds.isEmpty ? null : _acceptedCallKitIds.first) ??
+      (_pendingCallKitAcceptIds.isEmpty ? null : _pendingCallKitAcceptIds.first);
+
   Future<void> _joinRtcSession(CallSession session) async {
-    await _subscribeToRtcStreams();
-    await _joinRtcSessionUseCase(session);
+    if (state.status == CallsStatus.idle && state.terminalCallId == session.callId) {
+      debugPrint('[CallsBloc] Skipping RTC join for terminal call ${session.callId}');
+      return;
+    }
+    if (!_joiningOrJoinedCallIds.add(session.callId)) {
+      debugPrint('[CallsBloc] Skipping duplicate RTC join for ${session.callId}');
+      return;
+    }
+    try {
+      await _subscribeToRtcStreams();
+      await _joinRtcSessionUseCase(session);
+    } catch (_) {
+      _joiningOrJoinedCallIds.remove(session.callId);
+      rethrow;
+    }
   }
 
   Future<void> _subscribeToRtcStreams() async {
@@ -1045,11 +1122,24 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     CallErrorType? errorType,
     String? errorMessage,
   }) async {
+    final trackedCallId = _trackedCallId;
+    if (callId != null && trackedCallId != null && callId != trackedCallId) {
+      debugPrint(
+        '[CallsBloc] Ignoring terminal event for stale call $callId; '
+        'currently handling $trackedCallId',
+      );
+      _acceptedCallKitIds.remove(callId);
+      _pendingCallKitAcceptIds.remove(callId);
+      _joiningOrJoinedCallIds.remove(callId);
+      await _dismissCallKitCall(callId);
+      return;
+    }
     final preservedUserId = currentUserId ?? state.currentUserId;
     await _cleanup();
     if (callId != null) {
       _acceptedCallKitIds.remove(callId);
       _pendingCallKitAcceptIds.remove(callId);
+      _joiningOrJoinedCallIds.remove(callId);
     }
     emit(
       CallEndedState(
@@ -1058,6 +1148,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         errorType: errorType,
         errorMessage: errorMessage,
         terminalEventId: ++_terminalEventSequence,
+        terminalCallId: callId,
       ),
     );
   }

@@ -281,7 +281,12 @@ class InMemoryCallRepository implements CallRepository {
       roomId: 'room_$callId',
       token: 'fake_token_${callId}_$userId',
       localUserId: userId,
-      extra: {'provider': 'fake', 'mediaType': call.type.name},
+      extra: {
+        'provider': 'fake',
+        'mediaType': call.type.name,
+        'isGroup': call.isGroup,
+        'callName': call.callerName,
+      },
     );
   }
 

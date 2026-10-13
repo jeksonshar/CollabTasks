@@ -27,6 +27,7 @@ class CallsState extends Equatable {
   final String? currentUserId;
   final CallDataEntity? acceptedCallData;
   final int? terminalEventId;
+  final String? terminalCallId;
 
   const CallsState({
     this.status = CallsStatus.idle,
@@ -43,6 +44,7 @@ class CallsState extends Equatable {
     this.currentUserId,
     this.acceptedCallData,
     this.terminalEventId,
+    this.terminalCallId,
   });
 
   CallsState copyWith({
@@ -60,6 +62,7 @@ class CallsState extends Equatable {
     String? Function()? currentUserId,
     CallDataEntity? Function()? acceptedCallData,
     int? terminalEventId,
+    String? Function()? terminalCallId,
   }) {
     return CallsState(
       status: status ?? this.status,
@@ -76,6 +79,7 @@ class CallsState extends Equatable {
       currentUserId: currentUserId != null ? currentUserId() : this.currentUserId,
       acceptedCallData: acceptedCallData != null ? acceptedCallData() : this.acceptedCallData,
       terminalEventId: terminalEventId ?? this.terminalEventId,
+      terminalCallId: terminalCallId != null ? terminalCallId() : this.terminalCallId,
     );
   }
 
@@ -95,6 +99,7 @@ class CallsState extends Equatable {
     currentUserId,
     acceptedCallData,
     terminalEventId,
+    terminalCallId,
   ];
 }
 
@@ -129,6 +134,7 @@ class CallEndedState extends CallsState {
     super.errorType,
     super.errorMessage,
     super.terminalEventId,
+    super.terminalCallId,
   }) : super(status: CallsStatus.idle);
 
   @override

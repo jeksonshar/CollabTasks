@@ -30,6 +30,21 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   int _elapsedSeconds = 0;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncCallTimer(context.read<CallsBloc>().state);
+  }
+
+  void _syncCallTimer(CallsState state) {
+    if (state.status == CallsStatus.active &&
+        state.rtcConnectionState == RtcConnectionState.connected) {
+      _startTimerIfNeeded();
+    } else if (state.status != CallsStatus.active) {
+      _stopTimer();
+    }
+  }
+
+  @override
   void dispose() {
     _durationTimer?.cancel();
     super.dispose();
@@ -87,15 +102,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           (previous.status != current.status &&
               (current.status == CallsStatus.idle || current.status == CallsStatus.error)) ||
           (current.status == CallsStatus.active &&
+              (previous.status != CallsStatus.active ||
+                  previous.rtcConnectionState != current.rtcConnectionState)) ||
+          (current.status == CallsStatus.active &&
               current.errorType != null &&
               previous.errorType != current.errorType),
       listener: (context, state) {
-        if (state.status == CallsStatus.active &&
-            state.rtcConnectionState == RtcConnectionState.connected) {
-          _startTimerIfNeeded();
-        } else if (state.status != CallsStatus.active) {
-          _stopTimer();
-        }
+        _syncCallTimer(state);
 
         // Auto pop when call returns to idle or terminated
         if (state.status == CallsStatus.idle || state.status == CallsStatus.error) {
