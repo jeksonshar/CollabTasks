@@ -3,8 +3,10 @@ import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_rep
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/services/fake_call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
@@ -45,6 +47,8 @@ class MockStartOutgoingAlertUseCase extends Mock implements StartOutgoingAlertUs
 
 class MockStopCallAlertUseCase extends Mock implements StopCallAlertUseCase {}
 
+class MockAcceptCallUseCase extends Mock implements AcceptCallUseCase {}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 void main() {
@@ -55,6 +59,7 @@ void main() {
   CallsBloc buildBloc({
     bool micGranted = true,
     bool cameraGranted = true,
+    AcceptCallUseCase? acceptCallUseCase,
     StartIncomingAlertUseCase? startIncomingAlertUseCase,
     StartOutgoingAlertUseCase? startOutgoingAlertUseCase,
     StopCallAlertUseCase? stopCallAlertUseCase,
@@ -65,7 +70,7 @@ void main() {
 
     return CallsBloc(
       startCallUseCase: StartCallUseCase(callRepository),
-      acceptCallUseCase: AcceptCallUseCase(callRepository),
+      acceptCallUseCase: acceptCallUseCase ?? AcceptCallUseCase(callRepository),
       rejectCallUseCase: RejectCallUseCase(callRepository),
       endCallUseCase: EndCallUseCase(callRepository),
       cancelCallUseCase: CancelCallUseCase(callRepository),
@@ -98,6 +103,148 @@ void main() {
   tearDown(() async {
     callRepository.dispose();
     await fakeRtcService.dispose();
+  });
+
+  Call incomingCall(String id, {String callerId = 'caller', String calleeId = 'callee'}) => Call(
+    id: id,
+    callerId: callerId,
+    callerName: 'Caller',
+    calleeIds: [calleeId],
+    type: CallType.audio,
+    status: CallStatus.ringing,
+    createdAt: DateTime.now(),
+  );
+
+  group('CallsBloc terminal transitions', () {
+    test('a rejected user can receive the caller back immediately', () async {
+      final bloc = buildBloc()..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+
+      bloc.add(IncomingCallDetected(incomingCall('first-call')));
+      await bloc.stream.firstWhere((state) => state.status == CallsStatus.ringingIncoming);
+      bloc.add(const RejectCallRequested(callId: 'first-call', userId: 'callee'));
+      await bloc.stream.firstWhere((state) => state.status == CallsStatus.idle);
+
+      bloc.add(
+        IncomingCallDetected(incomingCall('callback', callerId: 'callee', calleeId: 'caller')),
+      );
+      final nextCall = await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.ringingIncoming,
+      );
+      expect(nextCall.activeCall?.id, 'callback');
+      expect(nextCall.currentUserId, 'callee');
+      await bloc.close();
+    });
+
+    test('outgoing timeout clears state and allows a new incoming call', () async {
+      final bloc = buildBloc()
+        ..add(
+          const StartCallRequested(
+            callerId: 'caller',
+            callerName: 'Caller',
+            calleeIds: ['callee'],
+            type: CallType.audio,
+          ),
+        );
+      await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.ringingOutgoing && state.activeCall != null,
+      );
+      bloc.add(const CallTimeoutOccurred());
+      final timedOut = await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.errorType == CallErrorType.callTimeout,
+      );
+      expect(timedOut.activeCall, isNull);
+      expect(timedOut.session, isNull);
+
+      bloc.add(IncomingCallDetected(incomingCall('after-timeout')));
+      expect(
+        (await bloc.stream.firstWhere(
+          (state) => state.status == CallsStatus.ringingIncoming,
+        )).activeCall?.id,
+        'after-timeout',
+      );
+      await bloc.close();
+    });
+
+    test('permission denial while accepting does not block the next incoming call', () async {
+      final bloc = buildBloc(micGranted: false)..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+      bloc.add(IncomingCallDetected(incomingCall('denied-call')));
+      await bloc.stream.firstWhere((state) => state.status == CallsStatus.ringingIncoming);
+      bloc.add(const AcceptCallRequested(callId: 'denied-call', userId: 'callee'));
+      final denied = await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.errorType != null,
+      );
+      expect(denied.currentUserId, 'callee');
+      expect(denied.activeCall, isNull);
+      expect(denied.session, isNull);
+
+      bloc.add(IncomingCallDetected(incomingCall('next-call')));
+      expect(
+        (await bloc.stream.firstWhere(
+          (state) => state.status == CallsStatus.ringingIncoming,
+        )).activeCall?.id,
+        'next-call',
+      );
+      await bloc.close();
+    });
+
+    test('accept request failure does not block the next incoming call', () async {
+      final acceptCallUseCase = MockAcceptCallUseCase();
+      when(
+        () => acceptCallUseCase(callId: 'failed-accept', userId: 'callee'),
+      ).thenThrow(StateError('accept failed'));
+      final bloc = buildBloc(acceptCallUseCase: acceptCallUseCase)
+        ..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+      bloc.add(IncomingCallDetected(incomingCall('failed-accept')));
+      await bloc.stream.firstWhere((state) => state.status == CallsStatus.ringingIncoming);
+      bloc.add(const AcceptCallRequested(callId: 'failed-accept', userId: 'callee'));
+      final failed = await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.errorType == CallErrorType.unknown,
+      );
+      expect(failed.currentUserId, 'callee');
+      expect(failed.activeCall, isNull);
+      expect(failed.session, isNull);
+
+      bloc.add(IncomingCallDetected(incomingCall('after-failed-accept')));
+      expect(
+        (await bloc.stream.firstWhere(
+          (state) => state.status == CallsStatus.ringingIncoming,
+        )).activeCall?.id,
+        'after-failed-accept',
+      );
+      await bloc.close();
+    });
+
+    test('accepted call payload survives copyWith for resume navigation recovery', () {
+      const callData = CallDataEntity(
+        callId: 'accepted-call',
+        displayName: 'Caller',
+        handle: 'caller@example.com',
+        agoraChannel: 'room-1',
+        token: 'token',
+        callerId: 'caller@example.com',
+        callType: CallType.audio,
+      );
+      const session = CallSession(
+        callId: 'accepted-call',
+        roomId: 'room-1',
+        token: 'token',
+        localUserId: 'callee@example.com',
+      );
+      const accepted = CallAcceptedState(
+        callData: callData,
+        session: session,
+        currentUserId: 'callee@example.com',
+      );
+
+      final stateAfterResume = accepted.copyWith(
+        rtcConnectionState: RtcConnectionState.reconnecting,
+      );
+      expect(stateAfterResume, isNot(isA<CallAcceptedState>()));
+      expect(stateAfterResume.acceptedCallData?.callId, 'accepted-call');
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -150,7 +297,7 @@ void main() {
       ),
       expect: () => [
         isA<CallsState>()
-            .having((s) => s.status, 'status', CallsStatus.error)
+            .having((s) => s.status, 'status', CallsStatus.idle)
             .having((s) => s.errorType, 'errorType', CallErrorType.permissionDeniedAudio),
       ],
     );
@@ -397,7 +544,10 @@ void main() {
       act: (bloc) => bloc.add(const EndCallRequested()),
       expect: () => [
         isA<CallsState>().having((s) => s.status, 'status', CallsStatus.terminating),
-        const CallsState(status: CallsStatus.idle),
+        isA<CallEndedState>()
+            .having((s) => s.status, 'status', CallsStatus.idle)
+            .having((s) => s.activeCall, 'activeCall', isNull)
+            .having((s) => s.session, 'session', isNull),
       ],
       verify: (_) {
         expect(fakeRtcService.isJoined, isFalse);
@@ -641,7 +791,13 @@ void main() {
         ),
       ),
       act: (bloc) => bloc.add(const CallTimeoutOccurred()),
-      expect: () => [isA<CallsState>().having((s) => s.status, 'status', CallsStatus.error)],
+      expect: () => [
+        isA<CallsState>()
+            .having((s) => s.status, 'status', CallsStatus.idle)
+            .having((s) => s.errorType, 'errorType', CallErrorType.callTimeout)
+            .having((s) => s.activeCall, 'activeCall', isNull)
+            .having((s) => s.session, 'session', isNull),
+      ],
       verify: (_) {
         verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
       },
@@ -663,7 +819,12 @@ void main() {
         ),
       ),
       act: (bloc) => bloc.add(const ActiveCallUpdated(null)),
-      expect: () => [const CallsState()],
+      expect: () => [
+        isA<CallsState>()
+            .having((s) => s.status, 'status', CallsStatus.idle)
+            .having((s) => s.activeCall, 'activeCall', isNull)
+            .having((s) => s.currentUserId, 'currentUserId', isNull),
+      ],
       verify: (_) {
         verify(() => mockStop.call()).called(greaterThanOrEqualTo(1));
       },

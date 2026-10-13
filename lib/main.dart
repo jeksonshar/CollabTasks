@@ -21,6 +21,7 @@ import 'package:collab_tasks/features/auth/ui/lock_screen/lock_screen_widget.dar
 import 'package:collab_tasks/features/auth/ui/lock_screen/privacy_screen_widget.dart';
 import 'package:collab_tasks/features/calls/data/datasources/call_fcm_background_handler.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
@@ -313,12 +314,30 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
         ),
         BlocListener<CallsBloc, CallsState>(
           listenWhen: (previous, current) =>
-              current is CallAcceptedState &&
-              (previous is! CallAcceptedState ||
-                  previous.callData.callId != current.callData.callId),
+              current.acceptedCallData != null &&
+              previous.acceptedCallData?.callId != current.acceptedCallData?.callId,
           listener: (context, state) {
-            if (state is! CallAcceptedState) return;
-            _navigateToAcceptedCall(state.callData);
+            final callData = state.acceptedCallData;
+            if (callData != null) _navigateToAcceptedCall(callData);
+          },
+        ),
+        BlocListener<CallsBloc, CallsState>(
+          listenWhen: (previous, current) =>
+              current.terminalEventId != null &&
+              previous.terminalEventId != current.terminalEventId &&
+              current.errorType != null,
+          listener: (context, state) {
+            final messenger = ScaffoldMessenger.maybeOf(context);
+            final localization = AppLocalizations.of(context);
+            if (messenger == null || localization == null) return;
+            messenger
+              ..clearSnackBars()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(_resolveCallError(state, localization)),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
           },
         ),
         BlocListener<CallsBloc, CallsState>(
@@ -379,9 +398,22 @@ class _AppAuthGateState extends State<AppAuthGate> with WidgetsBindingObserver {
   void _navigateToCurrentAcceptedCall() {
     if (!mounted) return;
     final state = context.read<CallsBloc>().state;
-    if (state is CallAcceptedState) {
-      _navigateToAcceptedCall(state.callData);
-    }
+    final callData = state.acceptedCallData;
+    if (callData != null) _navigateToAcceptedCall(callData);
+  }
+
+  String _resolveCallError(CallsState state, AppLocalizations l) {
+    return switch (state.errorType) {
+      CallErrorType.permissionDeniedVideo => l.callErrorPermissionDeniedVideo,
+      CallErrorType.permissionDeniedAudio => l.callErrorPermissionDeniedAudio,
+      CallErrorType.userUnavailable => l.callErrorUserUnavailable,
+      CallErrorType.callTimeout => l.callErrorTimeout,
+      CallErrorType.inviteFailed => l.callErrorInviteFailed,
+      CallErrorType.rtcConnectionFailed => l.callErrorRtcFailed,
+      CallErrorType.networkError => l.callErrorNetwork,
+      CallErrorType.callNotFound => l.callErrorCallNotFound,
+      CallErrorType.unknown || null => state.errorMessage ?? l.callErrorUnknown,
+    };
   }
 
   void _navigateToAcceptedCall(CallDataEntity callData) {

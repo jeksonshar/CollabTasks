@@ -73,8 +73,8 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
       // Caller cancel / error closes the dialog here; accepted calls are
       // dismissed by AppAuthGate before the call screen is pushed.
       listenWhen: (prev, curr) =>
-          (prev.status == CallsStatus.ringingIncoming &&
-          (curr.status == CallsStatus.idle || curr.status == CallsStatus.error)),
+          prev.status != curr.status &&
+          (curr.status == CallsStatus.idle || curr.status == CallsStatus.error),
       listener: (context, state) {
         // Caller cancelled / call ended / error → close the dialog.
         final nav = Navigator.of(context, rootNavigator: true);

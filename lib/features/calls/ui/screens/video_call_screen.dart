@@ -102,6 +102,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     final displayName = widget.opponentName ?? localization.callUserFallback;
 
     return BlocConsumer<CallsBloc, CallsState>(
+      listenWhen: (previous, current) =>
+          (previous.status != current.status &&
+              (current.status == CallsStatus.idle || current.status == CallsStatus.error)) ||
+          (current.status == CallsStatus.active &&
+              current.errorType != null &&
+              previous.errorType != current.errorType),
       listener: (context, state) {
         if (state.status == CallsStatus.active &&
             state.rtcConnectionState == RtcConnectionState.connected) {
@@ -110,15 +116,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
           _stopTimer();
         }
 
-        if (state.status == CallsStatus.idle) {
-          Navigator.of(context).pop();
-        } else if (state.status == CallsStatus.error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_resolveCallError(state, localization)),
-              backgroundColor: theme.colorScheme.error,
-            ),
-          );
+        if (state.status == CallsStatus.idle || state.status == CallsStatus.error) {
           Navigator.of(context).pop();
         } else if (state.errorType != null && state.status == CallsStatus.active) {
           ScaffoldMessenger.of(context)

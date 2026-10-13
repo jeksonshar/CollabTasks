@@ -32,6 +32,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connectio
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/features/calls/ui/screens/audio_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
@@ -65,6 +66,16 @@ class TestCallsBloc extends CallsBloc {
   });
 
   void emitState(CallsState state) => emit(state);
+}
+
+class _CountingNavigatorObserver extends NavigatorObserver {
+  int poppedRoutes = 0;
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    poppedRoutes++;
+    super.didPop(route, previousRoute);
+  }
 }
 
 void main() {
@@ -134,6 +145,60 @@ void main() {
     callRepository.dispose();
     await fakeRtcService.dispose();
     await getIt.reset();
+  });
+
+  testWidgets('AudioCallScreen pops once when the call reaches a terminal state', (tester) async {
+    final activeCall = Call(
+      id: 'call-audio-terminal',
+      callerId: 'user-caller',
+      callerName: 'Alice',
+      calleeIds: const ['user-me'],
+      type: CallType.audio,
+      status: CallStatus.active,
+      createdAt: DateTime.now(),
+    );
+    callsBloc.emitState(
+      CallsState(
+        status: CallsStatus.active,
+        currentUserId: 'user-me',
+        activeCall: activeCall,
+        rtcConnectionState: RtcConnectionState.connected,
+      ),
+    );
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final observer = _CountingNavigatorObserver();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        navigatorObservers: [observer],
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: Text('home')),
+      ),
+    );
+    navigatorKey.currentState!.push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider<CallsBloc>.value(
+          value: callsBloc,
+          child: const AudioCallScreen(callId: 'call-audio-terminal', opponentName: 'Alice'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    callsBloc.emitState(
+      const CallEndedState(
+        callId: 'call-audio-terminal',
+        currentUserId: 'user-me',
+        terminalEventId: 1,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('home'), findsOneWidget);
+    expect(find.byType(AudioCallScreen), findsNothing);
+    expect(observer.poppedRoutes, 1);
   });
 
   testWidgets('VideoCallScreen renders local pip and controls', (tester) async {

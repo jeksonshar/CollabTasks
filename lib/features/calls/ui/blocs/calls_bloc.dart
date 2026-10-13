@@ -81,6 +81,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final List<CallEvent> _pendingCallKitEvents = [];
   final List<CallDataEntity> _pendingAcceptedCallKitCalls = [];
   final List<CallDataEntity> _pendingDeclinedCallKitCalls = [];
+  int _terminalEventSequence = 0;
 
   static const Duration _outgoingCallTimeoutDuration = Duration(seconds: 45);
 
@@ -180,15 +181,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       final permissionsGranted = await _requestCallPermissionsUseCase(type: event.type);
       if (!permissionsGranted) {
         debugPrint('[CallsBloc] Permissions denied for call type: ${event.type}');
-        await _stopCallAlertSafely();
-        emit(
-          state.copyWith(
-            status: CallsStatus.error,
-            errorType: () => event.type == CallType.video
-                ? CallErrorType.permissionDeniedVideo
-                : CallErrorType.permissionDeniedAudio,
-            errorMessage: () => null,
-          ),
+        await _finishCall(
+          emit,
+          currentUserId: event.callerId,
+          errorType: event.type == CallType.video
+              ? CallErrorType.permissionDeniedVideo
+              : CallErrorType.permissionDeniedAudio,
         );
         return;
       }
@@ -240,13 +238,18 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       }
     } catch (e, st) {
       debugPrint('[CallsBloc] Error starting call: $e\n$st');
-      await _stopCallAlertSafely();
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.unknown,
-          errorMessage: () => e.toString(),
-        ),
+      final callId = state.activeCall?.id;
+      if (callId != null) {
+        try {
+          await _cancelCallUseCase(callId);
+        } catch (_) {}
+      }
+      await _finishCall(
+        emit,
+        callId: callId,
+        currentUserId: event.callerId,
+        errorType: CallErrorType.unknown,
+        errorMessage: e.toString(),
       );
     }
   }
@@ -318,15 +321,16 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       final permissionsGranted = await _requestCallPermissionsUseCase(type: callType);
       if (!permissionsGranted) {
         _acceptedCallKitIds.remove(event.callId);
-        await _stopCallAlertSafely();
-        emit(
-          state.copyWith(
-            status: CallsStatus.error,
-            errorType: () => callType == CallType.video
-                ? CallErrorType.permissionDeniedVideo
-                : CallErrorType.permissionDeniedAudio,
-            errorMessage: () => null,
-          ),
+        try {
+          await _rejectCallUseCase(callId: event.callId, userId: event.userId);
+        } catch (_) {}
+        await _finishCall(
+          emit,
+          callId: event.callId,
+          currentUserId: event.userId,
+          errorType: callType == CallType.video
+              ? CallErrorType.permissionDeniedVideo
+              : CallErrorType.permissionDeniedAudio,
         );
         return;
       }
@@ -369,13 +373,15 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _joinRtcSession(session);
     } catch (e) {
       _acceptedCallKitIds.remove(event.callId);
-      await _cleanup();
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.unknown,
-          errorMessage: () => e.toString(),
-        ),
+      try {
+        await _rejectCallUseCase(callId: event.callId, userId: event.userId);
+      } catch (_) {}
+      await _finishCall(
+        emit,
+        callId: event.callId,
+        currentUserId: event.userId,
+        errorType: CallErrorType.unknown,
+        errorMessage: e.toString(),
       );
     }
   }
@@ -387,8 +393,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } catch (e) {
       // Ignored on reject
     } finally {
-      await _cleanup();
-      emit(CallsState(currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: event.callId, currentUserId: event.userId);
     }
   }
 
@@ -405,8 +410,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _dismissCallKitCall(callId);
     }
 
-    await _cleanup();
-    emit(CallsState(currentUserId: state.currentUserId));
+    await _finishCall(emit, callId: callId);
   }
 
   Future<void> _onCancelCall(CancelCallRequested event, Emitter<CallsState> emit) async {
@@ -420,8 +424,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _dismissCallKitCall(callId);
     }
 
-    await _cleanup();
-    emit(CallsState(currentUserId: state.currentUserId));
+    await _finishCall(emit, callId: callId);
   }
 
   Future<void> _onLeaveCall(LeaveCallRequested event, Emitter<CallsState> emit) async {
@@ -439,8 +442,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       _pendingCallKitAcceptIds.remove(callId);
     }
 
-    await _cleanup();
-    emit(CallsState(currentUserId: state.currentUserId));
+    await _finishCall(emit, callId: callId);
   }
 
   Future<void> _onInviteParticipant(
@@ -459,7 +461,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       } catch (e) {
         emit(
           state.copyWith(
-            status: CallsStatus.error,
+            status: state.status,
             errorType: () => CallErrorType.inviteFailed,
             errorMessage: () => e.toString(),
           ),
@@ -713,31 +715,27 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     _resolvedIncomingCallIds.add(callId);
     final recipientId = userId ?? state.currentUserId ?? callData.calleeId;
     if (recipientId.trim().isEmpty || _declineIncomingCallUseCase == null) {
-      _resolvedIncomingCallIds.remove(callId);
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.userUnavailable,
-          errorMessage: () => null,
-        ),
+      await _finishCall(
+        emit,
+        callId: callId,
+        currentUserId: recipientId,
+        errorType: CallErrorType.userUnavailable,
       );
       return;
     }
     try {
       _callKitDismissalsPending.add(callId);
       await _declineIncomingCallUseCase.call(callId: callId, userId: recipientId);
-      await _cleanup();
-      emit(CallEndedState(callId: callId, currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: callId, currentUserId: recipientId);
     } catch (error, stackTrace) {
-      _resolvedIncomingCallIds.remove(callId);
       _callKitDismissalsPending.remove(callId);
       debugPrint('[CallsBloc] Failed to decline CallKit call: $error\n$stackTrace');
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.unknown,
-          errorMessage: () => error.toString(),
-        ),
+      await _finishCall(
+        emit,
+        callId: callId,
+        currentUserId: recipientId,
+        errorType: CallErrorType.unknown,
+        errorMessage: error.toString(),
       );
     }
   }
@@ -758,13 +756,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
     final currentState = state;
     var activeCallId = currentState.activeCall?.id;
-    if (currentState is CallAcceptedState) {
-      activeCallId = currentState.callData.callId;
-    }
+    activeCallId = currentState.acceptedCallData?.callId ?? activeCallId;
     if (activeCallId == event.callId ||
         (state.status == CallsStatus.ringingIncoming && state.activeCall?.id == event.callId)) {
-      await _cleanup();
-      emit(CallEndedState(currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: event.callId);
     }
   }
 
@@ -777,12 +772,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     final useCase = _acceptIncomingCallUseCase;
     if (useCase == null || userId == null || userId.isEmpty) {
       _acceptedCallKitIds.remove(callData.callId);
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.userUnavailable,
-          errorMessage: () => null,
-        ),
+      await _finishCall(
+        emit,
+        callId: callData.callId,
+        currentUserId: userId ?? callData.calleeId,
+        errorType: CallErrorType.userUnavailable,
       );
       return;
     }
@@ -791,14 +785,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       if (!granted) {
         _callKitDismissalsPending.add(callData.callId);
         await _declineIncomingCallUseCase?.call(callId: callData.callId, userId: userId);
-        emit(
-          state.copyWith(
-            status: CallsStatus.error,
-            errorType: () => callData.callType == CallType.video
-                ? CallErrorType.permissionDeniedVideo
-                : CallErrorType.permissionDeniedAudio,
-            errorMessage: () => null,
-          ),
+        await _finishCall(
+          emit,
+          callId: callData.callId,
+          currentUserId: userId,
+          errorType: callData.callType == CallType.video
+              ? CallErrorType.permissionDeniedVideo
+              : CallErrorType.permissionDeniedAudio,
         );
         return;
       }
@@ -822,13 +815,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       _acceptedCallKitIds.remove(callData.callId);
       _callKitDismissalsPending.remove(callData.callId);
       debugPrint('[CallsBloc] Failed to accept CallKit call: $error\n$stackTrace');
-      await _cleanup();
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.unknown,
-          errorMessage: () => error.toString(),
-        ),
+      await _finishCall(
+        emit,
+        callId: callData.callId,
+        currentUserId: userId,
+        errorType: CallErrorType.unknown,
+        errorMessage: error.toString(),
       );
     }
   }
@@ -875,8 +867,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     } catch (error) {
       debugPrint('[CallsBloc] Failed to clear CallKit call: $error');
     }
-    await _cleanup();
-    emit(CallEndedState(callId: callId, currentUserId: state.currentUserId));
+    await _finishCall(emit, callId: callId);
   }
 
   void _onStopListeningIncomingCalls(StopListeningIncomingCalls event, Emitter<CallsState> emit) {
@@ -899,14 +890,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       }
     }
 
-    await _cleanup();
-    emit(
-      state.copyWith(
-        status: CallsStatus.error,
-        errorType: () => CallErrorType.callTimeout,
-        errorMessage: () => null,
-      ),
-    );
+    await _finishCall(emit, callId: callId, errorType: CallErrorType.callTimeout);
   }
 
   void _startOutgoingCallTimeout() {
@@ -927,10 +911,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   Future<void> _onActiveCallUpdated(ActiveCallUpdated event, Emitter<CallsState> emit) async {
     final call = event.call;
+    if (state.status == CallsStatus.idle && state.activeCall == null && state.session == null) {
+      debugPrint('[CallsBloc] Ignoring stale active-call update while idle');
+      return;
+    }
     if (call == null) {
       debugPrint('[CallsBloc] Active call updated to null -> cleaning up');
-      await _cleanup();
-      emit(CallsState(currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: state.activeCall?.id);
       return;
     }
 
@@ -969,25 +956,19 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         await _joinRtcSession(session);
       } catch (e, st) {
         debugPrint('[CallsBloc] Error joining RTC session: $e\n$st');
-        await _cleanup();
-        emit(
-          state.copyWith(
-            status: CallsStatus.error,
-            errorType: () => CallErrorType.unknown,
-            errorMessage: () => e.toString(),
-          ),
+        await _finishCall(
+          emit,
+          callId: call.id,
+          errorType: CallErrorType.unknown,
+          errorMessage: e.toString(),
         );
       }
     } else if (call.status == CallStatus.rejected) {
       debugPrint('[CallsBloc] Call was rejected by recipient');
-      await _cleanup();
-      // A rejected call is terminal, so return to idle instead of leaving the
-      // Bloc in error where _onIncomingCallDetected would ignore new calls.
-      emit(CallsState(currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: call.id);
     } else if (call.status == CallStatus.ended || call.status == CallStatus.cancelled) {
       debugPrint('[CallsBloc] Call ended or cancelled');
-      await _cleanup();
-      emit(CallsState(currentUserId: state.currentUserId));
+      await _finishCall(emit, callId: call.id);
     }
   }
 
@@ -1001,7 +982,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     if (event.state == RtcConnectionState.failed) {
       // Guard against double-fire: Agora can emit `failed` twice when
       // leaveSession() (called from onError) triggers onConnectionStateChanged.
-      if (state.status == CallsStatus.error || state.status == CallsStatus.idle) {
+      if (state.status == CallsStatus.idle) {
         debugPrint('[CallsBloc] RTC failed event ignored — already in ${state.status}');
         return;
       }
@@ -1013,13 +994,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       } catch (e) {
         debugPrint('[CallsBloc] Error leaving RTC session on failed state: $e');
       }
-      await _cleanup();
-      emit(
-        state.copyWith(
-          status: CallsStatus.error,
-          errorType: () => CallErrorType.rtcConnectionFailed,
-          errorMessage: () => null,
-        ),
+      await _finishCall(
+        emit,
+        callId: state.activeCall?.id,
+        errorType: CallErrorType.rtcConnectionFailed,
       );
     }
   }
@@ -1057,6 +1035,30 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     await _participantMediaStatesSubscription?.cancel();
     _participantMediaStatesSubscription = _watchRtcParticipantMediaStatesUseCase().listen(
       (mediaStates) => add(ParticipantMediaStatesUpdated(mediaStates)),
+    );
+  }
+
+  Future<void> _finishCall(
+    Emitter<CallsState> emit, {
+    String? callId,
+    String? currentUserId,
+    CallErrorType? errorType,
+    String? errorMessage,
+  }) async {
+    final preservedUserId = currentUserId ?? state.currentUserId;
+    await _cleanup();
+    if (callId != null) {
+      _acceptedCallKitIds.remove(callId);
+      _pendingCallKitAcceptIds.remove(callId);
+    }
+    emit(
+      CallEndedState(
+        callId: callId,
+        currentUserId: preservedUserId,
+        errorType: errorType,
+        errorMessage: errorMessage,
+        terminalEventId: ++_terminalEventSequence,
+      ),
     );
   }
 

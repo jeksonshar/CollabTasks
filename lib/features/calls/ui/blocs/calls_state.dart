@@ -25,6 +25,8 @@ class CallsState extends Equatable {
   final CallErrorType? errorType;
   final String? errorMessage;
   final String? currentUserId;
+  final CallDataEntity? acceptedCallData;
+  final int? terminalEventId;
 
   const CallsState({
     this.status = CallsStatus.idle,
@@ -39,6 +41,8 @@ class CallsState extends Equatable {
     this.errorType,
     this.errorMessage,
     this.currentUserId,
+    this.acceptedCallData,
+    this.terminalEventId,
   });
 
   CallsState copyWith({
@@ -54,6 +58,8 @@ class CallsState extends Equatable {
     CallErrorType? Function()? errorType,
     String? Function()? errorMessage,
     String? Function()? currentUserId,
+    CallDataEntity? Function()? acceptedCallData,
+    int? terminalEventId,
   }) {
     return CallsState(
       status: status ?? this.status,
@@ -68,6 +74,8 @@ class CallsState extends Equatable {
       errorType: errorType != null ? errorType() : this.errorType,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
       currentUserId: currentUserId != null ? currentUserId() : this.currentUserId,
+      acceptedCallData: acceptedCallData != null ? acceptedCallData() : this.acceptedCallData,
+      terminalEventId: terminalEventId ?? this.terminalEventId,
     );
   }
 
@@ -85,6 +93,8 @@ class CallsState extends Equatable {
     errorType,
     errorMessage,
     currentUserId,
+    acceptedCallData,
+    terminalEventId,
   ];
 }
 
@@ -103,7 +113,7 @@ class CallAcceptedState extends CallsState {
     super.participantMediaStates,
     super.errorMessage,
     super.currentUserId,
-  }) : super(status: CallsStatus.active, session: session);
+  }) : super(status: CallsStatus.active, session: session, acceptedCallData: callData);
 
   @override
   List<Object?> get props => [...super.props, callData];
@@ -113,7 +123,13 @@ class CallAcceptedState extends CallsState {
 class CallEndedState extends CallsState {
   final String? callId;
 
-  const CallEndedState({this.callId, super.currentUserId}) : super();
+  const CallEndedState({
+    this.callId,
+    super.currentUserId,
+    super.errorType,
+    super.errorMessage,
+    super.terminalEventId,
+  }) : super(status: CallsStatus.idle);
 
   @override
   List<Object?> get props => [...super.props, callId];
