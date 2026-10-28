@@ -202,6 +202,9 @@ class FirestoreCallRepository implements CallRepository {
       }
 
       final call = Call.fromMap(snapshot.data()!);
+      if (!_isCurrentUser(userId)) {
+        throw StateError('User $normalizedUserId does not match the authenticated user');
+      }
       final participantIndex = _findParticipantIndex(call, userId);
       final canAcceptActiveGroupInvite = call.status == CallStatus.active && call.isGroup;
       if ((!call.calleeIds.any((id) => _matchesUserIdentity(id, userId))) ||
@@ -238,9 +241,14 @@ class FirestoreCallRepository implements CallRepository {
     final docRef = _firestore.collection(_callsCollection).doc(callId);
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
-      if (!snapshot.exists || snapshot.data() == null) return;
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
 
       final call = Call.fromMap(snapshot.data()!);
+      if (!_isCurrentUser(userId)) {
+        throw StateError('User $normalizedUserId does not match the authenticated user');
+      }
       final participantIndex = _findParticipantIndex(call, userId);
       if (participantIndex == -1 ||
           !call.calleeIds.any((id) => _matchesUserIdentity(id, userId)) ||
@@ -260,6 +268,7 @@ class FirestoreCallRepository implements CallRepository {
       );
       final allDeclined =
           !call.isGroup &&
+          call.calleeIds.length == 1 &&
           nonHostParticipants.isNotEmpty &&
           nonHostParticipants.every((p) => p.status == CallParticipantStatus.declined);
 
@@ -280,14 +289,23 @@ class FirestoreCallRepository implements CallRepository {
     debugPrint('[FirestoreCallRepository] endCall: $callId');
     final docRef = _firestore.collection(_callsCollection).doc(callId);
 
-    await docRef
-        .update({
-          'status': CallStatus.ended.name,
-          'endedAtMillis': DateTime.now().millisecondsSinceEpoch,
-        })
-        .catchError((e) {
-          debugPrint('[FirestoreCallRepository] Failed to update endCall for $callId: $e');
-        });
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
+
+      final call = Call.fromMap(snapshot.data()!);
+      final isMember = _isCurrentUser(call.callerId) || call.calleeIds.any(_isCurrentUser);
+      if (!isMember || (call.status != CallStatus.ringing && call.status != CallStatus.active)) {
+        throw StateError('Call $callId cannot be ended by the current user');
+      }
+
+      transaction.update(docRef, {
+        'status': CallStatus.ended.name,
+        'endedAtMillis': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
   }
 
   @override
@@ -295,14 +313,22 @@ class FirestoreCallRepository implements CallRepository {
     debugPrint('[FirestoreCallRepository] cancelCall: $callId');
     final docRef = _firestore.collection(_callsCollection).doc(callId);
 
-    await docRef
-        .update({
-          'status': CallStatus.cancelled.name,
-          'endedAtMillis': DateTime.now().millisecondsSinceEpoch,
-        })
-        .catchError((e) {
-          debugPrint('[FirestoreCallRepository] Failed to update cancelCall for $callId: $e');
-        });
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
+
+      final call = Call.fromMap(snapshot.data()!);
+      if (!_isCurrentUser(call.callerId) || call.status != CallStatus.ringing) {
+        throw StateError('Call $callId cannot be cancelled by the current user');
+      }
+
+      transaction.update(docRef, {
+        'status': CallStatus.cancelled.name,
+        'endedAtMillis': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
   }
 
   @override
@@ -313,9 +339,14 @@ class FirestoreCallRepository implements CallRepository {
     final docRef = _firestore.collection(_callsCollection).doc(callId);
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
-      if (!snapshot.exists || snapshot.data() == null) return;
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
 
       final call = Call.fromMap(snapshot.data()!);
+      if (!_isCurrentUser(userId)) {
+        throw StateError('User $normalizedUserId does not match the authenticated user');
+      }
       final participantIndex = _findParticipantIndex(call, userId);
       if (participantIndex == -1 ||
           (call.status != CallStatus.ringing && call.status != CallStatus.active)) {
@@ -324,7 +355,7 @@ class FirestoreCallRepository implements CallRepository {
       final leavingParticipant = call.participants[participantIndex];
       if (leavingParticipant.status != CallParticipantStatus.connected &&
           leavingParticipant.status != CallParticipantStatus.ringing) {
-        return;
+        throw StateError('Call $callId cannot be left by $normalizedUserId');
       }
       final updatedParticipants = List<CallParticipant>.from(call.participants);
       updatedParticipants[participantIndex] = leavingParticipant.copyWith(
@@ -340,7 +371,11 @@ class FirestoreCallRepository implements CallRepository {
         participants: updatedParticipants,
       );
 
-      transaction.update(docRef, updatedCall.toMap());
+      final updatedCallData = updatedCall.toMap();
+      transaction.update(docRef, {
+        'calleeIds': updatedCallData['calleeIds'],
+        'participantsByUser': updatedCallData['participantsByUser'],
+      });
     });
   }
 
@@ -357,7 +392,9 @@ class FirestoreCallRepository implements CallRepository {
     final docRef = _firestore.collection(_callsCollection).doc(callId);
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
-      if (!snapshot.exists || snapshot.data() == null) return;
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
 
       final call = Call.fromMap(snapshot.data()!);
       final isConnectedGroupParticipant = call.participants.any(
@@ -382,7 +419,7 @@ class FirestoreCallRepository implements CallRepository {
             existing.status == CallParticipantStatus.ringing ||
             (existing.status != CallParticipantStatus.left &&
                 existing.status != CallParticipantStatus.declined)) {
-          return;
+          throw StateError('Participant $normalizedUserId cannot be invited to call $callId');
         }
         final reInvited = CallParticipant(
           userId: existing.userId,
@@ -418,7 +455,12 @@ class FirestoreCallRepository implements CallRepository {
         lastInvitedParticipantId: normalizedUserId,
       );
 
-      transaction.update(docRef, updatedCall.toMap());
+      final updatedCallData = updatedCall.toMap();
+      transaction.update(docRef, {
+        'calleeIds': updatedCallData['calleeIds'],
+        'participantsByUser': updatedCallData['participantsByUser'],
+        'lastInvitedParticipantId': updatedCallData['lastInvitedParticipantId'],
+      });
     });
   }
 

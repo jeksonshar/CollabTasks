@@ -22,12 +22,13 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 class _MockUser extends Mock implements User {}
 
 class _StatefulDocumentSnapshot extends Fake implements DocumentSnapshot<Map<String, dynamic>> {
-  _StatefulDocumentSnapshot(this.documentData);
+  _StatefulDocumentSnapshot(this.documentData, {this.documentExists = true});
 
   final Map<String, dynamic> documentData;
+  final bool documentExists;
 
   @override
-  bool get exists => true;
+  bool get exists => documentExists;
 
   @override
   Map<String, dynamic> data() => documentData;
@@ -37,15 +38,20 @@ class _StatefulTransaction extends Fake implements Transaction {
   _StatefulTransaction(this.readData);
 
   Map<String, dynamic> readData;
+  bool exists = true;
+  Object? readError;
+  Object? updateError;
   final updates = <Map<String, dynamic>>[];
 
   @override
   Future<DocumentSnapshot<T>> get<T extends Object?>(DocumentReference<T> documentReference) async {
-    return _StatefulDocumentSnapshot(readData) as DocumentSnapshot<T>;
+    if (readError != null) throw readError!;
+    return _StatefulDocumentSnapshot(readData, documentExists: exists) as DocumentSnapshot<T>;
   }
 
   @override
   Transaction update(DocumentReference documentReference, Map<Object, Object?> data) {
+    if (updateError != null) throw updateError!;
     final update = Map<String, dynamic>.fromEntries(
       data.entries.map((entry) => MapEntry(entry.key.toString(), entry.value)),
     );
@@ -180,6 +186,97 @@ void main() {
     expect(transaction.updates.single['participantsByUser'], isA<Map<String, dynamic>>());
   });
 
+  test('accepts an ordinary ringing call and sets its start time', () async {
+    storedData = initialCall(isGroup: false);
+    transaction.readData = storedData;
+
+    await repository.acceptCall(callId: callId, userId: calleeId);
+
+    final updated = Call.fromMap(transaction.readData);
+    expect(updated.status, CallStatus.active);
+    expect(updated.startedAt, isNotNull);
+    expect(
+      updated.participants.firstWhere((participant) => participant.userId == calleeId).status,
+      CallParticipantStatus.connected,
+    );
+  });
+
+  test('missing calls are reported for accept, reject, leave, and invite', () async {
+    transaction.exists = false;
+
+    await expectLater(
+      repository.acceptCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.rejectCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.leaveCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.inviteParticipant(
+        callId: callId,
+        userId: 'other@example.com',
+        displayName: 'Other',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(transaction.updates, isEmpty);
+  });
+
+  test('rejects invalid actors and terminal call transitions without writes', () async {
+    await expectLater(
+      repository.acceptCall(callId: callId, userId: 'other@example.com'),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.rejectCall(callId: callId, userId: 'other@example.com'),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.leaveCall(callId: callId, userId: 'other@example.com'),
+      throwsA(isA<StateError>()),
+    );
+
+    storedData = initialCall(status: CallStatus.ended);
+    transaction.readData = storedData;
+    await expectLater(
+      repository.acceptCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.rejectCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    await expectLater(
+      repository.leaveCall(callId: callId, userId: calleeId),
+      throwsA(isA<StateError>()),
+    );
+    expect(transaction.updates, isEmpty);
+  });
+
+  test('declining one group participant leaves the call active', () async {
+    storedData = initialCall(status: CallStatus.active, isGroup: true);
+    transaction.readData = storedData;
+
+    await repository.rejectCall(callId: callId, userId: calleeId);
+
+    final updated = Call.fromMap(transaction.readData);
+    expect(updated.status, CallStatus.active);
+    expect(updated.endedAt, isNull);
+    expect(
+      updated.participants.firstWhere((participant) => participant.userId == calleeId).status,
+      CallParticipantStatus.declined,
+    );
+    expect(
+      updated.participants.firstWhere((participant) => participant.userId == callerId).status,
+      CallParticipantStatus.connected,
+    );
+  });
+
   test(
     're-invites a left participant by updating only that keyed record and callee list',
     () async {
@@ -194,6 +291,13 @@ void main() {
       when(() => user.email).thenReturn(callerId);
 
       await repository.inviteParticipant(callId: callId, userId: calleeId, displayName: 'Callee');
+
+      expect(
+        transaction.updates.last.keys,
+        containsAll(['calleeIds', 'participantsByUser', 'lastInvitedParticipantId']),
+      );
+      expect(transaction.updates.last.keys, isNot(contains('endedAtMillis')));
+      expect(transaction.updates.last.keys, isNot(contains('status')));
 
       final updated = Call.fromMap(transaction.readData);
       expect(updated.status, CallStatus.active);
@@ -295,5 +399,82 @@ void main() {
       updated.participants.firstWhere((participant) => participant.userId == calleeId).joinedAt,
       isNull,
     );
+  });
+
+  test('caller leave preserves calleeIds and does not end or timestamp the call', () async {
+    storedData = initialCall(
+      status: CallStatus.active,
+      calleeStatus: CallParticipantStatus.connected,
+    );
+    transaction.readData = storedData;
+    when(() => user.uid).thenReturn('caller-uid');
+    when(() => user.email).thenReturn(callerId);
+
+    await repository.leaveCall(callId: callId, userId: callerId);
+
+    expect(transaction.updates.single.keys, containsAll(['calleeIds', 'participantsByUser']));
+    expect(transaction.updates.single.keys, isNot(contains('endedAtMillis')));
+    expect(transaction.updates.single.keys, isNot(contains('status')));
+
+    final updated = Call.fromMap(transaction.readData);
+    expect(updated.calleeIds, [calleeId]);
+    expect(updated.status, CallStatus.active);
+    expect(updated.endedAt, isNull);
+    expect(
+      updated.participants.firstWhere((participant) => participant.userId == callerId).status,
+      CallParticipantStatus.left,
+    );
+  });
+
+  test('cancelCall and endCall enforce caller, member, and status rules', () async {
+    when(() => user.uid).thenReturn('caller-uid');
+    when(() => user.email).thenReturn(callerId);
+    await repository.cancelCall(callId);
+    expect(transaction.updates.single['status'], CallStatus.cancelled.name);
+    expect(transaction.updates.single.keys, containsAll(['status', 'endedAtMillis']));
+
+    transaction.updates.clear();
+    storedData = initialCall(status: CallStatus.active);
+    transaction.readData = storedData;
+    await expectLater(repository.cancelCall(callId), throwsA(isA<StateError>()));
+    expect(transaction.updates, isEmpty);
+
+    when(() => user.uid).thenReturn('callee-uid');
+    when(() => user.email).thenReturn(calleeId);
+    await expectLater(repository.cancelCall(callId), throwsA(isA<StateError>()));
+    expect(transaction.updates, isEmpty);
+
+    await repository.endCall(callId);
+    expect(transaction.updates.single['status'], CallStatus.ended.name);
+
+    transaction.updates.clear();
+    when(() => user.uid).thenReturn('outsider-uid');
+    when(() => user.email).thenReturn('outsider@example.com');
+    await expectLater(repository.endCall(callId), throwsA(isA<StateError>()));
+    expect(transaction.updates, isEmpty);
+
+    storedData = initialCall(status: CallStatus.ended);
+    transaction.readData = storedData;
+    when(() => user.uid).thenReturn('caller-uid');
+    when(() => user.email).thenReturn(callerId);
+    await expectLater(repository.endCall(callId), throwsA(isA<StateError>()));
+    expect(transaction.updates, isEmpty);
+  });
+
+  test('Firestore transaction read and write errors propagate to the caller', () async {
+    final readFailure = FirebaseException(plugin: 'cloud_firestore', message: 'read failed');
+    transaction.readError = readFailure;
+    await expectLater(
+      repository.acceptCall(callId: callId, userId: calleeId),
+      throwsA(same(readFailure)),
+    );
+
+    transaction.readError = null;
+    when(() => user.uid).thenReturn('caller-uid');
+    when(() => user.email).thenReturn(callerId);
+    final writeFailure = FirebaseException(plugin: 'cloud_firestore', message: 'write failed');
+    transaction.updateError = writeFailure;
+    await expectLater(repository.cancelCall(callId), throwsA(same(writeFailure)));
+    await expectLater(repository.endCall(callId), throwsA(same(writeFailure)));
   });
 }
