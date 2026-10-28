@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_repository.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
@@ -11,7 +13,9 @@ import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/accept_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/accept_incoming_call_usecase.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/cancel_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/decline_incoming_call_usecase.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/end_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/get_call_session_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_use_case.dart';
@@ -36,6 +40,8 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_callkit_incoming/entities/call_event.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -49,9 +55,61 @@ class MockStopCallAlertUseCase extends Mock implements StopCallAlertUseCase {}
 
 class MockAcceptCallUseCase extends Mock implements AcceptCallUseCase {}
 
+class MockAcceptIncomingCallUseCase extends Mock implements AcceptIncomingCallUseCase {}
+
+class MockDeclineIncomingCallUseCase extends Mock implements DeclineIncomingCallUseCase {}
+
+class MockRejectCallUseCase extends Mock implements RejectCallUseCase {}
+
+class MockCancelCallUseCase extends Mock implements CancelCallUseCase {}
+
+class MockEndCallUseCase extends Mock implements EndCallUseCase {}
+
+class _CountingCallRepository extends InMemoryCallRepository {
+  int startCallCount = 0;
+
+  @override
+  Future<Call> startCall({
+    String? callId,
+    required String callerId,
+    required String callerName,
+    String? callerAvatarUrl,
+    required List<String> calleeIds,
+    required CallType type,
+    bool isGroup = false,
+    String? groupId,
+  }) {
+    startCallCount++;
+    return super.startCall(
+      callId: callId,
+      callerId: callerId,
+      callerName: callerName,
+      callerAvatarUrl: callerAvatarUrl,
+      calleeIds: calleeIds,
+      type: type,
+      isGroup: isGroup,
+      groupId: groupId,
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(
+      const CallDataEntity(
+        callId: 'fallback',
+        displayName: 'Fallback',
+        handle: '',
+        agoraChannel: '',
+        token: '',
+        callerId: '',
+        callType: CallType.audio,
+      ),
+    );
+  });
+
   late InMemoryCallRepository callRepository;
   late FakeRtcService fakeRtcService;
   late FakeCallPermissionsService fakePermissionsService;
@@ -59,7 +117,13 @@ void main() {
   CallsBloc buildBloc({
     bool micGranted = true,
     bool cameraGranted = true,
+    StartCallUseCase? startCallUseCase,
     AcceptCallUseCase? acceptCallUseCase,
+    AcceptIncomingCallUseCase? acceptIncomingCallUseCase,
+    DeclineIncomingCallUseCase? declineIncomingCallUseCase,
+    RejectCallUseCase? rejectCallUseCase,
+    CancelCallUseCase? cancelCallUseCase,
+    EndCallUseCase? endCallUseCase,
     StartIncomingAlertUseCase? startIncomingAlertUseCase,
     StartOutgoingAlertUseCase? startOutgoingAlertUseCase,
     StopCallAlertUseCase? stopCallAlertUseCase,
@@ -69,11 +133,13 @@ void main() {
       ..cameraGranted = cameraGranted;
 
     return CallsBloc(
-      startCallUseCase: StartCallUseCase(callRepository),
+      startCallUseCase: startCallUseCase ?? StartCallUseCase(callRepository),
       acceptCallUseCase: acceptCallUseCase ?? AcceptCallUseCase(callRepository),
-      rejectCallUseCase: RejectCallUseCase(callRepository),
-      endCallUseCase: EndCallUseCase(callRepository),
-      cancelCallUseCase: CancelCallUseCase(callRepository),
+      acceptIncomingCallUseCase: acceptIncomingCallUseCase,
+      declineIncomingCallUseCase: declineIncomingCallUseCase,
+      rejectCallUseCase: rejectCallUseCase ?? RejectCallUseCase(callRepository),
+      endCallUseCase: endCallUseCase ?? EndCallUseCase(callRepository),
+      cancelCallUseCase: cancelCallUseCase ?? CancelCallUseCase(callRepository),
       leaveCallUseCase: LeaveCallUseCase(callRepository),
       inviteParticipantUseCase: InviteParticipantUseCase(callRepository),
       requestCallPermissionsUseCase: RequestCallPermissionsUseCase(fakePermissionsService),
@@ -225,6 +291,7 @@ void main() {
         agoraChannel: 'room-1',
         token: 'token',
         callerId: 'caller@example.com',
+        calleeId: 'callee',
         callType: CallType.audio,
       );
       const session = CallSession(
@@ -244,6 +311,281 @@ void main() {
       );
       expect(stateAfterResume, isNot(isA<CallAcceptedState>()));
       expect(stateAfterResume.acceptedCallData?.callId, 'accepted-call');
+    });
+  });
+
+  group('CallsBloc lifecycle concurrency', () {
+    test('two quick start requests create only one call', () async {
+      final countingRepository = _CountingCallRepository();
+      callRepository = countingRepository;
+      final bloc = buildBloc();
+      const request = StartCallRequested(
+        callId: 'single-start',
+        callerId: 'caller',
+        callerName: 'Caller',
+        calleeIds: ['callee'],
+        type: CallType.audio,
+      );
+
+      bloc
+        ..add(request)
+        ..add(request);
+      await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.ringingOutgoing && state.activeCall != null,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(countingRepository.startCallCount, 1);
+      await bloc.close();
+    });
+
+    test('Accept wins over a concurrent Decline for the same call', () async {
+      await callRepository.startCall(
+        callId: 'racing-call',
+        callerId: 'caller',
+        callerName: 'Caller',
+        calleeIds: const ['callee'],
+        type: CallType.audio,
+      );
+      final acceptCallUseCase = MockAcceptCallUseCase();
+      final rejectCallUseCase = MockRejectCallUseCase();
+      final acceptStarted = Completer<void>();
+      final finishAccept = Completer<void>();
+      when(() => acceptCallUseCase(callId: 'racing-call', userId: 'callee')).thenAnswer((_) async {
+        acceptStarted.complete();
+        await finishAccept.future;
+      });
+      final bloc = buildBloc(
+        acceptCallUseCase: acceptCallUseCase,
+        rejectCallUseCase: rejectCallUseCase,
+      )..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+      bloc.add(IncomingCallDetected(incomingCall('racing-call')));
+      await bloc.stream.firstWhere((state) => state.status == CallsStatus.ringingIncoming);
+
+      bloc.add(const AcceptCallRequested(callId: 'racing-call', userId: 'callee'));
+      await acceptStarted.future;
+      bloc.add(const RejectCallRequested(callId: 'racing-call', userId: 'callee'));
+      finishAccept.complete();
+      await bloc.stream.firstWhere((state) => state is CallAcceptedState);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => acceptCallUseCase(callId: 'racing-call', userId: 'callee')).called(1);
+      verifyNever(() => rejectCallUseCase(callId: 'racing-call', userId: 'callee'));
+      expect(bloc.state.status, CallsStatus.active);
+      await bloc.close();
+    });
+
+    test('duplicate Cancel and End execute each terminal action once', () async {
+      final cancelCallUseCase = MockCancelCallUseCase();
+      final endCallUseCase = MockEndCallUseCase();
+      final cancelStarted = Completer<void>();
+      final finishCancel = Completer<void>();
+      when(() => cancelCallUseCase('cancel-once')).thenAnswer((_) async {
+        cancelStarted.complete();
+        await finishCancel.future;
+      });
+      when(() => endCallUseCase('end-once')).thenAnswer((_) async {});
+      final bloc = buildBloc(cancelCallUseCase: cancelCallUseCase, endCallUseCase: endCallUseCase)
+        ..add(
+          const StartCallRequested(
+            callId: 'cancel-once',
+            callerId: 'caller',
+            callerName: 'Caller',
+            calleeIds: ['callee'],
+            type: CallType.audio,
+          ),
+        );
+      await bloc.stream.firstWhere((state) => state.activeCall?.id == 'cancel-once');
+      bloc
+        ..add(const CancelCallRequested(callId: 'cancel-once'))
+        ..add(const CancelCallRequested(callId: 'cancel-once'))
+        ..add(const EndCallRequested(callId: 'cancel-once'));
+      await cancelStarted.future;
+      finishCancel.complete();
+      await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.terminalCallId == 'cancel-once',
+      );
+      bloc.add(const CancelCallRequested(callId: 'cancel-once'));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      verify(() => cancelCallUseCase('cancel-once')).called(1);
+      verifyNever(() => endCallUseCase('cancel-once'));
+
+      bloc.add(
+        const StartCallRequested(
+          callId: 'end-once',
+          callerId: 'caller',
+          callerName: 'Caller',
+          calleeIds: ['callee'],
+          type: CallType.audio,
+        ),
+      );
+      await bloc.stream.firstWhere((state) => state.activeCall?.id == 'end-once');
+      bloc
+        ..add(const EndCallRequested(callId: 'end-once'))
+        ..add(const EndCallRequested(callId: 'end-once'));
+      await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.terminalCallId == 'end-once',
+      );
+      bloc.add(const EndCallRequested(callId: 'end-once'));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      verify(() => endCallUseCase('end-once')).called(1);
+      await bloc.close();
+    });
+
+    test('duplicate CallKit Accept events invoke the accept use case once', () async {
+      final acceptIncomingCallUseCase = MockAcceptIncomingCallUseCase();
+      final acceptStarted = Completer<void>();
+      final finishAccept = Completer<CallSession?>();
+      const callData = CallDataEntity(
+        callId: 'callkit-accept-once',
+        displayName: 'Caller',
+        handle: 'caller@example.com',
+        agoraChannel: 'channel',
+        token: 'token',
+        callerId: 'caller@example.com',
+        calleeId: 'callee',
+        callType: CallType.audio,
+      );
+      const nativeAccept = CallEventActionCallAccept(
+        CallKitParams(
+          id: 'callkit-accept-once',
+          nameCaller: 'Caller',
+          handle: 'caller@example.com',
+          type: 0,
+          extra: {
+            'agoraChannel': 'channel',
+            'token': 'token',
+            'callerId': 'caller@example.com',
+            'calleeId': 'callee',
+          },
+        ),
+      );
+      when(
+        () => acceptIncomingCallUseCase(
+          callData: any(named: 'callData'),
+          userId: 'callee',
+        ),
+      ).thenAnswer((_) {
+        acceptStarted.complete();
+        return finishAccept.future;
+      });
+      final bloc = buildBloc(acceptIncomingCallUseCase: acceptIncomingCallUseCase)
+        ..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+
+      bloc
+        ..add(const CallKitEventReceived(nativeAccept))
+        ..add(const CallKitEventReceived(nativeAccept))
+        ..add(const CallKitAccepted(callData));
+      await acceptStarted.future;
+      finishAccept.complete(
+        const CallSession(
+          callId: 'callkit-accept-once',
+          roomId: 'channel',
+          token: 'token',
+          localUserId: 'callee',
+        ),
+      );
+      await bloc.stream.firstWhere((state) => state is CallAcceptedState);
+      verify(
+        () => acceptIncomingCallUseCase(
+          callData: any(named: 'callData'),
+          userId: 'callee',
+        ),
+      ).called(1);
+      await bloc.close();
+    });
+
+    test('duplicate CallKit Decline events invoke the decline use case once', () async {
+      final declineIncomingCallUseCase = MockDeclineIncomingCallUseCase();
+      final declineStarted = Completer<void>();
+      final finishDecline = Completer<void>();
+      const callData = CallDataEntity(
+        callId: 'callkit-decline-once',
+        displayName: 'Caller',
+        handle: 'caller@example.com',
+        agoraChannel: 'channel',
+        token: 'token',
+        callerId: 'caller@example.com',
+        calleeId: 'callee',
+        callType: CallType.audio,
+      );
+      when(() => declineIncomingCallUseCase(callId: callData.callId, userId: 'callee')).thenAnswer((
+        _,
+      ) async {
+        declineStarted.complete();
+        await finishDecline.future;
+      });
+      final bloc = buildBloc(declineIncomingCallUseCase: declineIncomingCallUseCase)
+        ..add(const ListenIncomingCallsStarted('callee'));
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee');
+
+      const nativeDecline = CallEventActionCallDecline(
+        CallKitParams(
+          id: 'callkit-decline-once',
+          nameCaller: 'Caller',
+          handle: 'caller@example.com',
+          type: 0,
+          extra: {
+            'agoraChannel': 'channel',
+            'token': 'token',
+            'callerId': 'caller@example.com',
+            'calleeId': 'callee',
+          },
+        ),
+      );
+      bloc
+        ..add(const CallKitEventReceived(nativeDecline))
+        ..add(const CallKitEventReceived(nativeDecline))
+        ..add(const CallKitDeclined(callData));
+      await declineStarted.future;
+      finishDecline.complete();
+      await bloc.stream.firstWhere(
+        (state) => state.status == CallsStatus.idle && state.terminalCallId == callData.callId,
+      );
+      verify(() => declineIncomingCallUseCase(callId: callData.callId, userId: 'callee')).called(1);
+      await bloc.close();
+    });
+
+    test('stale active-call and CallKit terminal events cannot clear a newer call', () async {
+      final declineIncomingCallUseCase = MockDeclineIncomingCallUseCase();
+      final bloc = buildBloc(declineIncomingCallUseCase: declineIncomingCallUseCase)
+        ..add(
+          const StartCallRequested(
+            callId: 'current-call',
+            callerId: 'caller',
+            callerName: 'Caller',
+            calleeIds: ['callee'],
+            type: CallType.audio,
+          ),
+        );
+      await bloc.stream.firstWhere((state) => state.activeCall?.id == 'current-call');
+
+      bloc
+        ..add(const ActiveCallUpdated(null, watchedCallId: 'old-call'))
+        ..add(const ActiveCallUpdated(null, watchedCallId: 'current-call', watchGeneration: 0))
+        ..add(
+          const CallKitDeclined(
+            CallDataEntity(
+              callId: 'old-call',
+              displayName: 'Old caller',
+              handle: 'old@example.com',
+              agoraChannel: 'old-channel',
+              token: 'old-token',
+              callerId: 'old@example.com',
+              calleeId: 'callee',
+              callType: CallType.audio,
+            ),
+          ),
+        )
+        ..add(const EndCallRequested(callId: 'old-call'));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      expect(bloc.state.activeCall?.id, 'current-call');
+      expect(bloc.state.status, CallsStatus.ringingOutgoing);
+      verifyNever(() => declineIncomingCallUseCase(callId: 'old-call', userId: 'callee'));
+      await bloc.close();
     });
   });
 

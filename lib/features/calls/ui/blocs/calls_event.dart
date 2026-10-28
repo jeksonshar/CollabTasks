@@ -118,11 +118,12 @@ class SwitchCameraRequested extends CallsEvent {
 class ActiveCallUpdated extends CallsEvent {
   final Call? call;
   final String? watchedCallId;
+  final int? watchGeneration;
 
-  const ActiveCallUpdated(this.call, {this.watchedCallId});
+  const ActiveCallUpdated(this.call, {this.watchedCallId, this.watchGeneration});
 
   @override
-  List<Object?> get props => [call, watchedCallId];
+  List<Object?> get props => [call, watchedCallId, watchGeneration];
 }
 
 class RtcConnectionStateChanged extends CallsEvent {

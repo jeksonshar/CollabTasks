@@ -79,10 +79,19 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final Set<String> _joiningOrJoinedCallIds = {};
   final Set<String> _pendingCallKitAcceptIds = {};
   final Set<String> _resolvedIncomingCallIds = {};
+  final Set<String> _callActionsInProgress = {};
+  final Set<String> _terminalCallIds = {};
+  final Map<String, ActiveCallUpdated> _deferredActiveCallUpdates = {};
+  final Map<String, CallEvent> _deferredCallKitTerminalEvents = {};
+  final Set<String> _deferredCancellationPushes = {};
+  final Map<String, IncomingCallDetected> _incomingCallsDeferredDuringStart = {};
   final List<CallEvent> _pendingCallKitEvents = [];
   final List<CallDataEntity> _pendingAcceptedCallKitCalls = [];
   final List<CallDataEntity> _pendingDeclinedCallKitCalls = [];
   int _terminalEventSequence = 0;
+  int _activeCallWatchSequence = 0;
+  int _activeCallWatchGeneration = 0;
+  bool _startCallInProgress = false;
 
   static const Duration _outgoingCallTimeoutDuration = Duration(seconds: 45);
 
@@ -177,6 +186,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onStartCall(StartCallRequested event, Emitter<CallsState> emit) async {
+    if (_startCallInProgress || state.status != CallsStatus.idle || _trackedCallId != null) {
+      debugPrint('[CallsBloc] Ignoring duplicate start request while another call is active');
+      return;
+    }
+    // Reserve synchronously before requesting permissions or performing any
+    // other asynchronous work. Different event types are concurrent in Bloc.
+    _startCallInProgress = true;
     debugPrint('[CallsBloc] _onStartCall: type=${event.type}, callee=${event.calleeIds}');
     try {
       final permissionsGranted = await _requestCallPermissionsUseCase(type: event.type);
@@ -252,10 +268,17 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         errorType: CallErrorType.unknown,
         errorMessage: e.toString(),
       );
+    } finally {
+      _startCallInProgress = false;
+      _drainIncomingCallsDeferredDuringStart();
     }
   }
 
   Future<void> _onIncomingCallDetected(IncomingCallDetected event, Emitter<CallsState> emit) async {
+    if (_startCallInProgress && state.status == CallsStatus.idle) {
+      _incomingCallsDeferredDuringStart[event.call.id] = event;
+      return;
+    }
     // watchIncomingCalls already filters by the authenticated user's email/UID
     // aliases and the keyed participant record's ringing status.
     final isParticipantRinging = event.call.participants.any(
@@ -263,6 +286,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     );
     if (isParticipantRinging) {
       _resolvedIncomingCallIds.remove(event.call.id);
+      _terminalCallIds.remove(event.call.id);
     }
 
     if (state.status != CallsStatus.idle ||
@@ -313,10 +337,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onAcceptCall(AcceptCallRequested event, Emitter<CallsState> emit) async {
-    if (!_acceptedCallKitIds.add(event.callId)) return;
+    if (_acceptedCallKitIds.contains(event.callId) || !_reserveCallAction(event.callId)) {
+      return;
+    }
+    _acceptedCallKitIds.add(event.callId);
     _resolvedIncomingCallIds.add(event.callId);
-    await _stopCallAlertSafely();
     try {
+      await _stopCallAlertSafely();
       final callType = state.activeCall?.type ?? CallType.audio;
       final permissionsGranted = await _requestCallPermissionsUseCase(type: callType);
       if (!permissionsGranted) {
@@ -383,56 +410,74 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         errorType: CallErrorType.unknown,
         errorMessage: e.toString(),
       );
+    } finally {
+      _releaseCallAction(event.callId);
     }
   }
 
   Future<void> _onRejectCall(RejectCallRequested event, Emitter<CallsState> emit) async {
+    if (_resolvedIncomingCallIds.contains(event.callId) || !_reserveCallAction(event.callId)) {
+      return;
+    }
     _resolvedIncomingCallIds.add(event.callId);
     try {
       await _rejectCallUseCase(callId: event.callId, userId: event.userId);
     } catch (e) {
       // Ignored on reject
     } finally {
-      await _finishCall(emit, callId: event.callId, currentUserId: event.userId);
+      try {
+        await _finishCall(emit, callId: event.callId, currentUserId: event.userId);
+      } finally {
+        _releaseCallAction(event.callId);
+      }
     }
   }
 
   Future<void> _onEndCall(EndCallRequested event, Emitter<CallsState> emit) async {
     final callId = event.callId ?? state.activeCall?.id;
+    if (callId == null || !_reserveCallAction(callId)) return;
     emit(state.copyWith(status: CallsStatus.terminating));
 
-    if (callId != null) {
+    try {
+      await _endCallUseCase(callId);
+    } catch (e) {
+      // Ignored on end
+    } finally {
       try {
-        await _endCallUseCase(callId);
-      } catch (e) {
-        // Ignored on end
+        await _dismissCallKitCall(callId);
+        await _finishCall(emit, callId: callId);
+      } finally {
+        _releaseCallAction(callId);
       }
-      await _dismissCallKitCall(callId);
     }
-
-    await _finishCall(emit, callId: callId);
   }
 
   Future<void> _onCancelCall(CancelCallRequested event, Emitter<CallsState> emit) async {
     final callId = event.callId ?? state.activeCall?.id;
+    if (callId == null || !_reserveCallAction(callId)) return;
     emit(state.copyWith(status: CallsStatus.terminating));
 
-    if (callId != null) {
+    try {
+      await _cancelCallUseCase(callId);
+    } catch (_) {
+      // Keep local teardown deterministic even when the remote update fails.
+    } finally {
       try {
-        await _cancelCallUseCase(callId);
-      } catch (_) {}
-      await _dismissCallKitCall(callId);
+        await _dismissCallKitCall(callId);
+        await _finishCall(emit, callId: callId);
+      } finally {
+        _releaseCallAction(callId);
+      }
     }
-
-    await _finishCall(emit, callId: callId);
   }
 
   Future<void> _onLeaveCall(LeaveCallRequested event, Emitter<CallsState> emit) async {
     final callId = state.activeCall?.id;
     final userId = state.currentUserId;
+    if (callId == null || !_reserveCallAction(callId)) return;
     emit(state.copyWith(status: CallsStatus.terminating));
 
-    if (callId != null && userId != null) {
+    if (userId != null) {
       try {
         await _leaveCallUseCase(callId: callId, userId: userId);
       } catch (error, stackTrace) {
@@ -446,8 +491,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       _acceptedCallKitIds.remove(callId);
       _pendingCallKitAcceptIds.remove(callId);
     }
-
-    await _finishCall(emit, callId: callId);
+    try {
+      await _finishCall(emit, callId: callId);
+    } finally {
+      _releaseCallAction(callId);
+    }
   }
 
   Future<void> _onInviteParticipant(
@@ -645,6 +693,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     };
     if (nativeEvent is CallEventActionCallAccept) {
       if (_acceptedCallKitIds.contains(nativeEvent.callKitParams.id)) return;
+      _terminalCallIds.remove(nativeEvent.callKitParams.id);
       _pendingCallKitAcceptIds.add(nativeEvent.callKitParams.id);
     }
     final requiresUser =
@@ -653,7 +702,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         ? _resolveCallRecipientId(callData)
         : state.currentUserId?.trim() ?? '';
     if (requiresUser && recipientId.isEmpty) {
-      _pendingCallKitEvents.add(nativeEvent);
+      if (!_pendingCallKitEvents.any(
+        (pending) => _isDuplicateCallKitAction(pending, nativeEvent),
+      )) {
+        _pendingCallKitEvents.add(nativeEvent);
+      }
       debugPrint('[CallsBloc] Deferring CallKit action until recipient identity is ready');
       return;
     }
@@ -668,17 +721,18 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
 
     if (nativeEvent is CallEventActionCallTimeout) {
-      await _endCallFromCallKit(nativeEvent.id, emit);
+      await _endCallFromCallKit(nativeEvent.id, emit, nativeEvent: nativeEvent);
       return;
     }
 
     if (nativeEvent is CallEventActionCallEnded) {
-      await _endCallFromCallKit(nativeEvent.callKitParams.id, emit);
+      await _endCallFromCallKit(nativeEvent.callKitParams.id, emit, nativeEvent: nativeEvent);
     }
   }
 
   Future<void> _onCallKitAccepted(CallKitAccepted event, Emitter<CallsState> emit) async {
     if (_acceptedCallKitIds.contains(event.callData.callId)) return;
+    _terminalCallIds.remove(event.callData.callId);
     _pendingCallKitAcceptIds.add(event.callData.callId);
     if (state.currentUserId == null || state.currentUserId!.isEmpty) {
       if (!_pendingAcceptedCallKitCalls.any((call) => call.callId == event.callData.callId)) {
@@ -713,19 +767,23 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     String? userId,
   }) async {
     final callId = callData.callId;
-    if (callId.isEmpty) return;
-    _resolvedIncomingCallIds.add(callId);
-    final recipientId = userId ?? state.currentUserId ?? callData.calleeId;
-    if (recipientId.trim().isEmpty || _declineIncomingCallUseCase == null) {
-      await _finishCall(
-        emit,
-        callId: callId,
-        currentUserId: recipientId,
-        errorType: CallErrorType.userUnavailable,
-      );
+    if (callId.isEmpty ||
+        _resolvedIncomingCallIds.contains(callId) ||
+        !_reserveCallAction(callId)) {
       return;
     }
+    _resolvedIncomingCallIds.add(callId);
+    final recipientId = userId ?? state.currentUserId ?? callData.calleeId;
     try {
+      if (recipientId.trim().isEmpty || _declineIncomingCallUseCase == null) {
+        await _finishCall(
+          emit,
+          callId: callId,
+          currentUserId: recipientId,
+          errorType: CallErrorType.userUnavailable,
+        );
+        return;
+      }
       _callKitDismissalsPending.add(callId);
       await _declineIncomingCallUseCase.call(callId: callId, userId: recipientId);
       await _finishCall(emit, callId: callId, currentUserId: recipientId);
@@ -739,6 +797,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         errorType: CallErrorType.unknown,
         errorMessage: error.toString(),
       );
+    } finally {
+      _releaseCallAction(callId);
     }
   }
 
@@ -746,22 +806,31 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     CallCancellationPushReceived event,
     Emitter<CallsState> emit,
   ) async {
-    if (event.callId.isEmpty) return;
+    if (event.callId.isEmpty || !_reserveCallAction(event.callId)) {
+      if (_callActionsInProgress.contains(event.callId)) {
+        _deferredCancellationPushes.add(event.callId);
+      }
+      return;
+    }
     _resolvedIncomingCallIds.add(event.callId);
     _pendingCallKitAcceptIds.remove(event.callId);
     _callKitDismissalsPending.add(event.callId);
     try {
-      await _cancelIncomingCallUseCase?.call(event.callId);
-    } catch (error) {
-      debugPrint('[CallsBloc] Failed to dismiss remotely cancelled call: $error');
-    }
+      try {
+        await _cancelIncomingCallUseCase?.call(event.callId);
+      } catch (error) {
+        debugPrint('[CallsBloc] Failed to dismiss remotely cancelled call: $error');
+      }
 
-    final currentState = state;
-    var activeCallId = currentState.activeCall?.id;
-    activeCallId = currentState.acceptedCallData?.callId ?? activeCallId;
-    if (activeCallId == event.callId ||
-        (state.status == CallsStatus.ringingIncoming && state.activeCall?.id == event.callId)) {
-      await _finishCall(emit, callId: event.callId);
+      final currentState = state;
+      var activeCallId = currentState.activeCall?.id;
+      activeCallId = currentState.acceptedCallData?.callId ?? activeCallId;
+      if (activeCallId == event.callId ||
+          (state.status == CallsStatus.ringingIncoming && state.activeCall?.id == event.callId)) {
+        await _finishCall(emit, callId: event.callId);
+      }
+    } finally {
+      _releaseCallAction(event.callId);
     }
   }
 
@@ -782,23 +851,27 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _dismissCallKitCall(callData.callId);
       return;
     }
-    if (!_acceptedCallKitIds.add(callData.callId)) return;
-    _pendingCallKitAcceptIds.remove(callData.callId);
-    _resolvedIncomingCallIds.add(callData.callId);
-    await _stopCallAlertSafely();
-    final userId = state.currentUserId;
-    final useCase = _acceptIncomingCallUseCase;
-    if (useCase == null || userId == null || userId.isEmpty) {
-      _acceptedCallKitIds.remove(callData.callId);
-      await _finishCall(
-        emit,
-        callId: callData.callId,
-        currentUserId: userId ?? callData.calleeId,
-        errorType: CallErrorType.userUnavailable,
-      );
+    if (!_reserveCallAction(callData.callId)) return;
+    if (!_acceptedCallKitIds.add(callData.callId)) {
+      _releaseCallAction(callData.callId);
       return;
     }
+    _pendingCallKitAcceptIds.remove(callData.callId);
+    _resolvedIncomingCallIds.add(callData.callId);
+    final userId = state.currentUserId;
+    final useCase = _acceptIncomingCallUseCase;
     try {
+      await _stopCallAlertSafely();
+      if (useCase == null || userId == null || userId.isEmpty) {
+        _acceptedCallKitIds.remove(callData.callId);
+        await _finishCall(
+          emit,
+          callId: callData.callId,
+          currentUserId: userId ?? callData.calleeId,
+          errorType: CallErrorType.userUnavailable,
+        );
+        return;
+      }
       final granted = await _requestCallPermissionsUseCase(type: callData.callType);
       if (!granted) {
         _callKitDismissalsPending.add(callData.callId);
@@ -857,6 +930,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         errorType: CallErrorType.unknown,
         errorMessage: error.toString(),
       );
+    } finally {
+      _releaseCallAction(callData.callId);
     }
   }
 
@@ -891,8 +966,24 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     return '';
   }
 
-  Future<void> _endCallFromCallKit(String callId, Emitter<CallsState> emit) async {
+  Future<void> _endCallFromCallKit(
+    String callId,
+    Emitter<CallsState> emit, {
+    CallEvent? nativeEvent,
+  }) async {
     if (_callKitDismissalsPending.remove(callId)) return;
+    if (!_reserveCallAction(callId)) {
+      if (_callActionsInProgress.contains(callId)) {
+        // A remote/native terminal signal must not be lost while Accept is in
+        // flight. Re-dispatch it after the current action releases the gate.
+        // If the current action itself terminates the call, the terminal ID
+        // check will make this replay a no-op.
+        if (nativeEvent != null) {
+          _deferredCallKitTerminalEvents[callId] = nativeEvent;
+        }
+      }
+      return;
+    }
     _resolvedIncomingCallIds.add(callId);
     _acceptedCallKitIds.remove(callId);
     _pendingCallKitAcceptIds.remove(callId);
@@ -901,8 +992,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _cancelIncomingCallUseCase?.call(callId);
     } catch (error) {
       debugPrint('[CallsBloc] Failed to clear CallKit call: $error');
+    } finally {
+      try {
+        await _finishCall(emit, callId: callId);
+      } finally {
+        _releaseCallAction(callId);
+      }
     }
-    await _finishCall(emit, callId: callId);
   }
 
   void _onStopListeningIncomingCalls(StopListeningIncomingCalls event, Emitter<CallsState> emit) {
@@ -917,15 +1013,17 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     debugPrint('[CallsBloc] Outgoing call timed out (no answer)');
 
     final callId = state.activeCall?.id;
-    if (callId != null) {
+    if (callId == null || !_reserveCallAction(callId)) return;
+    try {
       try {
         await _cancelCallUseCase(callId);
       } catch (e) {
         debugPrint('[CallsBloc] Error cancelling timed-out call: $e');
       }
+      await _finishCall(emit, callId: callId, errorType: CallErrorType.callTimeout);
+    } finally {
+      _releaseCallAction(callId);
     }
-
-    await _finishCall(emit, callId: callId, errorType: CallErrorType.callTimeout);
   }
 
   void _startOutgoingCallTimeout() {
@@ -947,6 +1045,13 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   Future<void> _onActiveCallUpdated(ActiveCallUpdated event, Emitter<CallsState> emit) async {
     final call = event.call;
     final watchedCallId = event.watchedCallId ?? call?.id;
+    if (event.watchGeneration != null && event.watchGeneration != _activeCallWatchGeneration) {
+      debugPrint(
+        '[CallsBloc] Ignoring active-call update from stale watch generation '
+        '${event.watchGeneration}',
+      );
+      return;
+    }
     final trackedCallId = _trackedCallId;
     if (watchedCallId != null && trackedCallId != null && watchedCallId != trackedCallId) {
       debugPrint(
@@ -957,6 +1062,22 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
     if (call != null && watchedCallId != null && call.id != watchedCallId) {
       debugPrint('[CallsBloc] Ignoring mismatched active-call snapshot for $watchedCallId');
+      return;
+    }
+    final isTerminalUpdate =
+        call == null ||
+        call.status == CallStatus.rejected ||
+        call.status == CallStatus.ended ||
+        call.status == CallStatus.cancelled;
+    if (watchedCallId != null &&
+        isTerminalUpdate &&
+        _callActionsInProgress.contains(watchedCallId)) {
+      _deferredActiveCallUpdates[watchedCallId] = event;
+      return;
+    }
+    if (watchedCallId != null &&
+        _terminalCallIds.contains(watchedCallId) &&
+        state.status == CallsStatus.idle) {
       return;
     }
     if (state.status == CallsStatus.idle && call == null) {
@@ -1069,12 +1190,16 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   Future<void> _subscribeToActiveCall(String callId) async {
     debugPrint('[CallsBloc] Subscribing to active call: $callId');
+    final watchGeneration = ++_activeCallWatchSequence;
+    _activeCallWatchGeneration = watchGeneration;
     await _activeCallSubscription?.cancel();
+    if (isClosed || _activeCallWatchGeneration != watchGeneration) return;
     _activeCallSubscription = _watchActiveCallUseCase(callId).listen(
-      (call) => add(ActiveCallUpdated(call, watchedCallId: callId)),
+      (call) =>
+          add(ActiveCallUpdated(call, watchedCallId: callId, watchGeneration: watchGeneration)),
       onError: (err) {
         debugPrint('[CallsBloc] Error watching active call: $err');
-        add(ActiveCallUpdated(null, watchedCallId: callId));
+        add(ActiveCallUpdated(null, watchedCallId: callId, watchGeneration: watchGeneration));
       },
     );
   }
@@ -1085,6 +1210,58 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       state.activeCall?.id ??
       (_acceptedCallKitIds.isEmpty ? null : _acceptedCallKitIds.first) ??
       (_pendingCallKitAcceptIds.isEmpty ? null : _pendingCallKitAcceptIds.first);
+
+  bool _reserveCallAction(String callId) {
+    if (callId.isEmpty ||
+        _terminalCallIds.contains(callId) ||
+        _callActionsInProgress.contains(callId)) {
+      return false;
+    }
+    final trackedCallId = _trackedCallId;
+    if (trackedCallId != null && trackedCallId != callId) return false;
+    _callActionsInProgress.add(callId);
+    return true;
+  }
+
+  void _releaseCallAction(String callId) {
+    _callActionsInProgress.remove(callId);
+    if (_terminalCallIds.contains(callId)) {
+      _deferredActiveCallUpdates.remove(callId);
+      _deferredCallKitTerminalEvents.remove(callId);
+      _deferredCancellationPushes.remove(callId);
+      return;
+    }
+    final activeUpdate = _deferredActiveCallUpdates.remove(callId);
+    if (activeUpdate != null && !isClosed) add(activeUpdate);
+    final callKitEvent = _deferredCallKitTerminalEvents.remove(callId);
+    if (callKitEvent != null && !isClosed) {
+      add(CallKitEventReceived(callKitEvent));
+    }
+    if (_deferredCancellationPushes.remove(callId) && !isClosed) {
+      add(CallCancellationPushReceived(callId));
+    }
+  }
+
+  bool _isDuplicateCallKitAction(CallEvent first, CallEvent second) {
+    if (first is CallEventActionCallAccept && second is CallEventActionCallAccept) {
+      return first.callKitParams.id == second.callKitParams.id;
+    }
+    if (first is CallEventActionCallDecline && second is CallEventActionCallDecline) {
+      return first.callKitParams.id == second.callKitParams.id;
+    }
+    return false;
+  }
+
+  void _drainIncomingCallsDeferredDuringStart() {
+    if (_startCallInProgress || state.status != CallsStatus.idle || isClosed) {
+      return;
+    }
+    final pending = List<IncomingCallDetected>.of(_incomingCallsDeferredDuringStart.values);
+    _incomingCallsDeferredDuringStart.clear();
+    for (final event in pending) {
+      add(event);
+    }
+  }
 
   Future<void> _joinRtcSession(CallSession session) async {
     if (state.status == CallsStatus.idle && state.terminalCallId == session.callId) {
@@ -1135,6 +1312,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       await _dismissCallKitCall(callId);
       return;
     }
+    if (callId != null && !_terminalCallIds.add(callId)) {
+      debugPrint('[CallsBloc] Duplicate terminal transition ignored for $callId');
+      return;
+    }
     final preservedUserId = currentUserId ?? state.currentUserId;
     await _cleanup();
     if (callId != null) {
@@ -1152,12 +1333,14 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         terminalCallId: callId,
       ),
     );
+    _drainIncomingCallsDeferredDuringStart();
   }
 
   Future<void> _cleanup() async {
     _stopOutgoingCallTimeout();
     await _stopCallAlertSafely();
 
+    _activeCallWatchGeneration = ++_activeCallWatchSequence;
     await _activeCallSubscription?.cancel();
     _activeCallSubscription = null;
 
