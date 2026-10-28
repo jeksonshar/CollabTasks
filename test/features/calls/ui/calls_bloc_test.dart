@@ -514,6 +514,38 @@ void main() {
     );
 
     blocTest<CallsBloc, CallsState>(
+      'system pause does not re-enable a camera disabled manually by the user',
+      build: buildBloc,
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        isCameraEnabled: true,
+        activeCall: Call(
+          id: 'call-manual-camera-test',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.video,
+          status: CallStatus.active,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) {
+        bloc
+          ..add(const ToggleCameraRequested())
+          ..add(const AppLifecycleChanged(AppLifecycleState.paused))
+          ..add(const AppLifecycleChanged(AppLifecycleState.resumed));
+      },
+      expect: () => [
+        isA<CallsState>()
+            .having((s) => s.isCameraEnabled, 'isCameraEnabled', isFalse)
+            .having((s) => s.isCameraManuallyDisabled, 'isCameraManuallyDisabled', isTrue),
+      ],
+      verify: (_) {
+        expect(fakeRtcService.isCameraEnabled, isFalse);
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
       'RtcConnectionStateChanged updates rtcConnectionState in state',
       build: buildBloc,
       act: (bloc) => bloc.add(const RtcConnectionStateChanged(RtcConnectionState.reconnecting)),

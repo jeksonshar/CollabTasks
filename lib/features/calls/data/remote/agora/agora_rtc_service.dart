@@ -45,6 +45,15 @@ class AgoraRtcService implements RtcService {
   /// Expose active session reference.
   CallSession? get activeSession => _activeSession;
 
+  @visibleForTesting
+  bool get isMicrophoneMuted => _isMicrophoneMuted;
+
+  @visibleForTesting
+  bool get isCameraEnabled => _isCameraEnabled;
+
+  @visibleForTesting
+  bool get isSpeakerEnabled => _isSpeakerEnabled;
+
   @override
   Stream<RtcConnectionState> get connectionStateStream => _connectionStateController.stream;
 
@@ -75,10 +84,14 @@ class AgoraRtcService implements RtcService {
       RtcEngineEventHandler(
         onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
           debugPrint('[AgoraRtcService] Joined channel: ${connection.channelId}');
+          if (_activeSession?.roomId != connection.channelId) {
+            debugPrint(
+              '[AgoraRtcService] Ignoring join callback for stale channel ${connection.channelId}',
+            );
+            return;
+          }
           _updateConnectionState(RtcConnectionState.connected);
-          try {
-            _engine?.setEnableSpeakerphone(true);
-          } catch (_) {}
+          unawaited(_applySpeakerphoneRoute());
         },
         onLeaveChannel: (RtcConnection connection, RtcStats stats) {
           debugPrint('[AgoraRtcService] Left channel: ${connection.channelId}');
@@ -87,7 +100,7 @@ class AgoraRtcService implements RtcService {
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
           debugPrint('[AgoraRtcService] Remote user joined: $remoteUid');
           final participantId = _uidMapper.toUserId(remoteUid) ?? 'user_$remoteUid';
-          final isCallVideo = _activeSession?.extra['mediaType'] == 'video' || _isCameraEnabled;
+          final isCallVideo = _activeSession?.extra['mediaType'] == 'video';
           _participants[participantId] = RtcParticipantMediaState(
             participantId: participantId,
             isLocal: false,
@@ -261,19 +274,28 @@ class AgoraRtcService implements RtcService {
       throw StateError('Cannot join session on a disposed AgoraRtcService');
     }
 
-    _activeSession = session;
     await _ensureInitialized();
+
+    // Start every call with clean media and route state. Settings from the
+    // previous channel must not leak into the next call.
+    final isVideo = session.extra['mediaType'] == 'video';
+    _isMicrophoneMuted = false;
+    _isCameraEnabled = isVideo;
+    _isSpeakerEnabled = false;
+    _participants.clear();
+    _activeSession = session;
 
     _updateConnectionState(RtcConnectionState.connecting);
 
     // Audio setup
     await _engine!.enableAudio();
     await _engine!.enableAudioVolumeIndication(interval: 200, smooth: 3, reportVad: true);
+    await _engine!.muteLocalAudioStream(false);
+    await _engine!.setDefaultAudioRouteToSpeakerphone(false);
 
-    // Video setup if video call or camera is enabled
-    final isVideo = session.extra['mediaType'] == 'video' || _isCameraEnabled;
+    // Explicitly disable video for audio calls so a previous session cannot
+    // leave its camera enabled or published.
     if (isVideo) {
-      _isCameraEnabled = true;
       await _engine!.enableVideo();
       await _engine!.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
@@ -283,7 +305,9 @@ class AgoraRtcService implements RtcService {
         ),
       );
       await _engine!.startPreview();
-      await _engine!.setDefaultAudioRouteToSpeakerphone(true);
+    } else {
+      await _engine!.stopPreview();
+      await _engine!.disableVideo();
     }
 
     // Resolve local UID: prefer the value pre-computed by the repository, which is
@@ -343,34 +367,61 @@ class AgoraRtcService implements RtcService {
 
   @override
   Future<void> leaveSession() async {
-    if (_engine != null) {
-      // Timeout guards: if joinChannel failed (e.g. errInvalidToken) the engine
-      // may never have actually joined, and leaveChannel can hang indefinitely.
-      await _engine!.stopPreview().timeout(
+    final engine = _engine;
+    if (engine != null) {
+      final wasConnected =
+          _currentState == RtcConnectionState.connected ||
+          _currentState == RtcConnectionState.reconnecting;
+      // Each SDK cleanup is isolated so one failed operation cannot prevent
+      // the remaining controls from being reset.
+      await _tryReset('stopPreview', engine.stopPreview, const Duration(seconds: 3));
+      await _tryReset(
+        'muteLocalAudioStream',
+        () => engine.muteLocalAudioStream(false),
         const Duration(seconds: 3),
-        onTimeout: () => debugPrint('[AgoraRtcService] stopPreview timed out — skipping'),
       );
-      await _engine!.leaveChannel().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => debugPrint('[AgoraRtcService] leaveChannel timed out — skipping'),
-      );
-      await _engine!.disableAudio().timeout(
+      await _tryReset(
+        'setDefaultAudioRouteToSpeakerphone',
+        () => engine.setDefaultAudioRouteToSpeakerphone(false),
         const Duration(seconds: 3),
-        onTimeout: () => debugPrint('[AgoraRtcService] disableAudio timed out — skipping'),
       );
+      if (wasConnected) {
+        await _tryReset(
+          'setEnableSpeakerphone',
+          () => engine.setEnableSpeakerphone(false),
+          const Duration(seconds: 3),
+        );
+      }
+      await _tryReset('leaveChannel', engine.leaveChannel, const Duration(seconds: 5));
+      await _tryReset('disableVideo', engine.disableVideo, const Duration(seconds: 3));
+      await _tryReset('disableAudio', engine.disableAudio, const Duration(seconds: 3));
     }
     _activeSession = null;
+    _isMicrophoneMuted = false;
+    _isCameraEnabled = false;
+    _isSpeakerEnabled = false;
     _participants.clear();
     _emitParticipants();
     _updateConnectionState(RtcConnectionState.disconnected);
   }
 
+  Future<void> _tryReset(String operation, Future<void> Function() reset, Duration timeout) async {
+    try {
+      await reset().timeout(
+        timeout,
+        onTimeout: () => debugPrint('[AgoraRtcService] $operation timed out during cleanup'),
+      );
+    } catch (error) {
+      debugPrint('[AgoraRtcService] Failed to reset $operation: $error');
+    }
+  }
+
   @override
   Future<void> setMicrophoneMuted(bool muted) async {
-    _isMicrophoneMuted = muted;
     if (_engine != null) {
       await _engine!.muteLocalAudioStream(muted);
     }
+    _isMicrophoneMuted = muted;
     final localId = _activeSession?.localUserId;
     if (localId != null && _participants.containsKey(localId)) {
       _participants[localId] = _participants[localId]!.copyWith(isAudioMuted: muted);
@@ -380,7 +431,6 @@ class AgoraRtcService implements RtcService {
 
   @override
   Future<void> setCameraEnabled(bool enabled) async {
-    _isCameraEnabled = enabled;
     if (_engine != null) {
       if (enabled) {
         await _engine!.enableVideo();
@@ -396,6 +446,7 @@ class AgoraRtcService implements RtcService {
         );
       }
     }
+    _isCameraEnabled = enabled;
     final localId = _activeSession?.localUserId;
     if (localId != null && _participants.containsKey(localId)) {
       _participants[localId] = _participants[localId]!.copyWith(isVideoEnabled: enabled);
@@ -405,9 +456,23 @@ class AgoraRtcService implements RtcService {
 
   @override
   Future<void> setSpeakerEnabled(bool enabled) async {
-    _isSpeakerEnabled = enabled;
     if (_engine != null) {
-      await _engine!.setEnableSpeakerphone(enabled);
+      await _engine!.setDefaultAudioRouteToSpeakerphone(enabled);
+      if (_currentState == RtcConnectionState.connected ||
+          _currentState == RtcConnectionState.reconnecting) {
+        await _engine!.setEnableSpeakerphone(enabled);
+      }
+    }
+    _isSpeakerEnabled = enabled;
+  }
+
+  Future<void> _applySpeakerphoneRoute() async {
+    final engine = _engine;
+    if (engine == null || _activeSession == null) return;
+    try {
+      await engine.setEnableSpeakerphone(_isSpeakerEnabled);
+    } catch (error) {
+      debugPrint('[AgoraRtcService] Failed to apply speakerphone route: $error');
     }
   }
 
