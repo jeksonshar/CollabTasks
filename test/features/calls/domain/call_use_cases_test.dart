@@ -187,6 +187,7 @@ void main() {
           type: CallType.video,
           isGroup: true,
         );
+        await acceptCallUseCase(callId: call.id, userId: 'user-2');
 
         // user-2 leaves
         await leaveCallUseCase(callId: call.id, userId: 'user-2');
@@ -207,8 +208,49 @@ void main() {
         final reinvited = afterReinvite?.participants.firstWhere((p) => p.userId == 'user-2');
         expect(reinvited?.status, CallParticipantStatus.ringing);
         expect(afterReinvite?.calleeIds.contains('user-2'), isTrue);
+
+        await acceptCallUseCase(callId: call.id, userId: 'user-2');
+        final rejoined = await callRepository.getCallById(call.id);
+        expect(rejoined?.status, CallStatus.active);
+        expect(
+          rejoined?.participants.firstWhere((p) => p.userId == 'user-2').status,
+          CallParticipantStatus.connected,
+        );
       },
     );
+
+    test('a declined invite can be re-invited and accepted in an active group call', () async {
+      final call = await startCallUseCase(
+        callerId: 'host@example.com',
+        callerName: 'Host',
+        calleeIds: ['guest@example.com'],
+        type: CallType.video,
+        isGroup: true,
+      );
+      await acceptCallUseCase(callId: call.id, userId: 'guest@example.com');
+      await rejectCallUseCase(callId: call.id, userId: 'guest@example.com');
+
+      final declined = await callRepository.getCallById(call.id);
+      expect(declined?.status, CallStatus.active);
+      expect(
+        declined?.participants.firstWhere((p) => p.userId == 'guest@example.com').status,
+        CallParticipantStatus.declined,
+      );
+
+      await inviteParticipantUseCase(
+        callId: call.id,
+        userId: 'guest@example.com',
+        displayName: 'Guest',
+      );
+      await acceptCallUseCase(callId: call.id, userId: 'guest@example.com');
+
+      final rejoined = await callRepository.getCallById(call.id);
+      expect(rejoined?.status, CallStatus.active);
+      expect(
+        rejoined?.participants.firstWhere((p) => p.userId == 'guest@example.com').status,
+        CallParticipantStatus.connected,
+      );
+    });
 
     test('RequestCallPermissionsUseCase respects service grants', () async {
       permissionsService

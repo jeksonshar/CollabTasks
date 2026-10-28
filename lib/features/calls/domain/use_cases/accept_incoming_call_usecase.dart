@@ -1,5 +1,4 @@
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
-import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
@@ -18,19 +17,9 @@ class AcceptIncomingCallUseCase {
 
   Future<CallSession?> call({required CallDataEntity callData, required String userId}) async {
     final call = await _callRepository.getCallById(callData.callId);
-    final normalizedUserId = userId.trim().toLowerCase();
-    final isRingingParticipant =
-        call?.participants.any(
-          (candidate) =>
-              candidate.userId.trim().toLowerCase() == normalizedUserId &&
-              candidate.status == CallParticipantStatus.ringing,
-        ) ??
-        false;
     final isAcceptable =
         call != null &&
-        (call.status == CallStatus.ringing || call.status == CallStatus.active) &&
-        call.calleeIds.any((id) => id.trim().toLowerCase() == normalizedUserId) &&
-        isRingingParticipant;
+        (call.status == CallStatus.ringing || (call.status == CallStatus.active && call.isGroup));
 
     if (!isAcceptable) {
       await _callKitService.endCall(callData.callId);

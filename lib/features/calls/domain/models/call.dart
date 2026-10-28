@@ -14,6 +14,7 @@ class Call extends Equatable {
   final bool isGroup;
   final String? groupId;
   final List<CallParticipant> participants;
+  final String? lastInvitedParticipantId;
   final DateTime createdAt;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -29,6 +30,7 @@ class Call extends Equatable {
     this.isGroup = false,
     this.groupId,
     this.participants = const [],
+    this.lastInvitedParticipantId,
     required this.createdAt,
     this.startedAt,
     this.endedAt,
@@ -45,6 +47,7 @@ class Call extends Equatable {
     bool? isGroup,
     String? groupId,
     List<CallParticipant>? participants,
+    String? lastInvitedParticipantId,
     DateTime? createdAt,
     DateTime? startedAt,
     DateTime? endedAt,
@@ -60,6 +63,7 @@ class Call extends Equatable {
       isGroup: isGroup ?? this.isGroup,
       groupId: groupId ?? this.groupId,
       participants: participants ?? this.participants,
+      lastInvitedParticipantId: lastInvitedParticipantId ?? this.lastInvitedParticipantId,
       createdAt: createdAt ?? this.createdAt,
       startedAt: startedAt ?? this.startedAt,
       endedAt: endedAt ?? this.endedAt,
@@ -67,24 +71,58 @@ class Call extends Equatable {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final participantsByUser = <String, dynamic>{
+      for (final participant in participants)
+        _normalizeParticipantId(participant.userId): {
+          ...participant.toMap(),
+          'userId': _normalizeParticipantId(participant.userId),
+        },
+    };
+    final data = <String, dynamic>{
       'id': id,
-      'callerId': callerId,
+      'callerId': _normalizeParticipantId(callerId),
       'callerName': callerName,
       'callerAvatarUrl': callerAvatarUrl,
-      'calleeIds': calleeIds,
+      'calleeIds': calleeIds.map(_normalizeParticipantId).toList(),
       'type': type.name,
       'status': status.name,
       'isGroup': isGroup,
       'groupId': groupId,
-      'participants': participants.map((p) => p.toMap()).toList(),
+      // Firestore stores participants under their stable user identifier so
+      // Security Rules can validate a single participant without permitting
+      // a caller to rewrite the entire participant list.
+      'participantsByUser': participantsByUser,
       'createdAtMillis': createdAt.millisecondsSinceEpoch,
       'startedAtMillis': startedAt?.millisecondsSinceEpoch,
       'endedAtMillis': endedAt?.millisecondsSinceEpoch,
     };
+    if (lastInvitedParticipantId != null) {
+      data['lastInvitedParticipantId'] = _normalizeParticipantId(lastInvitedParticipantId!);
+    }
+    return data;
+  }
+
+  static String _normalizeParticipantId(String userId) {
+    final trimmed = userId.trim();
+    return trimmed.contains('@') ? trimmed.toLowerCase() : trimmed;
   }
 
   factory Call.fromMap(Map<String, dynamic> map) {
+    final rawParticipantsByUser = map['participantsByUser'];
+    final List<CallParticipant> participants;
+    if (rawParticipantsByUser is Map) {
+      participants = rawParticipantsByUser.entries.map((entry) {
+        final participantMap = Map<String, dynamic>.from(entry.value as Map)
+          ..putIfAbsent('userId', () => entry.key.toString());
+        return CallParticipant.fromMap(participantMap);
+      }).toList();
+    } else {
+      // Read compatibility for call documents created before participantsByUser
+      // was introduced. New writes always use the keyed map.
+      participants = ((map['participants'] as Iterable?) ?? const [])
+          .map((p) => CallParticipant.fromMap(Map<String, dynamic>.from(p as Map)))
+          .toList();
+    }
     return Call(
       id: map['id'] as String? ?? '',
       callerId: map['callerId'] as String? ?? '',
@@ -95,9 +133,8 @@ class Call extends Equatable {
       status: CallStatus.values.byName(map['status'] as String? ?? CallStatus.initiating.name),
       isGroup: map['isGroup'] as bool? ?? false,
       groupId: map['groupId'] as String?,
-      participants: ((map['participants'] as Iterable?) ?? const [])
-          .map((p) => CallParticipant.fromMap(p as Map<String, dynamic>))
-          .toList(),
+      participants: participants,
+      lastInvitedParticipantId: map['lastInvitedParticipantId'] as String?,
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         (map['createdAtMillis'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
       ),
@@ -122,6 +159,7 @@ class Call extends Equatable {
     isGroup,
     groupId,
     participants,
+    lastInvitedParticipantId,
     createdAt,
     startedAt,
     endedAt,

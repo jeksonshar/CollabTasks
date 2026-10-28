@@ -50,32 +50,33 @@ class FirestoreCallRepository implements CallRepository {
   @override
   Stream<List<Call>> watchIncomingCalls(String userId) {
     debugPrint('[FirestoreCallRepository] watchIncomingCalls for user: $userId');
-    final normalizedUserId = userId.trim().toLowerCase();
+    final normalizedUserId = _normalizeIdentity(userId);
+    final identities = <String>{normalizedUserId};
+    final currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      identities
+        ..add(currentUser.uid.trim())
+        ..add(currentUser.email?.trim().toLowerCase() ?? '')
+        ..remove('');
+    }
 
-    final ringingCallsMap = <String, Call>{};
-    final activeCallsMap = <String, Call>{};
-
-    final ringingStream = _firestore
-        .collection(_callsCollection)
-        .where('calleeIds', arrayContains: normalizedUserId)
-        .where('status', isEqualTo: CallStatus.ringing.name)
-        .snapshots();
-
-    final activeStream = _firestore
-        .collection(_callsCollection)
-        .where('calleeIds', arrayContains: normalizedUserId)
-        .where('status', isEqualTo: CallStatus.active.name)
-        .snapshots();
+    final callsByQuery = <String, Map<String, Call>>{};
+    final querySubscriptions = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
 
     List<Call> filterAndCombine() {
-      final combined = {...ringingCallsMap, ...activeCallsMap}.values;
-      final filtered = combined
+      final combined = <String, Call>{};
+      for (final results in callsByQuery.values) {
+        combined.addAll(results);
+      }
+      final filtered = combined.values
           .where(
-            (call) => call.participants.any(
-              (p) =>
-                  p.userId.trim().toLowerCase() == normalizedUserId &&
-                  p.status == CallParticipantStatus.ringing,
-            ),
+            (call) =>
+                !identities.contains(_normalizeIdentity(call.callerId)) &&
+                call.participants.any(
+                  (p) =>
+                      identities.contains(_normalizeIdentity(p.userId)) &&
+                      p.status == CallParticipantStatus.ringing,
+                ),
           )
           .toList();
       debugPrint(
@@ -84,48 +85,40 @@ class FirestoreCallRepository implements CallRepository {
       return filtered;
     }
 
-    // Single-subscription controller: onListen starts both Firestore
-    // subscriptions; onCancel cancels them and closes the controller so no
-    // resources are retained after the sole listener unsubscribes.
+    // UID and email can both appear in calleeIds in existing documents. Keep
+    // each query's latest snapshot so either identity can discover the call.
     late final StreamController<List<Call>> controller;
-    StreamSubscription? sub1;
-    StreamSubscription? sub2;
-
     controller = StreamController<List<Call>>(
       onListen: () {
-        sub1 = ringingStream.listen(
-          (snapshot) {
-            ringingCallsMap.clear();
-            for (final doc in snapshot.docs) {
-              ringingCallsMap[doc.id] = Call.fromMap(doc.data());
-            }
-            if (!controller.isClosed) {
-              controller.add(filterAndCombine());
-            }
-          },
-          onError: (error) {
-            debugPrint('[FirestoreCallRepository] Error in ringing stream($userId): $error');
-          },
-        );
-
-        sub2 = activeStream.listen(
-          (snapshot) {
-            activeCallsMap.clear();
-            for (final doc in snapshot.docs) {
-              activeCallsMap[doc.id] = Call.fromMap(doc.data());
-            }
-            if (!controller.isClosed) {
-              controller.add(filterAndCombine());
-            }
-          },
-          onError: (error) {
-            debugPrint('[FirestoreCallRepository] Error in active stream($userId): $error');
-          },
-        );
+        for (final identity in identities) {
+          for (final status in [CallStatus.ringing, CallStatus.active]) {
+            final queryKey = '${status.name}:$identity';
+            final query = _firestore
+                .collection(_callsCollection)
+                .where('calleeIds', arrayContains: identity)
+                .where('status', isEqualTo: status.name);
+            querySubscriptions.add(
+              query.snapshots().listen(
+                (snapshot) {
+                  callsByQuery[queryKey] = {
+                    for (final doc in snapshot.docs) doc.id: Call.fromMap(doc.data()),
+                  };
+                  if (!controller.isClosed) controller.add(filterAndCombine());
+                },
+                onError: (error) {
+                  debugPrint(
+                    '[FirestoreCallRepository] Error in ${status.name} stream($identity): $error',
+                  );
+                },
+              ),
+            );
+          }
+        }
       },
       onCancel: () {
-        sub1?.cancel();
-        sub2?.cancel();
+        for (final subscription in querySubscriptions) {
+          unawaited(subscription.cancel());
+        }
         controller.close();
       },
     );
@@ -198,7 +191,7 @@ class FirestoreCallRepository implements CallRepository {
 
   @override
   Future<void> acceptCall({required String callId, required String userId}) async {
-    final normalizedUserId = userId.trim().toLowerCase();
+    final normalizedUserId = _normalizeIdentity(userId);
     debugPrint('[FirestoreCallRepository] acceptCall: callId=$callId, user=$normalizedUserId');
 
     final docRef = _firestore.collection(_callsCollection).doc(callId);
@@ -209,16 +202,25 @@ class FirestoreCallRepository implements CallRepository {
       }
 
       final call = Call.fromMap(snapshot.data()!);
-      final updatedParticipants = call.participants.map((p) {
-        if (p.userId.trim().toLowerCase() == normalizedUserId) {
-          return p.copyWith(status: CallParticipantStatus.connected, joinedAt: DateTime.now());
-        }
-        return p;
-      }).toList();
+      final participantIndex = _findParticipantIndex(call, userId);
+      final canAcceptActiveGroupInvite = call.status == CallStatus.active && call.isGroup;
+      if ((!call.calleeIds.any((id) => _matchesUserIdentity(id, userId))) ||
+          (call.status != CallStatus.ringing && !canAcceptActiveGroupInvite) ||
+          participantIndex == -1 ||
+          call.participants[participantIndex].status != CallParticipantStatus.ringing) {
+        throw StateError('Call $callId is no longer ringing for $normalizedUserId');
+      }
+
+      final now = DateTime.now();
+      final updatedParticipants = List<CallParticipant>.from(call.participants);
+      updatedParticipants[participantIndex] = updatedParticipants[participantIndex].copyWith(
+        status: CallParticipantStatus.connected,
+        joinedAt: now,
+      );
 
       final updatedCall = call.copyWith(
-        status: CallStatus.active,
-        startedAt: call.startedAt ?? DateTime.now(),
+        status: call.status == CallStatus.ringing ? CallStatus.active : call.status,
+        startedAt: call.status == CallStatus.ringing ? (call.startedAt ?? now) : call.startedAt,
         participants: updatedParticipants,
       );
 
@@ -230,7 +232,7 @@ class FirestoreCallRepository implements CallRepository {
 
   @override
   Future<void> rejectCall({required String callId, required String userId}) async {
-    final normalizedUserId = userId.trim().toLowerCase();
+    final normalizedUserId = _normalizeIdentity(userId);
     debugPrint('[FirestoreCallRepository] rejectCall: callId=$callId, user=$normalizedUserId');
 
     final docRef = _firestore.collection(_callsCollection).doc(callId);
@@ -239,17 +241,25 @@ class FirestoreCallRepository implements CallRepository {
       if (!snapshot.exists || snapshot.data() == null) return;
 
       final call = Call.fromMap(snapshot.data()!);
-      final updatedParticipants = call.participants.map((p) {
-        if (p.userId.trim().toLowerCase() == normalizedUserId) {
-          return p.copyWith(status: CallParticipantStatus.declined);
-        }
-        return p;
-      }).toList();
+      final participantIndex = _findParticipantIndex(call, userId);
+      if (participantIndex == -1 ||
+          !call.calleeIds.any((id) => _matchesUserIdentity(id, userId)) ||
+          (call.status != CallStatus.ringing &&
+              !(call.status == CallStatus.active && call.isGroup)) ||
+          call.participants[participantIndex].status != CallParticipantStatus.ringing) {
+        throw StateError('Call $callId cannot be declined by $normalizedUserId');
+      }
+
+      final updatedParticipants = List<CallParticipant>.from(call.participants);
+      updatedParticipants[participantIndex] = updatedParticipants[participantIndex].copyWith(
+        status: CallParticipantStatus.declined,
+      );
 
       final nonHostParticipants = updatedParticipants.where(
         (p) => p.role != CallParticipantRole.host,
       );
       final allDeclined =
+          !call.isGroup &&
           nonHostParticipants.isNotEmpty &&
           nonHostParticipants.every((p) => p.status == CallParticipantStatus.declined);
 
@@ -297,7 +307,7 @@ class FirestoreCallRepository implements CallRepository {
 
   @override
   Future<void> leaveCall({required String callId, required String userId}) async {
-    final normalizedUserId = userId.trim().toLowerCase();
+    final normalizedUserId = _normalizeIdentity(userId);
     debugPrint('[FirestoreCallRepository] leaveCall: callId=$callId, user=$normalizedUserId');
 
     final docRef = _firestore.collection(_callsCollection).doc(callId);
@@ -306,27 +316,26 @@ class FirestoreCallRepository implements CallRepository {
       if (!snapshot.exists || snapshot.data() == null) return;
 
       final call = Call.fromMap(snapshot.data()!);
-      final updatedParticipants = call.participants.map<CallParticipant>((p) {
-        if (p.userId.trim().toLowerCase() == normalizedUserId) {
-          return p.copyWith(status: CallParticipantStatus.left);
-        }
-        return p;
-      }).toList();
-
-      final remainingConnected = updatedParticipants.where(
-        (p) => p.status == CallParticipantStatus.connected,
+      final participantIndex = _findParticipantIndex(call, userId);
+      if (participantIndex == -1 ||
+          (call.status != CallStatus.ringing && call.status != CallStatus.active)) {
+        throw StateError('Call $callId cannot be left by $normalizedUserId');
+      }
+      final leavingParticipant = call.participants[participantIndex];
+      if (leavingParticipant.status != CallParticipantStatus.connected &&
+          leavingParticipant.status != CallParticipantStatus.ringing) {
+        return;
+      }
+      final updatedParticipants = List<CallParticipant>.from(call.participants);
+      updatedParticipants[participantIndex] = leavingParticipant.copyWith(
+        status: CallParticipantStatus.left,
       );
 
-      final shouldEnd =
-          remainingConnected.isEmpty || (!call.isGroup && remainingConnected.length < 2);
-
-      final updatedCalleeIds = call.calleeIds
-          .where((id) => id.trim().toLowerCase() != normalizedUserId)
-          .toList();
+      final updatedCalleeIds = _isCurrentUser(call.callerId)
+          ? List<String>.from(call.calleeIds)
+          : call.calleeIds.where((id) => !_matchesUserIdentity(id, userId)).toList();
 
       final updatedCall = call.copyWith(
-        status: shouldEnd ? CallStatus.ended : call.status,
-        endedAt: shouldEnd ? DateTime.now() : null,
         calleeIds: updatedCalleeIds,
         participants: updatedParticipants,
       );
@@ -342,7 +351,7 @@ class FirestoreCallRepository implements CallRepository {
     required String displayName,
     String? avatarUrl,
   }) async {
-    final normalizedUserId = userId.trim().toLowerCase();
+    final normalizedUserId = _normalizeIdentity(userId);
     debugPrint('[FirestoreCallRepository] inviteParticipant: $normalizedUserId to $callId');
 
     final docRef = _firestore.collection(_callsCollection).doc(callId);
@@ -351,22 +360,39 @@ class FirestoreCallRepository implements CallRepository {
       if (!snapshot.exists || snapshot.data() == null) return;
 
       final call = Call.fromMap(snapshot.data()!);
+      final isConnectedGroupParticipant = call.participants.any(
+        (participant) =>
+            participant.status == CallParticipantStatus.connected &&
+            _isCurrentUser(participant.userId),
+      );
+      if (!call.isGroup ||
+          (call.status != CallStatus.ringing && call.status != CallStatus.active) ||
+          (!_isCurrentUser(call.callerId) &&
+              !(call.status == CallStatus.active && isConnectedGroupParticipant))) {
+        throw StateError('Call $callId does not allow participant invitations');
+      }
       final existingIndex = call.participants.indexWhere(
-        (p) => p.userId.trim().toLowerCase() == normalizedUserId,
+        (p) => _normalizeIdentity(p.userId) == normalizedUserId,
       );
 
       final List<CallParticipant> updatedParticipants;
       if (existingIndex != -1) {
         final existing = call.participants[existingIndex];
         if (existing.status == CallParticipantStatus.connected ||
-            existing.status == CallParticipantStatus.ringing) {
+            existing.status == CallParticipantStatus.ringing ||
+            (existing.status != CallParticipantStatus.left &&
+                existing.status != CallParticipantStatus.declined)) {
           return;
         }
-        final reInvited = existing.copyWith(
+        final reInvited = CallParticipant(
+          userId: existing.userId,
           displayName: displayName.isNotEmpty ? displayName : existing.displayName,
           avatarUrl: avatarUrl ?? existing.avatarUrl,
-          status: CallParticipantStatus.ringing,
           role: CallParticipantRole.participant,
+          status: CallParticipantStatus.ringing,
+          // A previous joinedAt belongs to the old participation interval.
+          // Rules require a fresh ringing invite to have no join timestamp.
+          joinedAt: null,
         );
         updatedParticipants = List<CallParticipant>.from(call.participants);
         updatedParticipants[existingIndex] = reInvited;
@@ -389,6 +415,7 @@ class FirestoreCallRepository implements CallRepository {
       final updatedCall = call.copyWith(
         calleeIds: updatedCalleeIds,
         participants: updatedParticipants,
+        lastInvitedParticipantId: normalizedUserId,
       );
 
       transaction.update(docRef, updatedCall.toMap());
@@ -497,5 +524,30 @@ class FirestoreCallRepository implements CallRepository {
     int uid = userId.hashCode & 0x7FFFFFFF;
     if (uid == 0) uid = 1;
     return uid;
+  }
+
+  int _findParticipantIndex(Call call, String userId) {
+    return call.participants.indexWhere(
+      (participant) => _matchesUserIdentity(participant.userId, userId),
+    );
+  }
+
+  bool _matchesUserIdentity(String storedId, String requestedId) {
+    final normalizedStoredId = _normalizeIdentity(storedId);
+    final normalizedRequestedId = _normalizeIdentity(requestedId);
+    return normalizedStoredId == normalizedRequestedId ||
+        (_isCurrentUser(normalizedRequestedId) && _isCurrentUser(normalizedStoredId));
+  }
+
+  bool _isCurrentUser(String userId) {
+    final normalized = _normalizeIdentity(userId);
+    final currentUser = _auth.currentUser;
+    return normalized == currentUser?.uid.trim() ||
+        normalized == currentUser?.email?.trim().toLowerCase();
+  }
+
+  String _normalizeIdentity(String userId) {
+    final trimmed = userId.trim();
+    return trimmed.contains('@') ? trimmed.toLowerCase() : trimmed;
   }
 }

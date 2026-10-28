@@ -1,7 +1,7 @@
 import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import {RtcTokenBuilder, RtcRole} from "agora-token";
+import {RtcRole, RtcTokenBuilder} from "agora-token";
 
 admin.initializeApp();
 
@@ -55,7 +55,7 @@ export const getAgoraRtcToken = onRequest(
             return;
         }
 
-        const body = req.body as {channelName?: string; uid?: number | string};
+        const body = req.body as { channelName?: string; uid?: number | string };
         const channelName = (body.channelName || "").trim();
         const uid = typeof body.uid === "number" ? body.uid : (parseInt(String(body.uid || 0), 10) || 0);
 
@@ -415,7 +415,7 @@ async function getFcmTokensForRecipients(recipients: string[]): Promise<string[]
  */
 async function getFcmRecipientTokens(
     recipients: string[],
-): Promise<Array<{token: string; calleeId: string}>> {
+): Promise<Array<{ token: string; calleeId: string }>> {
     const tokenRecipients = new Map<string, string>();
     for (const rawRecipient of [...new Set(recipients)]) {
         const recipient = String(rawRecipient).trim();
@@ -538,19 +538,27 @@ export const onCallUpdated = onDocumentUpdated(
         const beforeCallees: string[] = beforeData.calleeIds || [];
         const afterCallees: string[] = afterData.calleeIds || [];
 
-        const beforeParticipants: Array<{userId?: string; status?: string}> = beforeData.participants || [];
-        const afterParticipants: Array<{userId?: string; status?: string}> = afterData.participants || [];
-        const ringingCalleesFromParticipants = afterParticipants
-            .filter((afterP) => {
+        type CallParticipantData = { userId?: string; status?: string; role?: string };
+        const participantMap = (data: Record<string, unknown>): Record<string, CallParticipantData> => {
+            const keyed = data.participantsByUser;
+            if (keyed && typeof keyed === "object" && !Array.isArray(keyed)) {
+                return keyed as Record<string, CallParticipantData>;
+            }
+            // Read compatibility while old transient call documents expire.
+            const legacy = Array.isArray(data.participants) ? data.participants as CallParticipantData[] : [];
+            return Object.fromEntries(legacy
+                .filter((participant) => participant && typeof participant.userId === "string")
+                .map((participant) => [String(participant.userId).trim().toLowerCase(), participant]));
+        };
+        const beforeParticipants = participantMap(beforeData);
+        const afterParticipants = participantMap(afterData);
+        const ringingCalleesFromParticipants = Object.entries(afterParticipants)
+            .filter(([key, afterP]) => {
                 if (afterP?.status !== "ringing") return false;
-                const afterUserId = String(afterP.userId || "").trim().toLowerCase();
-                if (!afterUserId) return false;
-                const beforeP = beforeParticipants.find(
-                    (p) => String(p?.userId || "").trim().toLowerCase() === afterUserId
-                );
+                const beforeP = beforeParticipants[key];
                 return !beforeP || beforeP.status !== "ringing";
             })
-            .map((p) => String(p?.userId || "").trim())
+            .map(([key, p]) => String(p?.userId || key).trim())
             .filter((id) => id.length > 0);
 
         const newCallees = [...new Set([
@@ -648,6 +656,52 @@ export const onCallUpdated = onDocumentUpdated(
                 console.log(`[onCallUpdated] Отправлено отмен звонка ${callId}: ${response.successCount}`);
             } catch (error) {
                 console.error(`[onCallUpdated] Ошибка отправки отмены звонка ${callId}:`, error);
+            }
+        }
+
+        // A client may only change its own keyed participant record. Aggregate
+        // group outcomes here because Rules cannot safely iterate all map values.
+        if (beforeData.participantsByUser || afterData.participantsByUser) {
+            const participantValues = Object.values(afterParticipants);
+            const ringingCallAllDeclined = newStatus === "ringing" &&
+                participantValues.some((participant) => participant.role === "host") &&
+                participantValues
+                    .filter((participant) => participant.role !== "host")
+                    .every((participant) => participant.status === "declined");
+            const connectedCount = participantValues.filter(
+                (participant) => participant.status === "connected"
+            ).length;
+            const shouldEnd = newStatus === "active" && (
+                connectedCount === 0 || (!afterData.isGroup && connectedCount < 2)
+            );
+
+            if (ringingCallAllDeclined || shouldEnd) {
+                const callRef = admin.firestore().collection("calls").doc(callId);
+                await admin.firestore().runTransaction(async (transaction) => {
+                    const latest = await transaction.get(callRef);
+                    const latestData = latest.data();
+                    if (!latestData || latestData.status !== newStatus) return;
+                    const latestParticipants = participantMap(latestData);
+                    const latestValues = Object.values(latestParticipants);
+                    const latestAllDeclined = latestData.status === "ringing" &&
+                        latestValues.some((participant) => participant.role === "host") &&
+                        latestValues
+                            .filter((participant) => participant.role !== "host")
+                            .every((participant) => participant.status === "declined");
+                    const latestConnectedCount = latestValues.filter(
+                        (participant) => participant.status === "connected"
+                    ).length;
+                    const latestShouldEnd = latestData.status === "active" && (
+                        latestConnectedCount === 0 ||
+                        (!latestData.isGroup && latestConnectedCount < 2)
+                    );
+                    if (latestAllDeclined || latestShouldEnd) {
+                        transaction.update(callRef, {
+                            status: latestAllDeclined ? "rejected" : "ended",
+                            endedAtMillis: Date.now(),
+                        });
+                    }
+                });
             }
         }
     }

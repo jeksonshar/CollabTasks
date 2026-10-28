@@ -256,11 +256,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _onIncomingCallDetected(IncomingCallDetected event, Emitter<CallsState> emit) async {
-    final normalizedUserId = state.currentUserId?.trim().toLowerCase() ?? '';
+    // watchIncomingCalls already filters by the authenticated user's email/UID
+    // aliases and the keyed participant record's ringing status.
     final isParticipantRinging = event.call.participants.any(
-      (p) =>
-          p.userId.trim().toLowerCase() == normalizedUserId &&
-          p.status == CallParticipantStatus.ringing,
+      (participant) => participant.status == CallParticipantStatus.ringing,
     );
     if (isParticipantRinging) {
       _resolvedIncomingCallIds.remove(event.call.id);
@@ -436,7 +435,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     if (callId != null && userId != null) {
       try {
         await _leaveCallUseCase(callId: callId, userId: userId);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        debugPrint(
+          '[CallsBloc] Failed to persist participant leave for $callId: '
+          '$error\n$stackTrace',
+        );
+      }
       await _dismissCallKitCall(callId);
       _resolvedIncomingCallIds.remove(callId);
       _acceptedCallKitIds.remove(callId);
@@ -459,7 +463,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
           displayName: event.displayName,
           avatarUrl: event.avatarUrl,
         );
-      } catch (e) {
+      } catch (e, st) {
+        debugPrint('[CallsBloc] Failed to invite ${event.userId} to $callId: $e\n$st');
         emit(
           state.copyWith(
             status: state.status,
@@ -616,12 +621,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
           final isCallRingingOrActive =
               call.status == CallStatus.ringing || call.status == CallStatus.active;
           if (isCallRingingOrActive &&
-              call.callerId.trim().toLowerCase() != normalizedUserId &&
-              call.calleeIds.any((id) => id.trim().toLowerCase() == normalizedUserId) &&
               call.participants.any(
-                (p) =>
-                    p.userId.trim().toLowerCase() == normalizedUserId &&
-                    p.status == CallParticipantStatus.ringing,
+                (participant) => participant.status == CallParticipantStatus.ringing,
               )) {
             debugPrint('[CallsBloc] Incoming call detected from ${call.callerName} (${call.id})');
             add(IncomingCallDetected(call));

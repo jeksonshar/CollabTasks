@@ -132,9 +132,11 @@ class InMemoryCallRepository implements CallRepository {
       return p;
     }).toList();
 
-    final allDeclined = updatedParticipants
-        .where((p) => p.role != CallParticipantRole.host)
-        .every((p) => p.status == CallParticipantStatus.declined);
+    final allDeclined =
+        !call.isGroup &&
+        updatedParticipants
+            .where((p) => p.role != CallParticipantRole.host)
+            .every((p) => p.status == CallParticipantStatus.declined);
 
     final updatedCall = call.copyWith(
       status: allDeclined ? CallStatus.rejected : call.status,
@@ -226,6 +228,9 @@ class InMemoryCallRepository implements CallRepository {
   }) async {
     final call = _calls[callId];
     if (call == null) return;
+    if (!call.isGroup || (call.status != CallStatus.ringing && call.status != CallStatus.active)) {
+      throw StateError('Call $callId does not allow participant invitations');
+    }
 
     final existingIndex = call.participants.indexWhere((p) => p.userId == userId);
     final List<CallParticipant> updatedParticipants;
@@ -308,7 +313,7 @@ class InMemoryCallRepository implements CallRepository {
           .where(
             (c) =>
                 c.calleeIds.contains(userId) &&
-                c.status == CallStatus.ringing &&
+                (c.status == CallStatus.ringing || c.status == CallStatus.active) &&
                 c.participants.any(
                   (p) => p.userId == userId && p.status == CallParticipantStatus.ringing,
                 ),

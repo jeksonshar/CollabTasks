@@ -31,18 +31,20 @@ service cloud.firestore {
       let data = request.resource.data;
       return data.keys().hasOnly([
           'id', 'callerId', 'callerName', 'callerAvatarUrl', 'calleeIds',
-          'type', 'status', 'isGroup', 'groupId', 'participants',
+          'type', 'status', 'isGroup', 'groupId', 'participantsByUser',
           'createdAtMillis', 'startedAtMillis', 'endedAtMillis'
         ]) &&
         data.keys().hasAll([
           'id', 'callerId', 'callerName', 'callerAvatarUrl', 'calleeIds',
-          'type', 'status', 'isGroup', 'groupId', 'participants',
+          'type', 'status', 'isGroup', 'groupId', 'participantsByUser',
           'createdAtMillis', 'startedAtMillis', 'endedAtMillis'
         ]) &&
         data.id == callId &&
         isIdentity(data.callerId) &&
-        data.callerName is string &&
-        (data.callerAvatarUrl == null || data.callerAvatarUrl is string) &&
+        data.callerId.size() <= 256 &&
+        data.callerName is string && data.callerName.size() <= 100 &&
+        (data.callerAvatarUrl == null ||
+          (data.callerAvatarUrl is string && data.callerAvatarUrl.size() <= 2048)) &&
         data.calleeIds is list && data.calleeIds.size() > 0 && data.calleeIds.size() <= 50 &&
         data.calleeIds.toSet().size() == data.calleeIds.size() &&
         !data.calleeIds.hasAny([data.callerId]) &&
@@ -50,14 +52,15 @@ service cloud.firestore {
         data.status == 'ringing' &&
         data.isGroup is bool &&
         (data.groupId == null || data.groupId is string) &&
-        data.participants is list && data.participants.size() == data.calleeIds.size() + 1 &&
-        data.participants[0].keys().hasOnly([
-          'userId', 'displayName', 'avatarUrl', 'role', 'status', 'joinedAtMillis'
-        ]) &&
-        data.participants[0].userId == data.callerId &&
-        data.participants[0].role == 'host' &&
-        data.participants[0].status == 'connected' &&
-        data.participants[0].joinedAtMillis is int &&
+        data.participantsByUser is map &&
+        data.participantsByUser.size() == data.calleeIds.size() + 1 &&
+        data.participantsByUser.keys().size() == data.calleeIds.size() + 1 &&
+        data.participantsByUser.keys().hasAll(data.calleeIds.concat([data.callerId])) &&
+        data.participantsByUser[data.callerId] is map &&
+        data.participantsByUser[data.callerId].userId == data.callerId &&
+        data.participantsByUser[data.callerId].role == 'host' &&
+        data.participantsByUser[data.callerId].status == 'connected' &&
+        data.participantsByUser[data.callerId].joinedAtMillis is int &&
         data.createdAtMillis is int &&
         data.startedAtMillis == null && data.endedAtMillis == null;
     }
@@ -71,6 +74,77 @@ service cloud.firestore {
       return resource.data.calleeIds.hasAny(authIds());
     }
 
+    function connectedGroupParticipant(call) {
+      let participantKey = participantKeyFor(call.participantsByUser);
+      let participant = call.participantsByUser.get(participantKey, null);
+      return call.isGroup == true && call.status == 'active' &&
+        participant is map && participant.userId == participantKey &&
+        participant.status == 'connected';
+    }
+
+    function participantKeyFor(data) {
+      return request.auth.token.keys().hasAny(['email']) &&
+          data.keys().hasAny([request.auth.token.email.lower()])
+        ? request.auth.token.email.lower()
+        : request.auth.uid;
+    }
+
+    function ownParticipantTransition(fromStatus, toStatus, setJoinTime) {
+      let oldMap = resource.data.participantsByUser;
+      let newMap = request.resource.data.participantsByUser;
+      let participantKey = participantKeyFor(oldMap);
+      let oldParticipant = oldMap.get(participantKey, null);
+      let newParticipant = newMap.get(participantKey, null);
+      let changedParticipantKeys = oldMap.diff(newMap).affectedKeys();
+      return oldMap is map && newMap is map &&
+        changedParticipantKeys.size() == 1 &&
+        changedParticipantKeys.hasAny([participantKey]) &&
+        oldParticipant is map && newParticipant is map &&
+        oldParticipant.userId == participantKey &&
+        newParticipant.userId == participantKey &&
+        oldParticipant.status == fromStatus &&
+        newParticipant.status == toStatus &&
+        oldParticipant.diff(newParticipant).affectedKeys().hasOnly(
+          setJoinTime ? ['status', 'joinedAtMillis'] : ['status']
+        ) &&
+        (setJoinTime
+          ? newParticipant.joinedAtMillis is int
+          : newParticipant.joinedAtMillis == oldParticipant.joinedAtMillis);
+    }
+
+    function validInviteParticipantChange() {
+      let oldMap = resource.data.participantsByUser;
+      let newMap = request.resource.data.participantsByUser;
+      let inviteeId = request.resource.data.lastInvitedParticipantId;
+      let oldParticipant = oldMap.get(inviteeId, null);
+      let newParticipant = newMap.get(inviteeId, null);
+      let changedParticipantKeys = oldMap.diff(newMap).affectedKeys();
+      return inviteeId is string && inviteeId.size() > 0 && inviteeId.size() <= 256 &&
+        request.resource.data.calleeIds.hasAny([inviteeId]) &&
+        changedParticipantKeys.size() == 1 &&
+        changedParticipantKeys.hasAny([inviteeId]) &&
+        newParticipant is map &&
+        newParticipant.userId == inviteeId &&
+        newParticipant.displayName is string &&
+        newParticipant.displayName.size() <= 100 &&
+        (newParticipant.avatarUrl == null ||
+          (newParticipant.avatarUrl is string && newParticipant.avatarUrl.size() <= 2048)) &&
+        newParticipant.role == 'participant' &&
+        newParticipant.status == 'ringing' &&
+        newParticipant.joinedAtMillis == null &&
+        (oldParticipant == null
+          ? newParticipant.keys().hasOnly([
+              'userId', 'displayName', 'avatarUrl', 'role', 'status', 'joinedAtMillis'
+            ])
+          : oldParticipant is map &&
+            oldParticipant.userId == inviteeId &&
+            oldParticipant.role == 'participant' &&
+            oldParticipant.status in ['left', 'declined'] &&
+            oldParticipant.diff(newParticipant).affectedKeys().hasOnly([
+              'displayName', 'avatarUrl', 'status', 'joinedAtMillis'
+            ]));
+    }
+
     function acceptCall() {
       return calleeAction() &&
         resource.data.status == 'ringing' &&
@@ -78,16 +152,30 @@ service cloud.firestore {
         request.resource.data.startedAtMillis is int &&
         (resource.data.startedAtMillis == null ||
           request.resource.data.startedAtMillis == resource.data.startedAtMillis) &&
-        changedFields().hasOnly(['status', 'startedAtMillis', 'participants']);
+        changedFields().hasOnly(['status', 'startedAtMillis', 'participantsByUser']) &&
+        ownParticipantTransition('ringing', 'connected', true);
+    }
+
+    function acceptActiveGroupInvite() {
+      return calleeAction() &&
+        resource.data.status == 'active' &&
+        request.resource.data.status == 'active' &&
+        resource.data.isGroup == true &&
+        request.resource.data.startedAtMillis == resource.data.startedAtMillis &&
+        request.resource.data.calleeIds == resource.data.calleeIds &&
+        changedFields().hasOnly(['participantsByUser']) &&
+        ownParticipantTransition('ringing', 'connected', true);
     }
 
     function rejectCall() {
       return calleeAction() &&
         resource.data.status in ['ringing', 'active'] &&
         request.resource.data.status in [resource.data.status, 'rejected'] &&
-        changedFields().hasOnly(['status', 'endedAtMillis', 'participants']) &&
+        changedFields().hasOnly(['status', 'endedAtMillis', 'participantsByUser']) &&
+        ownParticipantTransition('ringing', 'declined', false) &&
         (request.resource.data.status == 'rejected'
-          ? request.resource.data.endedAtMillis is int
+          ? !resource.data.isGroup && resource.data.calleeIds.size() == 1 &&
+            request.resource.data.endedAtMillis is int
           : request.resource.data.endedAtMillis == resource.data.endedAtMillis);
     }
 
@@ -110,9 +198,10 @@ service cloud.firestore {
     function leaveCall() {
       return isCallMember(resource.data) &&
         resource.data.status in ['ringing', 'active'] &&
-        request.resource.data.status in [resource.data.status, 'ended'] &&
+        request.resource.data.status == resource.data.status &&
         request.resource.data.calleeIds is list &&
-        request.resource.data.participants is list &&
+        (ownParticipantTransition('connected', 'left', false) ||
+          ownParticipantTransition('ringing', 'left', false)) &&
         request.resource.data.calleeIds.toSet()
           .difference(resource.data.calleeIds.toSet()).size() == 0 &&
         (isCallCaller(resource.data)
@@ -123,31 +212,30 @@ service cloud.firestore {
             resource.data.calleeIds.toSet()
               .difference(request.resource.data.calleeIds.toSet()).size() == 1) &&
         changedFields().hasOnly([
-          'status', 'endedAtMillis', 'calleeIds', 'participants'
+          'calleeIds', 'participantsByUser'
         ]) &&
-        (request.resource.data.status == 'ended'
-          ? request.resource.data.endedAtMillis is int
-          : request.resource.data.endedAtMillis == resource.data.endedAtMillis);
+        request.resource.data.endedAtMillis == resource.data.endedAtMillis;
     }
 
     function inviteParticipant() {
-      return isCallCaller(resource.data) &&
+      return (isCallCaller(resource.data) ||
+          connectedGroupParticipant(resource.data)) &&
+        resource.data.isGroup == true &&
         resource.data.status in ['ringing', 'active'] &&
         request.resource.data.status == resource.data.status &&
         request.resource.data.calleeIds is list &&
-        request.resource.data.participants is list &&
+        request.resource.data.participantsByUser is map &&
         request.resource.data.calleeIds.size() <= 50 &&
-        request.resource.data.participants.size() <= 51 &&
         request.resource.data.calleeIds.toSet().size() ==
           request.resource.data.calleeIds.size() &&
         request.resource.data.calleeIds.toSet()
           .difference(resource.data.calleeIds.toSet()).size() <= 1 &&
         resource.data.calleeIds.toSet()
           .difference(request.resource.data.calleeIds.toSet()).size() == 0 &&
-        request.resource.data.participants.size() in [
-          resource.data.participants.size(), resource.data.participants.size() + 1
-        ] &&
-        changedFields().hasOnly(['calleeIds', 'participants']);
+        changedFields().hasOnly([
+          'calleeIds', 'participantsByUser', 'lastInvitedParticipantId'
+        ]) &&
+        validInviteParticipantChange();
     }
 
     match /users/{userId} {
@@ -190,7 +278,7 @@ service cloud.firestore {
       allow get, list: if isCallMember(resource.data);
       allow create: if signedIn() && !exists(/databases/$(database)/documents/calls/$(callId)) &&
         validCallCreate(callId);
-      allow update: if acceptCall() || rejectCall() || cancelCall() || endCall() ||
+      allow update: if acceptCall() || acceptActiveGroupInvite() || rejectCall() || cancelCall() || endCall() ||
         leaveCall() || inviteParticipant();
       allow delete: if false;
     }
