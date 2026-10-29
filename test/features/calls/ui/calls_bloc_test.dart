@@ -65,6 +65,24 @@ class MockCancelCallUseCase extends Mock implements CancelCallUseCase {}
 
 class MockEndCallUseCase extends Mock implements EndCallUseCase {}
 
+class _CallbackWatchIncomingCallsUseCase extends WatchIncomingCallsUseCase {
+  _CallbackWatchIncomingCallsUseCase(this._watch) : super(InMemoryCallRepository());
+
+  final Stream<List<Call>> Function(String userId) _watch;
+
+  @override
+  Stream<List<Call>> call(String userId) => _watch(userId);
+}
+
+class _CallbackWatchActiveCallUseCase extends WatchActiveCallUseCase {
+  _CallbackWatchActiveCallUseCase(this._watch) : super(InMemoryCallRepository());
+
+  final Stream<Call?> Function(String callId) _watch;
+
+  @override
+  Stream<Call?> call(String callId) => _watch(callId);
+}
+
 class _CountingCallRepository extends InMemoryCallRepository {
   int startCallCount = 0;
 
@@ -127,6 +145,8 @@ void main() {
     StartIncomingAlertUseCase? startIncomingAlertUseCase,
     StartOutgoingAlertUseCase? startOutgoingAlertUseCase,
     StopCallAlertUseCase? stopCallAlertUseCase,
+    WatchIncomingCallsUseCase? watchIncomingCallsUseCase,
+    WatchActiveCallUseCase? watchActiveCallUseCase,
   }) {
     fakePermissionsService
       ..microphoneGranted = micGranted
@@ -144,8 +164,9 @@ void main() {
       inviteParticipantUseCase: InviteParticipantUseCase(callRepository),
       requestCallPermissionsUseCase: RequestCallPermissionsUseCase(fakePermissionsService),
       getCallSessionUseCase: GetCallSessionUseCase(callRepository),
-      watchActiveCallUseCase: WatchActiveCallUseCase(callRepository),
-      watchIncomingCallsUseCase: WatchIncomingCallsUseCase(callRepository),
+      watchActiveCallUseCase: watchActiveCallUseCase ?? WatchActiveCallUseCase(callRepository),
+      watchIncomingCallsUseCase:
+          watchIncomingCallsUseCase ?? WatchIncomingCallsUseCase(callRepository),
       joinRtcSessionUseCase: JoinRtcSessionUseCase(fakeRtcService),
       leaveRtcSessionUseCase: LeaveRtcSessionUseCase(fakeRtcService),
       toggleMicrophoneUseCase: ToggleMicrophoneUseCase(fakeRtcService),
@@ -600,6 +621,60 @@ void main() {
       expect(bloc.state.rtcConnectionState, RtcConnectionState.disconnected);
       expect(bloc.state.activeCall, isNull);
       await bloc.close();
+    });
+
+    test('stopping incoming-call listening cancels its Firestore subscription', () async {
+      var cancelCount = 0;
+      final incomingCalls = StreamController<List<Call>>.broadcast(onCancel: () => cancelCount++);
+      final watchIncomingCalls = _CallbackWatchIncomingCallsUseCase((_) => incomingCalls.stream);
+      final bloc = buildBloc(watchIncomingCallsUseCase: watchIncomingCalls)
+        ..add(const ListenIncomingCallsStarted('callee@example.com'));
+
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee@example.com');
+      bloc.add(const StopListeningIncomingCalls());
+      await bloc.stream.firstWhere((state) => state.currentUserId == null);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cancelCount, 1);
+      await bloc.close();
+      await incomingCalls.close();
+    });
+
+    test('closing CallsBloc cancels incoming and active Firestore subscriptions', () async {
+      var incomingCancelCount = 0;
+      var activeCancelCount = 0;
+      final activeListenStarted = Completer<void>();
+      final incomingCalls = StreamController<List<Call>>.broadcast(
+        onCancel: () => incomingCancelCount++,
+      );
+      final activeCall = StreamController<Call?>.broadcast(
+        onListen: activeListenStarted.complete,
+        onCancel: () => activeCancelCount++,
+      );
+      final bloc = buildBloc(
+        watchIncomingCallsUseCase: _CallbackWatchIncomingCallsUseCase((_) => incomingCalls.stream),
+        watchActiveCallUseCase: _CallbackWatchActiveCallUseCase((_) => activeCall.stream),
+      )..add(const ListenIncomingCallsStarted('callee@example.com'));
+
+      await bloc.stream.firstWhere((state) => state.currentUserId == 'callee@example.com');
+      bloc.add(
+        const StartCallRequested(
+          callId: 'watched-call',
+          callerId: 'caller@example.com',
+          callerName: 'Caller',
+          calleeIds: ['callee@example.com'],
+          type: CallType.audio,
+        ),
+      );
+      await bloc.stream.firstWhere((state) => state.activeCall?.id == 'watched-call');
+      await activeListenStarted.future;
+      await bloc.close();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(incomingCancelCount, 1);
+      expect(activeCancelCount, 1);
+      await incomingCalls.close();
+      await activeCall.close();
     });
 
     blocTest<CallsBloc, CallsState>(

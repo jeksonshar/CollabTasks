@@ -8,8 +8,8 @@ import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_u
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_speaker_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/calls_rtc_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
-import 'package:collab_tasks/features/calls/ui/blocs/calls_rtc_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

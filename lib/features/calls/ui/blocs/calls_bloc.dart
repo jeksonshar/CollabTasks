@@ -33,9 +33,10 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_u
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
-import 'package:collab_tasks/features/calls/ui/blocs/call_kit_event_bridge.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/call_kit_event_bridge.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/calls_firestore_watch_coordinator.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/calls_rtc_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
-import 'package:collab_tasks/features/calls/ui/blocs/calls_rtc_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -56,14 +57,11 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final InviteParticipantUseCase _inviteParticipantUseCase;
   final RequestCallPermissionsUseCase _requestCallPermissionsUseCase;
   final GetCallSessionUseCase _getCallSessionUseCase;
-  final WatchActiveCallUseCase _watchActiveCallUseCase;
-  final WatchIncomingCallsUseCase _watchIncomingCallsUseCase;
   final StartIncomingAlertUseCase? _startIncomingAlertUseCase;
   final StartOutgoingAlertUseCase? _startOutgoingAlertUseCase;
   final StopCallAlertUseCase? _stopCallAlertUseCase;
 
-  StreamSubscription? _activeCallSubscription;
-  StreamSubscription? _incomingCallsSubscription;
+  late final CallsFirestoreWatchCoordinator _firestoreWatchCoordinator;
   late final CallsRtcCoordinator _rtcCoordinator;
   CallKitEventBridge? _callKitEventBridge;
   Timer? _outgoingCallTimeoutTimer;
@@ -128,12 +126,14 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
        _inviteParticipantUseCase = inviteParticipantUseCase,
        _requestCallPermissionsUseCase = requestCallPermissionsUseCase,
        _getCallSessionUseCase = getCallSessionUseCase,
-       _watchActiveCallUseCase = watchActiveCallUseCase,
-       _watchIncomingCallsUseCase = watchIncomingCallsUseCase,
        _startIncomingAlertUseCase = startIncomingAlertUseCase,
        _startOutgoingAlertUseCase = startOutgoingAlertUseCase,
        _stopCallAlertUseCase = stopCallAlertUseCase,
        super(const CallsState()) {
+    _firestoreWatchCoordinator = CallsFirestoreWatchCoordinator(
+      watchActiveCall: watchActiveCallUseCase,
+      watchIncomingCalls: watchIncomingCallsUseCase,
+    );
     _rtcCoordinator = CallsRtcCoordinator(
       joinRtcSession: joinRtcSessionUseCase,
       leaveRtcSession: leaveRtcSessionUseCase,
@@ -624,7 +624,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   void _onListenIncomingCallsStarted(ListenIncomingCallsStarted event, Emitter<CallsState> emit) {
     debugPrint('[CallsBloc] Starting incoming calls listener for: ${event.userId}');
-    _incomingCallsSubscription?.cancel();
+    _firestoreWatchCoordinator.cancelIncomingCallsForRestart();
     emit(state.copyWith(currentUserId: () => event.userId));
     if (_pendingCallKitEvents.isNotEmpty) {
       final pendingEvents = List<CallEvent>.of(_pendingCallKitEvents);
@@ -653,8 +653,9 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     }
     final normalizedUserId = event.userId.trim().toLowerCase();
 
-    _incomingCallsSubscription = _watchIncomingCallsUseCase(normalizedUserId).listen(
-      (calls) {
+    _firestoreWatchCoordinator.listenIncomingCalls(
+      normalizedUserId,
+      onData: (calls) {
         debugPrint('[CallsBloc] Received incoming calls update: ${calls.length} call(s)');
         for (final call in calls) {
           final isCallRingingOrActive =
@@ -994,8 +995,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
   void _onStopListeningIncomingCalls(StopListeningIncomingCalls event, Emitter<CallsState> emit) {
     debugPrint('[CallsBloc] Stopping incoming calls listener');
-    _incomingCallsSubscription?.cancel();
-    _incomingCallsSubscription = null;
+    _firestoreWatchCoordinator.stopIncomingCalls();
     emit(const CallsState());
   }
 
@@ -1183,10 +1183,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     debugPrint('[CallsBloc] Subscribing to active call: $callId');
     final watchGeneration = ++_activeCallWatchSequence;
     _activeCallWatchGeneration = watchGeneration;
-    await _activeCallSubscription?.cancel();
-    if (isClosed || _activeCallWatchGeneration != watchGeneration) return;
-    _activeCallSubscription = _watchActiveCallUseCase(callId).listen(
-      (call) =>
+    await _firestoreWatchCoordinator.watchActiveCall(
+      callId,
+      canListen: () => !isClosed && _activeCallWatchGeneration == watchGeneration,
+      onData: (call) =>
           add(ActiveCallUpdated(call, watchedCallId: callId, watchGeneration: watchGeneration)),
       onError: (err) {
         debugPrint('[CallsBloc] Error watching active call: $err');
@@ -1307,8 +1307,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     await _stopCallAlertSafely();
 
     _activeCallWatchGeneration = ++_activeCallWatchSequence;
-    await _activeCallSubscription?.cancel();
-    _activeCallSubscription = null;
+    await _firestoreWatchCoordinator.cancelActiveCall();
 
     await _rtcCoordinator.cancelSubscriptions();
 
@@ -1345,8 +1344,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   Future<void> close() async {
     await _callKitEventBridge?.close();
     _callKitEventBridge = null;
-    await _incomingCallsSubscription?.cancel();
-    _incomingCallsSubscription = null;
+    await _firestoreWatchCoordinator.closeIncomingCalls();
     await _cleanup();
     return super.close();
   }

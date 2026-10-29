@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:collab_tasks/features/calls/ui/blocs/call_kit_event_bridge.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/call_kit_event_bridge.dart';
 import 'package:flutter_callkit_incoming/entities/call_event.dart';
 import 'package:flutter_test/flutter_test.dart';
 
