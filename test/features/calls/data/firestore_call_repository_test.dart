@@ -2,11 +2,13 @@
 // ignore_for_file: subtype_of_sealed_class
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_uid_mapper.dart';
 import 'package:collab_tasks/features/calls/data/repositories/firestore_call_repository.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -91,6 +93,7 @@ void main() {
   late _MockFirebaseAuth auth;
   late _MockUser user;
   late _StatefulTransaction transaction;
+  late AgoraUidMapper uidMapper;
   late FirestoreCallRepository repository;
   late Map<String, dynamic> storedData;
 
@@ -138,6 +141,7 @@ void main() {
     documentReference = _MockDocumentReference();
     auth = _MockFirebaseAuth();
     user = _MockUser();
+    uidMapper = AgoraUidMapper();
     storedData = initialCall();
     transaction = _StatefulTransaction(storedData);
     firestore = _StatefulFirestore(collection, transaction);
@@ -146,13 +150,104 @@ void main() {
     when(() => auth.currentUser).thenReturn(user);
     when(() => user.uid).thenReturn('callee-uid');
     when(() => user.email).thenReturn(calleeId);
+    when(() => user.getIdToken()).thenAnswer((_) async => 'firebase-id-token');
     when(() => documentReference.get()).thenAnswer((_) async {
       final snapshot = _MockDocumentSnapshot();
       when(() => snapshot.exists).thenReturn(true);
       when(() => snapshot.data()).thenReturn(storedData);
       return snapshot;
     });
-    repository = FirestoreCallRepository(firestore: firestore, auth: auth);
+    repository = FirestoreCallRepository(firestore: firestore, auth: auth, uidMapper: uidMapper);
+  });
+
+  test('getCallSession signs and returns the same UID for the local participant alias', () async {
+    final requestUids = <int>[];
+    final dio = Dio()
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            final body = Map<String, dynamic>.from(options.data as Map);
+            final uid = body['uid'] as int;
+            requestUids.add(uid);
+            handler.resolve(
+              Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'token': 'signed-token', 'uid': uid, 'channelName': callId},
+              ),
+            );
+          },
+        ),
+      );
+    repository = FirestoreCallRepository(
+      firestore: firestore,
+      auth: auth,
+      dio: dio,
+      uidMapper: uidMapper,
+    );
+
+    final session = await repository.getCallSession(callId: callId, userId: 'callee-uid');
+    final roster = Map<String, int>.from(session.extra['participants'] as Map);
+    final expectedUid = uidMapper.toAgoraUid(calleeId);
+
+    expect(requestUids, [expectedUid]);
+    expect(session.extra['uid'], expectedUid);
+    expect(roster[calleeId], expectedUid);
+    expect(roster['callee-uid'], expectedUid);
+    expect(session.extra['participantCanonicalIds'], containsPair('callee-uid', calleeId));
+  });
+
+  test('getCallSession rejects a token response signed for a different UID', () async {
+    final dio = Dio()
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            final body = Map<String, dynamic>.from(options.data as Map);
+            handler.resolve(
+              Response<Map<String, dynamic>>(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'token': 'signed-token',
+                  'uid': (body['uid'] as int) + 1,
+                  'channelName': callId,
+                },
+              ),
+            );
+          },
+        ),
+      );
+    repository = FirestoreCallRepository(
+      firestore: firestore,
+      auth: auth,
+      dio: dio,
+      uidMapper: uidMapper,
+    );
+
+    await expectLater(
+      repository.getCallSession(callId: callId, userId: 'callee-uid'),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('startCall preserves case-sensitive Firebase UID identifiers', () async {
+    when(() => collection.doc('uid-case-call')).thenReturn(documentReference);
+    when(() => documentReference.set(any())).thenAnswer((_) async {});
+
+    final call = await repository.startCall(
+      callId: 'uid-case-call',
+      callerId: 'CallerUIDCase',
+      callerName: 'Caller',
+      calleeIds: ['CalleeUIDCase'],
+      type: CallType.audio,
+    );
+
+    expect(call.callerId, 'CallerUIDCase');
+    expect(call.calleeIds, ['CalleeUIDCase']);
+    expect(call.participants.map((participant) => participant.userId), [
+      'CallerUIDCase',
+      'CalleeUIDCase',
+    ]);
   });
 
   test('reads participants from the keyed Firestore map', () async {

@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_rtc_service.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_uid_mapper.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +13,7 @@ class _FakeVideoEncoderConfiguration extends Fake implements VideoEncoderConfigu
 
 void main() {
   late _MockRtcEngine engine;
+  late AgoraUidMapper uidMapper;
   late AgoraRtcService service;
 
   setUpAll(() {
@@ -21,7 +23,8 @@ void main() {
 
   setUp(() {
     engine = _MockRtcEngine();
-    service = AgoraRtcService(appId: 'test-app-id', engine: engine);
+    uidMapper = AgoraUidMapper();
+    service = AgoraRtcService(appId: 'test-app-id', engine: engine, uidMapper: uidMapper);
 
     when(() => engine.enableAudio()).thenAnswer((_) async {});
     when(
@@ -97,6 +100,38 @@ void main() {
             as ChannelMediaOptions;
     expect(options.publishCameraTrack, isFalse);
     expect(options.publishMicrophoneTrack, isTrue);
+  });
+
+  test('joins with the same stable UID used by the repository token session', () async {
+    final participants = uidMapper.mapCallParticipants(
+      ['caller@example.com', 'callee@example.com'],
+      aliases: {'callee-uid': 'callee@example.com'},
+    );
+    final localUid = participants['callee-uid']!;
+    final session = CallSession(
+      callId: 'mapped-call',
+      roomId: 'mapped-call',
+      token: 'mapped-token',
+      localUserId: 'callee-uid',
+      extra: {
+        'mediaType': 'audio',
+        'uid': localUid,
+        'participants': participants,
+        'participantCanonicalIds': uidMapper.canonicalIdsByIdentity,
+      },
+    );
+
+    await service.joinSession(session);
+
+    verify(
+      () => engine.joinChannel(
+        token: 'mapped-token',
+        channelId: 'mapped-call',
+        uid: localUid,
+        options: any(named: 'options'),
+      ),
+    ).called(1);
+    expect(uidMapper.toUserId(participants['caller@example.com']!), 'caller@example.com');
   });
 
   test('leave resets mute, camera and speaker state before the next session', () async {

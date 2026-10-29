@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_config.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_uid_mapper.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_identity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
@@ -18,14 +20,21 @@ class FirestoreCallRepository implements CallRepository {
   final Uuid _uuid;
   final Dio _dio;
   final FirebaseAuth _auth;
+  final AgoraUidMapper _agoraUidMapper;
 
   static const String _callsCollection = 'calls';
 
-  FirestoreCallRepository({FirebaseFirestore? firestore, Uuid? uuid, Dio? dio, FirebaseAuth? auth})
-    : _firestore = firestore ?? FirebaseFirestore.instance,
-      _uuid = uuid ?? const Uuid(),
-      _dio = dio ?? Dio(),
-      _auth = auth ?? FirebaseAuth.instance;
+  FirestoreCallRepository({
+    FirebaseFirestore? firestore,
+    Uuid? uuid,
+    Dio? dio,
+    FirebaseAuth? auth,
+    AgoraUidMapper? uidMapper,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _uuid = uuid ?? const Uuid(),
+       _dio = dio ?? Dio(),
+       _auth = auth ?? FirebaseAuth.instance,
+       _agoraUidMapper = uidMapper ?? AgoraUidMapper();
 
   @override
   Stream<Call?> watchActiveCall(String callId) {
@@ -139,9 +148,9 @@ class FirestoreCallRepository implements CallRepository {
   }) async {
     final now = DateTime.now();
     final effectiveCallId = callId ?? _uuid.v4();
-    final normalizedCallerId = callerId.trim().toLowerCase();
+    final normalizedCallerId = normalizeCallIdentity(callerId);
     final normalizedCalleeIds = calleeIds
-        .map((id) => id.trim().toLowerCase())
+        .map(normalizeCallIdentity)
         .where((id) => id != normalizedCallerId)
         .toSet()
         .toList();
@@ -470,18 +479,40 @@ class FirestoreCallRepository implements CallRepository {
 
     final call = await getCallById(callId);
     final mediaType = call?.type.name ?? 'audio';
-
-    // Compute the Agora UID for this user — must match what AgoraRtcService uses
-    // so that the generated token binds to the correct UID.
-    final localUid = _computeAgoraUid(userId);
-    debugPrint('[FirestoreCallRepository] localUid for $userId = $localUid');
-
-    // Obtain Firebase ID token to authenticate the Cloud Function request
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw StateError('[FirestoreCallRepository] No authenticated user for token request');
     }
 
+    final participantIds = <String>{
+      if (call != null) ...[
+        call.callerId,
+        ...call.calleeIds,
+        ...call.participants.map((participant) => participant.userId),
+      ],
+    }..removeWhere((id) => normalizeCallIdentity(id).isEmpty);
+    final canonicalLocalId = call == null
+        ? _fallbackCanonicalIdentity(userId, currentUser)
+        : _resolveLocalCallIdentity(call, userId, currentUser, participantIds);
+    participantIds.add(canonicalLocalId);
+
+    final aliases = <String, String>{};
+    final authUid = currentUser.uid.trim();
+    final authEmail = currentUser.email?.trim();
+    if (authUid.isNotEmpty) {
+      aliases[authUid] = canonicalLocalId;
+    }
+    if (authEmail != null && authEmail.isNotEmpty) {
+      aliases[authEmail] = canonicalLocalId;
+    }
+    final participantsMap = _agoraUidMapper.mapCallParticipants(participantIds, aliases: aliases);
+    final localUid = participantsMap[normalizeCallIdentity(userId)];
+    if (localUid == null) {
+      throw StateError('Authenticated user $userId is not represented in call $callId');
+    }
+    debugPrint('[FirestoreCallRepository] localUid for $canonicalLocalId = $localUid');
+
+    // Obtain Firebase ID token to authenticate the Cloud Function request.
     String rtcToken = '';
     try {
       final idToken = await currentUser.getIdToken();
@@ -499,6 +530,10 @@ class FirestoreCallRepository implements CallRepository {
       final responseData = response.data;
       if (response.statusCode == 200 && responseData != null) {
         rtcToken = (responseData['token'] as String?) ?? '';
+        final signedUid = responseData['uid'];
+        if (signedUid is! num || signedUid.toInt() != localUid) {
+          throw StateError('Agora token UID $signedUid does not match the client UID $localUid');
+        }
         debugPrint(
           '[FirestoreCallRepository] Agora token received for channel=$callId, uid=$localUid',
         );
@@ -520,20 +555,6 @@ class FirestoreCallRepository implements CallRepository {
       );
     }
 
-    final participantsMap = <String, int>{};
-    if (call != null) {
-      for (final p in call.participants) {
-        participantsMap[p.userId] = _computeAgoraUid(p.userId);
-      }
-      if (call.callerId.isNotEmpty) {
-        participantsMap[call.callerId] = _computeAgoraUid(call.callerId);
-      }
-      for (final calleeId in call.calleeIds) {
-        participantsMap[calleeId] = _computeAgoraUid(calleeId);
-      }
-    }
-    participantsMap[userId] = localUid;
-
     return CallSession(
       callId: callId,
       roomId: callId,
@@ -549,6 +570,7 @@ class FirestoreCallRepository implements CallRepository {
         // Pass the int UID so AgoraRtcService uses the same value in joinChannel
         'uid': localUid,
         'participants': participantsMap,
+        'participantCanonicalIds': _agoraUidMapper.canonicalIdsByIdentity,
       },
     );
   }
@@ -560,12 +582,49 @@ class FirestoreCallRepository implements CallRepository {
     return Call.fromMap(doc.data()!);
   }
 
-  /// Computes a deterministic positive 31-bit Agora UID from [userId].
-  /// Must mirror [AgoraUidMapper.toAgoraUid] exactly so token and joinChannel use the same value.
-  static int _computeAgoraUid(String userId) {
-    int uid = userId.hashCode & 0x7FFFFFFF;
-    if (uid == 0) uid = 1;
-    return uid;
+  String _fallbackCanonicalIdentity(String userId, User currentUser) {
+    final uid = currentUser.uid.trim();
+    final email = currentUser.email?.trim();
+    final input = normalizeCallIdentity(userId);
+    final aliases = <String>{
+      if (uid.isNotEmpty) normalizeCallIdentity(uid),
+      if (email != null && email.isNotEmpty) normalizeCallIdentity(email),
+    };
+    if (!aliases.contains(input)) {
+      throw StateError('Cannot verify call identity "$userId" for the authenticated user');
+    }
+    // Firebase UID is the strongest stable key when a call document is absent.
+    return uid.isNotEmpty ? normalizeCallIdentity(uid) : normalizeCallIdentity(email!);
+  }
+
+  String _resolveLocalCallIdentity(
+    Call call,
+    String userId,
+    User currentUser,
+    Set<String> participantIds,
+  ) {
+    final input = normalizeCallIdentity(userId);
+    final authUid = normalizeCallIdentity(currentUser.uid);
+    final authEmail = currentUser.email?.trim().isNotEmpty == true
+        ? normalizeCallIdentity(currentUser.email!)
+        : null;
+    final authAliases = <String>{authUid, ?authEmail};
+    if (!authAliases.contains(input)) {
+      throw StateError('Cannot verify call identity "$userId" for the authenticated user');
+    }
+
+    final normalizedParticipantIds = participantIds.map(normalizeCallIdentity).toSet();
+    // Firestore Rules prefer the authenticated email key when both aliases are
+    // present. Use that same roster key as the canonical identity for this call.
+    if (authEmail != null && normalizedParticipantIds.contains(authEmail)) {
+      return authEmail;
+    }
+    if (normalizedParticipantIds.contains(authUid)) return authUid;
+    if (normalizedParticipantIds.contains(input)) return input;
+
+    throw StateError(
+      'Authenticated user is not present in call ${call.id}; cannot choose a canonical Agora identity',
+    );
   }
 
   int _findParticipantIndex(Call call, String userId) {
@@ -589,7 +648,6 @@ class FirestoreCallRepository implements CallRepository {
   }
 
   String _normalizeIdentity(String userId) {
-    final trimmed = userId.trim();
-    return trimmed.contains('@') ? trimmed.toLowerCase() : trimmed;
+    return normalizeCallIdentity(userId);
   }
 }

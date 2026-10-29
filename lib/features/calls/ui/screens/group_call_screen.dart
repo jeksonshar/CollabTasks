@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_identity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
@@ -199,10 +200,24 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
       },
       builder: (context, state) {
         final localUserId = state.currentUserId ?? '';
+        final localMediaStates = state.participantMediaStates.where(
+          (mediaState) => mediaState.isLocal,
+        );
+        final mappedLocalUserId = localMediaStates.isEmpty
+            ? localUserId
+            : localMediaStates.first.participantId;
         final isHost =
-            state.activeCall?.callerId == localUserId ||
+            (state.activeCall != null &&
+                (normalizeCallIdentity(state.activeCall!.callerId) ==
+                        normalizeCallIdentity(localUserId) ||
+                    normalizeCallIdentity(state.activeCall!.callerId) ==
+                        normalizeCallIdentity(mappedLocalUserId))) ||
             (state.activeCall?.participants.any(
-                  (p) => p.userId == localUserId && p.role == CallParticipantRole.host,
+                  (p) =>
+                      (normalizeCallIdentity(p.userId) == normalizeCallIdentity(localUserId) ||
+                          normalizeCallIdentity(p.userId) ==
+                              normalizeCallIdentity(mappedLocalUserId)) &&
+                      p.role == CallParticipantRole.host,
                 ) ??
                 false);
 
@@ -366,24 +381,29 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
       itemCount: count,
       itemBuilder: (context, index) {
         final participant = participants[index];
-        final isLocal = participant.userId == localUserId;
-
-        final participantUid = participant.userId.hashCode & 0x7FFFFFFF;
-        final expectedFallbackId = 'user_${participantUid == 0 ? 1 : participantUid}';
-
-        final mediaState = state.participantMediaStates.firstWhere(
-          (m) =>
-              (isLocal && m.isLocal) ||
-              (!isLocal &&
-                  !m.isLocal &&
-                  (m.participantId == participant.userId || m.participantId == expectedFallbackId)),
-          orElse: () => RtcParticipantMediaState(
-            participantId: participant.userId,
-            isLocal: isLocal,
-            isAudioMuted: isLocal ? state.isMicrophoneMuted : false,
-            isVideoEnabled: isLocal ? state.isCameraEnabled : false,
-          ),
+        final normalizedParticipantId = normalizeCallIdentity(participant.userId);
+        final matchingMediaStates = state.participantMediaStates.where(
+          (mediaState) =>
+              normalizeCallIdentity(mediaState.participantId) == normalizedParticipantId,
         );
+        final localMediaStates = state.participantMediaStates.where((m) => m.isLocal);
+        final mappedMediaState = matchingMediaStates.isEmpty ? null : matchingMediaStates.first;
+        final localMediaState = localMediaStates.isEmpty ? null : localMediaStates.first;
+        final isLocal =
+            participant.userId == localUserId ||
+            mappedMediaState?.isLocal == true ||
+            (mappedMediaState == null &&
+                localMediaState != null &&
+                normalizeCallIdentity(localMediaState.participantId) == normalizedParticipantId);
+        final mediaState =
+            mappedMediaState ??
+            (isLocal ? localMediaState : null) ??
+            RtcParticipantMediaState(
+              participantId: participant.userId,
+              isLocal: isLocal,
+              isAudioMuted: isLocal ? state.isMicrophoneMuted : false,
+              isVideoEnabled: isLocal ? state.isCameraEnabled : false,
+            );
 
         final isSpeaking = mediaState.isSpeaking;
         final isVideoEnabled =

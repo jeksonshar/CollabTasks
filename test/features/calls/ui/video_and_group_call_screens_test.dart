@@ -8,6 +8,7 @@ import 'package:collab_tasks/features/calls/domain/models/call_participant.dart'
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
+import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
 import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/rtc_service.dart';
@@ -309,6 +310,70 @@ void main() {
     expect(find.text('Team Standup'), findsOneWidget);
     expect(find.byIcon(Icons.person_add_alt_1), findsOneWidget);
     expect(find.text('Leave'), findsOneWidget);
+  });
+
+  testWidgets('GroupCallScreen identifies local participant through verified email/UID alias', (
+    tester,
+  ) async {
+    final activeCall = Call(
+      id: 'group-local-alias',
+      callerId: 'host@example.com',
+      callerName: 'Team Standup',
+      calleeIds: const ['local@example.com'],
+      type: CallType.video,
+      status: CallStatus.active,
+      isGroup: true,
+      participants: const [
+        CallParticipant(
+          userId: 'host@example.com',
+          displayName: 'Host User',
+          role: CallParticipantRole.host,
+          status: CallParticipantStatus.connected,
+        ),
+        CallParticipant(
+          userId: 'local@example.com',
+          displayName: 'Local User',
+          status: CallParticipantStatus.connected,
+        ),
+      ],
+      createdAt: DateTime.now(),
+    );
+
+    callsBloc.emitState(
+      CallsState(
+        status: CallsStatus.active,
+        currentUserId: 'LocalFirebaseUid',
+        activeCall: activeCall,
+        rtcConnectionState: RtcConnectionState.connected,
+        participantMediaStates: const [
+          RtcParticipantMediaState(
+            participantId: 'local@example.com',
+            isLocal: true,
+            isVideoEnabled: false,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<CallsBloc>.value(
+          value: callsBloc,
+          child: const GroupCallScreen(
+            callId: 'group-local-alias',
+            groupName: 'Team Standup',
+            callType: CallType.video,
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(GridView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Local User (You)'), findsOneWidget);
+    expect(find.text('Host User (You)'), findsNothing);
   });
 
   testWidgets('GroupCallScreen hides participants who have left or declined', (tester) async {

@@ -1,3 +1,4 @@
+import 'package:collab_tasks/features/calls/domain/models/call_identity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
@@ -103,8 +104,7 @@ class Call extends Equatable {
   }
 
   static String _normalizeParticipantId(String userId) {
-    final trimmed = userId.trim();
-    return trimmed.contains('@') ? trimmed.toLowerCase() : trimmed;
+    return normalizeCallIdentity(userId);
   }
 
   factory Call.fromMap(Map<String, dynamic> map) {

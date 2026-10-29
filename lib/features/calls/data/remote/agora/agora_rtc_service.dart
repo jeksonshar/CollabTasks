@@ -23,6 +23,7 @@ class AgoraRtcService implements RtcService {
   final Map<String, RtcParticipantMediaState> _participants = {};
 
   CallSession? _activeSession;
+  String? _activeLocalParticipantId;
   bool _isMicrophoneMuted = false;
   bool _isCameraEnabled = false;
   bool _isSpeakerEnabled = false;
@@ -203,7 +204,7 @@ class AgoraRtcService implements RtcService {
               for (final speaker in speakers) {
                 final isLocal = (speaker.uid == 0) || (speaker.uid == localUid);
                 final participantId = isLocal
-                    ? (_activeSession?.localUserId ?? '')
+                    ? (_activeLocalParticipantId ?? _activeSession?.localUserId ?? '')
                     : (_uidMapper.toUserId(speaker.uid ?? 0) ?? 'user_${speaker.uid}');
 
                 if (participantId.isEmpty) continue;
@@ -310,39 +311,29 @@ class AgoraRtcService implements RtcService {
       await _engine!.disableVideo();
     }
 
-    // Resolve local UID: prefer the value pre-computed by the repository, which is
-    // the exact same integer sent to the Cloud Function for token generation.
-    // This guarantees token-UID == joinChannel-UID → avoids errInvalidToken.
-    final int localUid;
-    final extraUid = session.extra['uid'];
-    if (extraUid is int && extraUid > 0) {
-      localUid = extraUid;
-      // Sync the mapper so reverse-lookup (remote users → userId) still works
-      _uidMapper.register(session.localUserId, localUid);
+    final rawParticipants = session.extra['participants'];
+    final rawCanonicalIds = session.extra['participantCanonicalIds'];
+    if (rawParticipants is Map && rawCanonicalIds is Map) {
+      _uidMapper.restoreCallMapping(rawParticipants, rawCanonicalIds);
     } else {
-      localUid = _uidMapper.toAgoraUid(session.localUserId);
+      _uidMapper.mapCallParticipants([session.localUserId]);
+    }
+
+    // The repository sent this same stable UID to the token function. Verify
+    // that the session mapping still resolves to it before joining Agora.
+    final localUid = _uidMapper.toAgoraUid(session.localUserId);
+    final extraUid = session.extra['uid'];
+    if (extraUid is num && extraUid.toInt() != localUid) {
+      throw StateError(
+        'Agora session UID $extraUid does not match stable UID $localUid for ${session.localUserId}',
+      );
     }
     debugPrint('[AgoraRtcService] joinSession: channelId=${session.roomId}, uid=$localUid');
 
-    // If extra contains opponent UID, map it in advance
-    if (session.extra.containsKey('opponentUserId') && session.extra.containsKey('opponentUid')) {
-      final oppId = session.extra['opponentUserId'] as String;
-      final oppUid = (session.extra['opponentUid'] as num).toInt();
-      _uidMapper.register(oppId, oppUid);
-    }
-
-    final rawParticipants = session.extra['participants'];
-    if (rawParticipants is Map) {
-      for (final entry in rawParticipants.entries) {
-        if (entry.key is String && entry.value is num) {
-          _uidMapper.register(entry.key as String, (entry.value as num).toInt());
-        }
-      }
-    }
-
     // Add local participant
-    _participants[session.localUserId] = RtcParticipantMediaState(
-      participantId: session.localUserId,
+    _activeLocalParticipantId = _uidMapper.canonicalIdentity(session.localUserId);
+    _participants[_activeLocalParticipantId!] = RtcParticipantMediaState(
+      participantId: _activeLocalParticipantId!,
       isLocal: true,
       isAudioMuted: _isMicrophoneMuted,
       isSpeaking: _isSpeakerEnabled,
@@ -397,10 +388,12 @@ class AgoraRtcService implements RtcService {
       await _tryReset('disableAudio', engine.disableAudio, const Duration(seconds: 3));
     }
     _activeSession = null;
+    _activeLocalParticipantId = null;
     _isMicrophoneMuted = false;
     _isCameraEnabled = false;
     _isSpeakerEnabled = false;
     _participants.clear();
+    _uidMapper.clear();
     _emitParticipants();
     _updateConnectionState(RtcConnectionState.disconnected);
   }
@@ -422,7 +415,7 @@ class AgoraRtcService implements RtcService {
       await _engine!.muteLocalAudioStream(muted);
     }
     _isMicrophoneMuted = muted;
-    final localId = _activeSession?.localUserId;
+    final localId = _activeLocalParticipantId;
     if (localId != null && _participants.containsKey(localId)) {
       _participants[localId] = _participants[localId]!.copyWith(isAudioMuted: muted);
       _emitParticipants();
@@ -447,7 +440,7 @@ class AgoraRtcService implements RtcService {
       }
     }
     _isCameraEnabled = enabled;
-    final localId = _activeSession?.localUserId;
+    final localId = _activeLocalParticipantId;
     if (localId != null && _participants.containsKey(localId)) {
       _participants[localId] = _participants[localId]!.copyWith(isVideoEnabled: enabled);
       _emitParticipants();

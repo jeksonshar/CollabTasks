@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_identity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
@@ -44,9 +45,9 @@ class InMemoryCallRepository implements CallRepository {
     final now = DateTime.now();
     final effectiveCallId = callId ?? _uuid.v4();
 
-    final normalizedCallerId = callerId.trim().toLowerCase();
+    final normalizedCallerId = normalizeCallIdentity(callerId);
     final normalizedCalleeIds = calleeIds
-        .map((id) => id.trim().toLowerCase())
+        .map(normalizeCallIdentity)
         .where((id) => id != normalizedCallerId)
         .toSet()
         .toList();
@@ -72,10 +73,10 @@ class InMemoryCallRepository implements CallRepository {
 
     final call = Call(
       id: effectiveCallId,
-      callerId: callerId,
+      callerId: normalizedCallerId,
       callerName: callerName,
       callerAvatarUrl: callerAvatarUrl,
-      calleeIds: calleeIds,
+      calleeIds: normalizedCalleeIds,
       type: type,
       status: CallStatus.ringing,
       isGroup: isGroup,

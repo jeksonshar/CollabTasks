@@ -30,6 +30,7 @@ import 'package:collab_tasks/features/auth/ui/auth_bloc/auth_bloc.dart';
 import 'package:collab_tasks/features/auth/ui/lock_bloc/lock_bloc.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_config.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_rtc_service.dart';
+import 'package:collab_tasks/features/calls/data/remote/agora/agora_uid_mapper.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_video_view_factory.dart';
 import 'package:collab_tasks/features/calls/data/repositories/firestore_call_repository.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
@@ -462,15 +463,22 @@ void setupLocator(SharedPreferences sharedPreferences) {
         loadMoreGroupMessagesUseCase: getIt<LoadMoreGroupMessagesUseCase>(),
       ),
     )
+    ..registerLazySingleton<AgoraUidMapper>(AgoraUidMapper.new)
     ..registerLazySingleton<CallRepository>(
-      () => FirestoreCallRepository(firestore: getIt<FirebaseFirestore>()),
+      () => FirestoreCallRepository(
+        firestore: getIt<FirebaseFirestore>(),
+        uidMapper: getIt<AgoraUidMapper>(),
+      ),
     )
     ..registerLazySingleton<CallAlertService>(() => CallAlertServiceImpl())
     ..registerLazySingleton<CallKitService>(() => const CallKitServiceImpl())
     ..registerLazySingleton<CallPermissionsService>(() => const CallPermissionsServiceImpl())
     ..registerLazySingleton<RtcService>(
       () => switch (rtcBackend) {
-        RtcBackend.agora => AgoraRtcService(appId: AgoraConfig.appId),
+        RtcBackend.agora => AgoraRtcService(
+          appId: AgoraConfig.appId,
+          uidMapper: getIt<AgoraUidMapper>(),
+        ),
         RtcBackend.fake => FakeRtcService(),
         RtcBackend.liveKit => throw UnimplementedError('LiveKit RtcService is not implemented yet'),
       },
