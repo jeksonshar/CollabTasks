@@ -143,68 +143,100 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
           },
           child: Scaffold(
             backgroundColor: theme.colorScheme.surface,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              automaticallyImplyLeading: false,
-              // actions: [
-              //   IconButton(
-              //     icon: const Icon(Icons.close),
-              //     tooltip: 'End Call',
-              //     onPressed: _onEndCallPressed,
-              //   ),
-              // ],
-            ),
-            body: SafeArea(
-              child: Column(
-                children: [
-                  const Spacer(flex: 1),
-                  // Avatar with speaking indicator ring
-                  Center(
+            body: Stack(
+              children: [
+                // Avatar + opponent name + Call status & connection state
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isLandscape = constraints.maxWidth > constraints.maxHeight;
+                      final avatarRadius = isLandscape ? 36.0 : 56.0;
+                      final avatar = Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isRemoteSpeaking ? Colors.green : Colors.transparent,
+                            width: 3,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: avatarRadius,
+                          backgroundColor: theme.colorScheme.primaryContainer,
+                          backgroundImage: widget.opponentAvatarUrl != null
+                              ? NetworkImage(widget.opponentAvatarUrl!)
+                              : null,
+                          child: widget.opponentAvatarUrl == null
+                              ? Text(
+                                  displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                  style: TextStyle(
+                                    fontSize: avatarRadius * 0.72,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      );
+                      final opponentName = Text(
+                        displayName,
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        maxLines: isLandscape ? 2 : null,
+                        overflow: isLandscape ? TextOverflow.ellipsis : null,
+                      );
+                      final status = _buildStatusIndicator(context, state, localization);
+                      final callInfo = isLandscape
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                avatar,
+                                const SizedBox(width: 20),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [opponentName, const SizedBox(height: 8), status],
+                                ),
+                              ],
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                avatar,
+                                const SizedBox(height: 24),
+                                opponentName,
+                                const SizedBox(height: 12),
+                                status,
+                              ],
+                            );
+
+                      return Padding(
+                        // Reserve space for the bottom control bar and its safe area.
+                        padding: EdgeInsets.only(bottom: isLandscape ? 168 : 184),
+                        child: SafeArea(child: Center(child: callInfo)),
+                      );
+                    },
+                  ),
+                ),
+                // Bottom controls bar
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isRemoteSpeaking ? Colors.green : Colors.transparent,
-                          width: 3,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Colors.black87, Colors.transparent],
                         ),
                       ),
-                      child: CircleAvatar(
-                        radius: 56,
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        backgroundImage: widget.opponentAvatarUrl != null
-                            ? NetworkImage(widget.opponentAvatarUrl!)
-                            : null,
-                        child: widget.opponentAvatarUrl == null
-                            ? Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                                style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                              )
-                            : null,
-                      ),
+                      child: _buildControlsBar(context, state, localization),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Opponent Name
-                  Text(
-                    displayName,
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  // Call status & connection state
-                  _buildStatusIndicator(context, state, localization),
-                  const Spacer(flex: 2),
-                  // Bottom controls bar
-                  _buildControlsBar(context, state, localization),
-                  const SizedBox(height: 36),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
