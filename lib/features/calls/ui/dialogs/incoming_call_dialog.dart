@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/features/calls/ui/utils/call_wakelock_manager.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,6 +37,12 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
   bool _didNotifyOpened = false;
 
   @override
+  void initState() {
+    super.initState();
+    unawaited(CallWakelockManager.acquire());
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _callsBloc ??= context.read<CallsBloc>();
@@ -50,6 +59,7 @@ class _IncomingCallDialogState extends State<IncomingCallDialog> {
     // already triggers _cleanup() → _stopCallAlertSafely() inside CallsBloc
     // before or after the dialog is popped. An extra event here would cause a
     // guaranteed double-stop on every call termination.
+    unawaited(CallWakelockManager.release());
     super.dispose();
   }
 
