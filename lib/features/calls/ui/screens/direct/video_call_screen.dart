@@ -191,53 +191,70 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                   left: 0,
                   right: 0,
                   child: SafeArea(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.black87, Colors.transparent],
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  displayName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                _buildStatusHeader(context, state, localization),
-                              ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black87, Colors.transparent],
                             ),
                           ),
-                          // IconButton(
-                          //   icon: const Icon(Icons.close, color: Colors.white),
-                          //   tooltip: 'End Call',
-                          //   onPressed: _onEndCallPressed,
-                          // ),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    _buildStatusHeader(context, state, localization),
+                                  ],
+                                ),
+                              ),
+                              IconButton.filledTonal(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: state.isSpeakerEnabled
+                                      ? Colors.white54
+                                      : Colors.white24,
+                                ),
+                                icon: Icon(
+                                  state.isSpeakerEnabled ? Icons.volume_up : Icons.phone,
+                                  color: Colors.white,
+                                ),
+                                tooltip: localization.callActionSpeaker,
+                                onPressed: () {
+                                  context.read<CallsBloc>().add(const ToggleSpeakerRequested());
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, right: 16),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              width: 112,
+                              height: 160,
+                              child: _buildLocalPip(context, state, localUserId, localization),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-
-                // 3. Local Video PiP (Picture in Picture)
-                Positioned(
-                  top: 90,
-                  right: 16,
-                  width: 110,
-                  height: 160,
-                  child: _buildLocalPip(context, state, localUserId, localization),
                 ),
 
                 // 4. Reconnecting banner overlay

@@ -4,7 +4,7 @@ import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
-import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/group/group_call_screen.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_bloc.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';

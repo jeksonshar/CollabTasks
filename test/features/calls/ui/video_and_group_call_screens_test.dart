@@ -33,9 +33,9 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connectio
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
-import 'package:collab_tasks/features/calls/ui/screens/audio_call_screen.dart';
-import 'package:collab_tasks/features/calls/ui/screens/group_call_screen.dart';
-import 'package:collab_tasks/features/calls/ui/screens/video_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/direct/audio_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/direct/video_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/screens/group/group_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
