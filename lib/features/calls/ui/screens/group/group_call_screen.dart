@@ -310,10 +310,18 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
                   tooltip: localization.callActionInvite,
                   onPressed: () => _showInviteDialog(context, localization),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  tooltip: localization.callActionLeaveCall,
-                  onPressed: _onLeaveCallPressed,
+                IconButton.filledTonal(
+                  style: IconButton.styleFrom(
+                    backgroundColor: state.isSpeakerEnabled ? Colors.white54 : Colors.white24,
+                  ),
+                  icon: Icon(
+                    state.isSpeakerEnabled ? Icons.volume_up : Icons.phone,
+                    color: Colors.white,
+                  ),
+                  tooltip: localization.callActionSpeaker,
+                  onPressed: () {
+                    context.read<CallsBloc>().add(const ToggleSpeakerRequested());
+                  },
                 ),
               ],
             ),
