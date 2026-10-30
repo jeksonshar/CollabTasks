@@ -9,6 +9,7 @@ import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/features/calls/ui/utils/call_wakelock_manager.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(CallWakelockManager.acquire());
   }
 
   @override
@@ -64,6 +66,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _durationTimer?.cancel();
+    unawaited(CallWakelockManager.release());
     super.dispose();
   }
 
