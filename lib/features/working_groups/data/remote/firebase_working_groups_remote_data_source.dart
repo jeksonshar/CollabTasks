@@ -155,19 +155,66 @@ class FirebaseWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSo
     required List<String> participantIds,
   }) async {
     final normalizedEmail = userEmail.trim().toLowerCase();
-    final batch = _firestore.batch();
     final groupRef = _groupsRef().doc(groupId);
+    final participantIdSet = participantIds.toSet();
+    final participantSnapshot = await _participantsRef(groupId).get();
+    participantIdSet.addAll(
+      participantSnapshot.docs
+          .where((doc) {
+            final participantUserId = doc.data()['userId'];
+            return participantUserId is String &&
+                _matchesLeavingIdentity(participantUserId, userId, normalizedEmail);
+          })
+          .map((doc) => doc.id),
+    );
 
-    batch.set(groupRef, {
-      'participantUserIds': FieldValue.arrayRemove([userId]),
-      'participantEmails': FieldValue.arrayRemove([normalizedEmail]),
-    }, SetOptions(merge: true));
+    await _firestore.runTransaction((transaction) async {
+      final groupSnapshot = await transaction.get(groupRef);
+      final groupData = groupSnapshot.data();
+      if (groupData == null) {
+        throw StateError('Working group $groupId does not exist.');
+      }
 
-    for (final participantId in participantIds) {
-      batch.delete(_participantsRef(groupId).doc(participantId));
-    }
+      final updates = <String, Object?>{};
+      final userIds = groupData['participantUserIds'];
+      if (userIds is List) {
+        updates['participantUserIds'] = userIds
+            .whereType<String>()
+            .where((id) => !_matchesLeavingIdentity(id, userId, normalizedEmail))
+            .toList(growable: false);
+      }
 
-    await batch.commit();
+      final emails = groupData['participantEmails'];
+      if (emails is List) {
+        updates['participantEmails'] = emails
+            .whereType<String>()
+            .where((email) => email.trim().toLowerCase() != normalizedEmail)
+            .toList(growable: false);
+      }
+
+      // Legacy push delivery can use participantIds before reading the
+      // participants subcollection, so remove known identifiers from it too.
+      final legacyParticipantIds = groupData['participantIds'];
+      if (legacyParticipantIds is List) {
+        updates['participantIds'] = legacyParticipantIds
+            .whereType<String>()
+            .where(
+              (id) =>
+                  !participantIdSet.contains(id) &&
+                  !_matchesLeavingIdentity(id, userId, normalizedEmail),
+            )
+            .toList(growable: false);
+      }
+
+      if (updates.isNotEmpty) transaction.update(groupRef, updates);
+      for (final participantId in participantIdSet) {
+        transaction.delete(_participantsRef(groupId).doc(participantId));
+      }
+    });
+  }
+
+  bool _matchesLeavingIdentity(String value, String userId, String normalizedEmail) {
+    return value == userId || value.trim().toLowerCase() == normalizedEmail;
   }
 
   @override

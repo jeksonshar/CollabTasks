@@ -8,6 +8,7 @@ import 'package:collab_tasks/features/chats/domain/use_cases/send_group_message_
 import 'package:collab_tasks/features/chats/domain/use_cases/watch_group_messages_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_event.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/group_chat_state.dart';
+import 'package:collab_tasks/features/working_groups/domain/use_cases/sync_working_group_use_case.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
@@ -16,6 +17,7 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
   final GetGroupChatUseCase _getGroupChatUseCase;
   final GetCurrentUserUseCase _getCurrentUserUseCase;
   final LoadMoreGroupMessagesUseCase _loadMoreGroupMessagesUseCase;
+  final SyncWorkingGroupUseCase _syncWorkingGroupUseCase;
 
   String _groupId = '';
 
@@ -25,15 +27,18 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
     required GetGroupChatUseCase getGroupChatUseCase,
     required GetCurrentUserUseCase getCurrentUserUseCase,
     required LoadMoreGroupMessagesUseCase loadMoreGroupMessagesUseCase,
+    required SyncWorkingGroupUseCase syncWorkingGroupUseCase,
   }) : _watchGroupMessagesUseCase = watchGroupMessagesUseCase,
        _sendGroupMessageUseCase = sendGroupMessageUseCase,
        _getGroupChatUseCase = getGroupChatUseCase,
        _getCurrentUserUseCase = getCurrentUserUseCase,
        _loadMoreGroupMessagesUseCase = loadMoreGroupMessagesUseCase,
+       _syncWorkingGroupUseCase = syncWorkingGroupUseCase,
        super(const GroupChatInitial()) {
     on<LoadGroupMessagesEvent>(_onLoadGroupMessages);
     on<SendGroupMessageEvent>(_onSendGroupMessage);
     on<LoadMoreGroupMessagesEvent>(_onLoadMoreGroupMessages);
+    on<GroupCallRosterRequested>(_onGroupCallRosterRequested);
   }
 
   Future<void> _onLoadGroupMessages(
@@ -61,18 +66,56 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
       // emit.forEach управляет подпиской автоматически и отменяет ее при необходимости
       await emit.forEach<List<MessageEntity>>(
         _watchGroupMessagesUseCase(event.groupChatId),
-        onData: (messages) => GroupChatSuccess(
-          messages: messages,
-          groupChatTitle: title,
-          groupChatDescription: description,
-          currentUserId: currentUserId,
-          participantEmails: filteredEmails,
-          participantUserIds: chat?.participantUserIds ?? const [],
-        ),
+        onData: (messages) {
+          final currentState = state;
+          return GroupChatSuccess(
+            messages: messages,
+            groupChatTitle: currentState is GroupChatSuccess ? currentState.groupChatTitle : title,
+            groupChatDescription: currentState is GroupChatSuccess
+                ? currentState.groupChatDescription
+                : description,
+            currentUserId: currentUserId,
+            participantEmails: currentState is GroupChatSuccess
+                ? currentState.participantEmails
+                : filteredEmails,
+            participantUserIds: currentState is GroupChatSuccess
+                ? currentState.participantUserIds
+                : (chat?.participantUserIds ?? const []),
+          );
+        },
         onError: (error, stackTrace) => GroupChatError(error.toString()),
       );
     } catch (e) {
       emit(GroupChatError(e.toString()));
+    }
+  }
+
+  Future<void> _onGroupCallRosterRequested(
+    GroupCallRosterRequested event,
+    Emitter<GroupChatState> emit,
+  ) async {
+    try {
+      await _syncWorkingGroupUseCase(_groupId);
+      final chat = await _getGroupChatUseCase(_groupId);
+      if (chat == null) {
+        throw StateError('Group $_groupId is no longer available.');
+      }
+
+      final emails = chat.participantEmails
+          .where((email) => email.contains('@') && !email.contains(' '))
+          .map((email) => email.trim().toLowerCase())
+          .toSet()
+          .toList(growable: false);
+      final userIds = chat.participantUserIds.toSet().toList(growable: false);
+      final currentState = state;
+      if (currentState is GroupChatSuccess) {
+        emit(currentState.copyWith(participantEmails: emails, participantUserIds: userIds));
+      }
+      if (!event.completer.isCompleted) event.completer.complete(emails);
+    } catch (error, stackTrace) {
+      if (!event.completer.isCompleted) {
+        event.completer.completeError(error, stackTrace);
+      }
     }
   }
 

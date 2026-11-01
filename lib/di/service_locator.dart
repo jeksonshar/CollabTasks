@@ -461,6 +461,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         getGroupChatUseCase: getIt<GetGroupChatUseCase>(),
         getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
         loadMoreGroupMessagesUseCase: getIt<LoadMoreGroupMessagesUseCase>(),
+        syncWorkingGroupUseCase: getIt<SyncWorkingGroupUseCase>(),
       ),
     )
     ..registerLazySingleton<AgoraUidMapper>(AgoraUidMapper.new)

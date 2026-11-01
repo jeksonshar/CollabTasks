@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collab_tasks/core/notifications/chat_notification_service.dart';
 import 'package:collab_tasks/core/paging/chats_paging_constants.dart';
 import 'package:collab_tasks/di/service_locator.dart';
@@ -132,70 +134,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
                   IconButton(
                     icon: const Icon(Icons.videocam),
                     tooltip: localizations.group_chat_videoCallTitle,
-                    onPressed: () {
-                      final callId = const Uuid().v4();
-                      final myEmail = state.currentUserId.trim().toLowerCase();
-                      final calleeIds = state.participantEmails
-                          .where((e) => e.contains('@') && e.trim().toLowerCase() != myEmail)
-                          .map((e) => e.trim().toLowerCase())
-                          .toSet()
-                          .toList();
-                      getIt<CallsBloc>().add(
-                        StartCallRequested(
-                          callId: callId,
-                          callerId: state.currentUserId,
-                          callerName: state.currentUserId,
-                          calleeIds: calleeIds,
-                          type: CallType.video,
-                          isGroup: true,
-                          groupId: widget.groupId,
-                        ),
-                      );
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => GroupCallScreen(
-                            callId: callId,
-                            groupName: state.groupChatTitle,
-                            callType: CallType.video,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _startGroupCall(context, state, CallType.video),
                   ),
                   IconButton(
                     icon: const Icon(Icons.phone),
                     tooltip: localizations.group_chat_audioCallTitle,
-                    onPressed: () {
-                      final callId = const Uuid().v4();
-                      final myEmail = state.currentUserId.trim().toLowerCase();
-                      final calleeIds = state.participantEmails
-                          .where((e) => e.contains('@') && e.trim().toLowerCase() != myEmail)
-                          .map((e) => e.trim().toLowerCase())
-                          .toSet()
-                          .toList();
-                      getIt<CallsBloc>().add(
-                        StartCallRequested(
-                          callId: callId,
-                          callerId: state.currentUserId,
-                          callerName: state.currentUserId,
-                          calleeIds: calleeIds,
-                          type: CallType.audio,
-                          isGroup: true,
-                          groupId: widget.groupId,
-                        ),
-                      );
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => GroupCallScreen(
-                            callId: callId,
-                            groupName: state.groupChatTitle,
-                            callType: CallType.audio,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _startGroupCall(context, state, CallType.audio),
                   ),
                 ],
               ],
@@ -223,6 +167,49 @@ class _GroupChatScreenState extends State<GroupChatScreen> with RouteAware {
         },
       ),
     );
+  }
+
+  Future<void> _startGroupCall(
+    BuildContext context,
+    GroupChatSuccess state,
+    CallType callType,
+  ) async {
+    final completer = Completer<List<String>>();
+    context.read<GroupChatBloc>().add(GroupCallRosterRequested(completer));
+
+    try {
+      final currentMembers = await completer.future;
+      if (!context.mounted) return;
+
+      final myEmail = state.currentUserId.trim().toLowerCase();
+      final calleeIds = currentMembers.where((email) => email != myEmail).toList(growable: false);
+      if (calleeIds.isEmpty) return;
+
+      final callId = const Uuid().v4();
+      getIt<CallsBloc>().add(
+        StartCallRequested(
+          callId: callId,
+          callerId: state.currentUserId,
+          callerName: state.currentUserId,
+          calleeIds: calleeIds,
+          type: callType,
+          isGroup: true,
+          groupId: widget.groupId,
+        ),
+      );
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              GroupCallScreen(callId: callId, groupName: state.groupChatTitle, callType: callType),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 
   Widget _buildBody(BuildContext context, GroupChatState state) {

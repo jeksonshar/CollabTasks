@@ -14,5 +14,14 @@
 - **Leave validation:** LeaveWorkingGroupUseCase checks active, non-completed assigned group tasks for the current user through
   WorkingGroupsRepository before calling `leaveGroup`. If such tasks exist, it throws `HasActiveTasksFailure`; GroupDetailsBloc maps it to
   `leaveRejectedWithActiveTasks`, and the UI shows a localized SnackBar.
+- **Leave propagation:** Firebase `leaveGroup` atomically removes the user's UID/email aliases from the group's membership metadata and deletes
+  their participant documents. The remote operation must succeed before local membership is removed; failures are returned to GroupDetailsBloc.
+  Full remote participant snapshots reconcile Drift by deleting local rows absent from the snapshot, so other devices stop showing the departed
+  member and group calls/messages no longer use that cached roster. Participant self-healing is deduplicated and suspended during Leave; Leave waits
+  for an already-running self-heal before removing remote membership, preventing a late upsert from restoring the member. Legacy `participantIds`
+  values are also removed because the group-message Cloud Function can use that field as its recipient list.
+- **Group call roster:** Before an audio/video group call starts, GroupChatBloc refreshes the group and roster from Firebase. The WebSocket chat
+  metadata uses the synchronized local participant roster as authoritative when available, replacing stale server-side participant emails rather
+  than merging departed users back into the call recipient list.
 - **Participant Actions:** Each participant item (except the current user) provides a three-dots popup menu (`PopupMenuButton<ParticipantAction>`) with options: direct chat, audio call (stub), and video call (stub). Tapping the item directly continues to open direct chat.
 

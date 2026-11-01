@@ -28,7 +28,10 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   final WorkingGroupsRemoteDataSource _remoteDataSource;
   final AuthRepository _authRepository;
   final Map<String, StreamSubscription<List<GroupParticipant>>> _participantSubscriptions = {};
+  final Map<String, Future<void>> _participantSyncOperations = {};
+  final Map<String, Future<bool?>> _participantEnsureOperations = {};
   final Map<String, StreamSubscription<List<GroupTask>>> _taskSubscriptions = {};
+  final Set<String> _groupsBeingLeft = {};
   StreamSubscription<List<WorkingGroup>>? _groupsSubscription;
   String? _subscribedUserId;
 
@@ -91,9 +94,7 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     final participants = results[0] as List<GroupParticipant>;
     final tasks = results[1] as List<GroupTask>;
 
-    for (final participant in participants) {
-      await _localDataSource.upsertParticipant(participant);
-    }
+    await _reconcileParticipants(groupId, participants);
 
     for (final task in tasks) {
       await _localDataSource.upsertTask(task.copyWith(isSynced: true));
@@ -106,14 +107,14 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
 
   @override
   Stream<WorkingGroup?> watchGroup(String groupId) {
-    unawaited(_ensureCurrentParticipantForGroup(groupId));
+    unawaited(_ensureCurrentParticipantForGroup(groupId).then((_) {}));
     _ensureGroupSubscriptions(groupId);
     return _localDataSource.watchGroup(groupId);
   }
 
   @override
   Stream<List<GroupParticipant>> watchParticipants(String groupId) {
-    unawaited(_ensureCurrentParticipantForGroup(groupId));
+    unawaited(_ensureCurrentParticipantForGroup(groupId).then((_) {}));
     _ensureGroupSubscriptions(groupId);
     return _localDataSource.watchParticipants(groupId);
   }
@@ -215,35 +216,50 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
 
   @override
   Future<void> leaveGroup(String groupId) async {
-    final user = await _requireCurrentUser();
-    final normalizedEmail = user.email.trim().toLowerCase();
-    final participants = await _localDataSource.getParticipants(groupId);
-    final leavingParticipants = participants
-        .where(
-          (participant) =>
-              participant.userId == user.id ||
-              participant.userId.trim().toLowerCase() == normalizedEmail,
-        )
-        .toList(growable: false);
-
-    if (leavingParticipants.isEmpty) {
-      throw DataException('Current user is not a participant of this group.');
+    if (!_groupsBeingLeft.add(groupId)) {
+      throw DataException('Leaving group $groupId is already in progress.');
     }
 
-    await _tryRemote(
-      () => _remoteDataSource.leaveGroup(
+    try {
+      // A self-heal that started before Leave must finish before the remote
+      // membership is removed; otherwise it could re-add the participant.
+      await _participantEnsureOperations[groupId];
+
+      final user = await _requireCurrentUser();
+      final normalizedEmail = user.email.trim().toLowerCase();
+      final participants = await _localDataSource.getParticipants(groupId);
+      final leavingParticipants = participants
+          .where(
+            (participant) =>
+                participant.userId == user.id ||
+                participant.userId.trim().toLowerCase() == normalizedEmail,
+          )
+          .toList(growable: false);
+
+      if (leavingParticipants.isEmpty) {
+        throw DataException('Current user is not a participant of this group.');
+      }
+
+      await _remoteDataSource.leaveGroup(
         groupId: groupId,
         userId: user.id,
         userEmail: normalizedEmail,
         participantIds: leavingParticipants.map((participant) => participant.id).toList(),
-      ),
-    );
-    for (final participant in leavingParticipants) {
-      await _localDataSource.deleteParticipant(participant.id);
+      );
+
+      // Stop remote snapshots before deleting local rows. A callback already in
+      // progress could otherwise write the participant back into the local cache.
+      await _participantSubscriptions.remove(groupId)?.cancel();
+      await _participantSyncOperations.remove(groupId);
+
+      for (final participant in leavingParticipants) {
+        await _localDataSource.deleteParticipant(participant.id);
+      }
+      await _localDataSource.deleteGroup(groupId);
+      await _taskSubscriptions.remove(groupId)?.cancel();
+    } finally {
+      _groupsBeingLeft.remove(groupId);
     }
-    await _localDataSource.deleteGroup(groupId);
-    await _participantSubscriptions.remove(groupId)?.cancel();
-    await _taskSubscriptions.remove(groupId)?.cancel();
   }
 
   @override
@@ -285,7 +301,16 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   Future<GroupTask> claimGroupTask({required String groupId, required String taskId}) async {
     final user = await _requireCurrentUser();
     final task = await _requireTask(groupId: groupId, taskId: taskId);
-    final participant = await _ensureCurrentParticipant(groupId: groupId, user: user);
+    if (await _ensureCurrentParticipantForGroup(groupId) != true) {
+      throw DataException('Current user is not a participant of group $groupId.');
+    }
+    final participant = await _localDataSource.getParticipantByUserId(
+      groupId: groupId,
+      userId: user.id,
+    );
+    if (participant == null) {
+      throw DataException('Current user participant record was not found in group $groupId.');
+    }
     if (task.assignedUserId != null &&
         task.assignedUserId!.isNotEmpty &&
         task.assignedUserId != participant.userId) {
@@ -332,8 +357,15 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
         .listen(
           (groups) async {
             for (final group in groups) {
+              if (_groupsBeingLeft.contains(group.id)) continue;
               await _localDataSource.upsertGroup(group);
-              await _ensureCurrentParticipant(groupId: group.id, user: user);
+              if (_groupsBeingLeft.contains(group.id)) continue;
+              final isStillMember = await _ensureCurrentParticipantForGroup(group.id);
+              if (isStillMember == false && !_groupsBeingLeft.contains(group.id)) {
+                await _localDataSource.deleteGroup(group.id);
+                continue;
+              }
+              if (_groupsBeingLeft.contains(group.id)) continue;
               _ensureGroupSubscriptions(group.id);
             }
           },
@@ -347,10 +379,23 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     _participantSubscriptions[groupId] ??= _remoteDataSource
         .watchParticipants(groupId: groupId)
         .listen(
-          (participants) async {
-            for (final participant in participants) {
-              await _localDataSource.upsertParticipant(participant);
-            }
+          (participants) {
+            final previous = _participantSyncOperations[groupId] ?? Future<void>.value();
+            final operation = previous
+                .catchError((Object error, StackTrace stackTrace) {
+                  debugPrint(
+                    'WorkingGroupsRepository.participantsSync failed: $error\n$stackTrace',
+                  );
+                })
+                .then((_) => _reconcileParticipants(groupId, participants));
+            _participantSyncOperations[groupId] = operation;
+            unawaited(
+              operation.catchError((Object error, StackTrace stackTrace) {
+                debugPrint(
+                  'WorkingGroupsRepository.participantsSubscription failed: $error\n$stackTrace',
+                );
+              }),
+            );
           },
           onError: (Object error, StackTrace stackTrace) {
             debugPrint(
@@ -372,10 +417,31 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
         );
   }
 
+  Future<void> _reconcileParticipants(
+    String groupId,
+    List<GroupParticipant> remoteParticipants,
+  ) async {
+    final remoteIds = remoteParticipants.map((participant) => participant.id).toSet();
+    final localParticipants = await _localDataSource.getParticipants(groupId);
+
+    for (final participant in localParticipants) {
+      if (!remoteIds.contains(participant.id)) {
+        await _localDataSource.deleteParticipant(participant.id);
+      }
+    }
+
+    for (final participant in remoteParticipants) {
+      await _localDataSource.upsertParticipant(participant);
+    }
+  }
+
   Future<GroupParticipant> _ensureCurrentParticipant({
     required String groupId,
     required AuthUser user,
   }) async {
+    if (_groupsBeingLeft.contains(groupId)) {
+      throw DataException('Cannot restore membership while leaving group $groupId.');
+    }
     final existing = await _localDataSource.getParticipantByUserId(
       groupId: groupId,
       userId: user.id,
@@ -391,21 +457,43 @@ class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
     return participant;
   }
 
-  Future<void> _ensureCurrentParticipantForGroup(String groupId) async {
+  Future<bool?> _ensureCurrentParticipantForGroup(String groupId) async {
+    if (_groupsBeingLeft.contains(groupId)) return null;
+
+    final existingOperation = _participantEnsureOperations[groupId];
+    if (existingOperation != null) return existingOperation;
+
+    final operation = _restoreCurrentParticipantForGroup(groupId);
+    _participantEnsureOperations[groupId] = operation;
+    try {
+      return await operation;
+    } finally {
+      _participantEnsureOperations.removeWhere(
+        (key, value) => key == groupId && identical(value, operation),
+      );
+    }
+  }
+
+  Future<bool?> _restoreCurrentParticipantForGroup(String groupId) async {
     try {
       final user = await _requireCurrentUser();
-      // Only self-heal the participant row for users who actually belong to the
-      // group. This prevents a user who deliberately left from being silently
-      // re-added when they (or a stale event) open the group again.
+      if (_groupsBeingLeft.contains(groupId)) return null;
+
+      // A previously-started snapshot can be stale. Recheck the authoritative
+      // membership before restoring either the local or remote participant row.
       final isMember = await _remoteDataSource.isGroupMember(
         groupId: groupId,
         userId: user.id,
         userEmail: user.email,
       );
-      if (!isMember) return;
+      if (_groupsBeingLeft.contains(groupId)) return null;
+      if (!isMember) return false;
+
       await _ensureCurrentParticipant(groupId: groupId, user: user);
+      return true;
     } catch (error, stackTrace) {
       debugPrint('WorkingGroupsRepository.ensureCurrentParticipant failed: $error\n$stackTrace');
+      return null;
     }
   }
 

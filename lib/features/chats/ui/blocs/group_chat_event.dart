@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 abstract class GroupChatEvent extends Equatable {
@@ -28,4 +30,13 @@ class SendGroupMessageEvent extends GroupChatEvent {
 
 class LoadMoreGroupMessagesEvent extends GroupChatEvent {
   const LoadMoreGroupMessagesEvent();
+}
+
+class GroupCallRosterRequested extends GroupChatEvent {
+  const GroupCallRosterRequested(this.completer);
+
+  final Completer<List<String>> completer;
+
+  @override
+  List<Object?> get props => [completer];
 }
