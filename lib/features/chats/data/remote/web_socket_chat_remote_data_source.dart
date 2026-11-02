@@ -75,6 +75,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   /// Флаг уничтожения объекта — блокирует все переподключения после [dispose].
   bool _isDisposed = false;
   bool _isAppInBackground = false;
+  Completer<void>? _foregroundCompleter;
 
   /// Ожидающие Completer'ы: ключ — тип ответного события сервера.
   /// Значение — список, т. к. теоретически возможны параллельные запросы
@@ -168,16 +169,36 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   }
 
   /// Отправляет JSON-объект через WebSocket.
-  Future<void> _send(Map<String, dynamic> payload) async {
-    if (_isDisposed || _isAppInBackground) return;
-    try {
-      final channel = await _getOrCreateChannel();
-      channel.sink.add(jsonEncode(payload));
-    } catch (e, st) {
-      if (!_isAppInBackground && !_isDisposed) {
-        debugPrint('[WS] Ошибка отправки: $e\n$st');
+  Future<void> _send(Map<String, dynamic> payload, {bool waitUntilForeground = false}) async {
+    while (!_isDisposed) {
+      if (_isAppInBackground) {
+        if (!waitUntilForeground) return;
+        await _waitUntilForeground();
+        continue;
+      }
+
+      try {
+        final channel = await _getOrCreateChannel();
+        if (_isAppInBackground) continue;
+        channel.sink.add(jsonEncode(payload));
+        return;
+      } catch (error, stackTrace) {
+        final lifecycleRace =
+            _isAppInBackground ||
+            (error is WebSocketConnectionException &&
+                error.message.contains('while the app is backgrounded'));
+        if (waitUntilForeground && lifecycleRace) continue;
+        if (!_isAppInBackground && !_isDisposed) {
+          debugPrint('[WS] Ошибка отправки: $error\n$stackTrace');
+        }
+        return;
       }
     }
+  }
+
+  Future<void> _waitUntilForeground() {
+    if (!_isAppInBackground) return Future<void>.value();
+    return (_foregroundCompleter ??= Completer<void>()).future;
   }
 
   // ---------------------------------------------------------------------------
@@ -597,6 +618,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   Future<void> _disconnectForBackground() async {
     if (_isDisposed || _isAppInBackground) return;
     _isAppInBackground = true;
+    _foregroundCompleter ??= Completer<void>();
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
 
@@ -619,6 +641,11 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   void _onAppResumed() {
     if (_isDisposed) return;
     _isAppInBackground = false;
+    final foregroundCompleter = _foregroundCompleter;
+    _foregroundCompleter = null;
+    if (foregroundCompleter != null && !foregroundCompleter.isCompleted) {
+      foregroundCompleter.complete();
+    }
     debugPrint('[WS] App resumed — проверка состояния WS-соединения...');
 
     if (_channel == null && _activeTopicIds.isNotEmpty) {
@@ -724,7 +751,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   Future<List<ChatDto>> getChats(String userId) async {
     _clearPendingForType('chat_list');
     final future = _enqueue<List<ChatDto>>('chat_list');
-    await _send({'type': 'get_chats', 'userId': userId});
+    await _send({'type': 'get_chats', 'userId': userId}, waitUntilForeground: true);
     return future.timeout(
       const Duration(seconds: 120),
       onTimeout: () =>
@@ -743,7 +770,10 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
     //    ответ, который может прийти немедленно после reconnect.
     final future = _enqueue<String>('direct_chat_created');
 
-    await _send({'type': 'get_or_create_direct_chat', 'targetUserId': targetUserId});
+    await _send({
+      'type': 'get_or_create_direct_chat',
+      'targetUserId': targetUserId,
+    }, waitUntilForeground: true);
 
     // 3. Таймаут 120 с: гарантирует завершение Future при любом исходе.
     //    Render free-tier cold start занимает до 60 с — берём с запасом.
@@ -758,7 +788,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   @override
   Future<ChatDto?> getChatById(String chatId) async {
     final future = _enqueue<ChatDto?>('chat_by_id');
-    await _send({'type': 'get_chat_by_id', 'chatId': chatId});
+    await _send({'type': 'get_chat_by_id', 'chatId': chatId}, waitUntilForeground: true);
     return future.timeout(
       const Duration(seconds: 120),
       onTimeout: () =>
@@ -769,7 +799,7 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   @override
   Future<GroupChatDto?> getGroupChatById(String chatId) async {
     final future = _enqueue<GroupChatDto?>('group_chat_by_id');
-    await _send({'type': 'get_group_chat_by_id', 'chatId': chatId});
+    await _send({'type': 'get_group_chat_by_id', 'chatId': chatId}, waitUntilForeground: true);
     final serverChat = await future.timeout(
       const Duration(seconds: 120),
       onTimeout: () => throw const WebSocketConnectionException(
@@ -943,6 +973,12 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   /// Закрывает WebSocket-соединение и освобождает все ресурсы.
   Future<void> dispose() async {
     _isDisposed = true;
+
+    final foregroundCompleter = _foregroundCompleter;
+    _foregroundCompleter = null;
+    if (foregroundCompleter != null && !foregroundCompleter.isCompleted) {
+      foregroundCompleter.complete();
+    }
 
     // Снимаем observer жизненного цикла.
     WidgetsBinding.instance.removeObserver(this);

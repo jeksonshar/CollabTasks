@@ -54,6 +54,13 @@ Located in `chat-server/`:
   * Presence tracking (online/offline).
   * Group chat metadata synchronization.
 
+When a notification tap opens a chat during the background-to-foreground
+transition, request-response reads (`get_chat_by_id`, `get_group_chat_by_id`,
+and chat list/creation reads) wait for the app to resume before sending. This
+prevents a request from being silently dropped while the WebSocket datasource is
+closing its background connection. Transient background events remain
+best-effort and are not replayed after resume.
+
 ---
 
 ## 4. End-to-End Architecture & Interaction Flow
