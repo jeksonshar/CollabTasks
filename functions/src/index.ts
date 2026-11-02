@@ -2,6 +2,13 @@ import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firest
 import {onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {RtcRole, RtcTokenBuilder} from "agora-token";
+import {
+    expireStaleCallParticipants,
+    reconcileStaleCallParticipants,
+    seedConnectedParticipantHeartbeat
+} from "./call_liveness";
+
+export {expireStaleCallParticipants, reconcileStaleCallParticipants};
 
 admin.initializeApp();
 
@@ -467,6 +474,16 @@ export const onCallCreated = onDocumentCreated(
         const callType = callData.type || "audio";
         const isGroup = Boolean(callData.isGroup);
 
+        const participantsByUser = callData.participantsByUser;
+        if (participantsByUser && typeof participantsByUser === "object" && !Array.isArray(participantsByUser)) {
+            const observedAt = admin.firestore.Timestamp.fromDate(new Date(event.time));
+            const connectedParticipantIds = Object.entries(participantsByUser)
+                .filter(([, participant]) => (participant as { status?: string }).status === "connected")
+                .map(([participantId]) => participantId);
+            await Promise.all(connectedParticipantIds.map((participantId) =>
+                seedConnectedParticipantHeartbeat(callId, participantId, observedAt)));
+        }
+
         if (calleeIds.length === 0) {
             console.warn(`[onCallCreated] Call ${callId} has no calleeIds`);
             return;
@@ -552,6 +569,15 @@ export const onCallUpdated = onDocumentUpdated(
         };
         const beforeParticipants = participantMap(beforeData);
         const afterParticipants = participantMap(afterData);
+        const newlyConnectedParticipantIds = Object.entries(afterParticipants)
+            .filter(([key, participant]) => participant?.status === "connected" &&
+                beforeParticipants[key]?.status !== "connected")
+            .map(([key]) => key);
+        if (newlyConnectedParticipantIds.length > 0) {
+            const observedAt = admin.firestore.Timestamp.fromDate(new Date(event.time));
+            await Promise.all(newlyConnectedParticipantIds.map((participantId) =>
+                seedConnectedParticipantHeartbeat(callId, participantId, observedAt)));
+        }
         const ringingCalleesFromParticipants = Object.entries(afterParticipants)
             .filter(([key, afterP]) => {
                 if (afterP?.status !== "ringing") return false;

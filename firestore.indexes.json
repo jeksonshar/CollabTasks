@@ -4,10 +4,27 @@
       "collectionGroup": "calls",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "calleeIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "calleeIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "heartbeats",
+      "fieldPath": "lastSeenAt",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
 }

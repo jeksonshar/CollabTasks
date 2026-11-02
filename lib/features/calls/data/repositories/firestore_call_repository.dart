@@ -389,6 +389,58 @@ class FirestoreCallRepository implements CallRepository {
   }
 
   @override
+  Future<void> updateParticipantHeartbeat({required String callId, required String userId}) async {
+    if (!_isCurrentUser(userId)) {
+      throw StateError('Heartbeat identity does not match the authenticated user');
+    }
+
+    final callRef = _firestore.collection(_callsCollection).doc(callId);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(callRef);
+      if (!snapshot.exists || snapshot.data() == null) {
+        throw StateError('Call $callId does not exist');
+      }
+
+      final call = Call.fromMap(snapshot.data()!);
+      final participantIndex = _findParticipantIndex(call, userId);
+      if (call.status != CallStatus.active ||
+          participantIndex == -1 ||
+          call.participants[participantIndex].status != CallParticipantStatus.connected) {
+        throw StateError('Only a connected participant can refresh call $callId');
+      }
+
+      final participantId = _normalizeIdentity(call.participants[participantIndex].userId);
+      final heartbeatRef = callRef.collection('heartbeats').doc(participantId);
+      transaction.set(heartbeatRef, {'lastSeenAt': FieldValue.serverTimestamp()});
+    });
+  }
+
+  @override
+  Future<List<String>> reconcileStaleCallParticipants({required String callId}) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw StateError('Cannot report a call participant without an authenticated user');
+    }
+    final idToken = await currentUser.getIdToken();
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('Firebase ID token is unavailable for the call liveness request');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      AgoraConfig.callLivenessServerUrl,
+      data: {'callId': callId},
+      options: Options(
+        headers: {'Authorization': 'Bearer $idToken', 'Content-Type': 'application/json'},
+        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 10),
+      ),
+    );
+    final updatedIds = response.data?['updatedParticipantIds'];
+    if (response.statusCode != 200 || updatedIds is! List) return const [];
+    return updatedIds.whereType<String>().map(_normalizeIdentity).toSet().toList();
+  }
+
+  @override
   Future<void> inviteParticipant({
     required String callId,
     required String userId,

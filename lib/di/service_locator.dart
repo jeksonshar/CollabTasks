@@ -54,6 +54,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_
 import 'package:collab_tasks/features/calls/domain/use_cases/join_rtc_session_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/leave_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/reconcile_stale_call_participants_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
@@ -64,6 +65,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_c
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_speaker_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/update_call_heartbeat_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
@@ -523,6 +525,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
     ..registerLazySingleton(() => GetCallSessionUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => WatchActiveCallUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => WatchIncomingCallsUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => UpdateCallHeartbeatUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => ReconcileStaleCallParticipantsUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(() => JoinRtcSessionUseCase(getIt<RtcService>()))
     ..registerLazySingleton(() => LeaveRtcSessionUseCase(getIt<RtcService>()))
     ..registerLazySingleton(() => ToggleMicrophoneUseCase(getIt<RtcService>()))
@@ -563,6 +567,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
         startIncomingAlertUseCase: getIt(),
         startOutgoingAlertUseCase: getIt(),
         stopCallAlertUseCase: getIt(),
+        updateCallHeartbeatUseCase: getIt(),
+        reconcileStaleCallParticipantsUseCase: getIt(),
       ),
     );
 }

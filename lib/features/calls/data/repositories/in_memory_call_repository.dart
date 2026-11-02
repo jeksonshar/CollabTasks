@@ -221,6 +221,14 @@ class InMemoryCallRepository implements CallRepository {
   }
 
   @override
+  Future<void> updateParticipantHeartbeat({required String callId, required String userId}) async {
+    // Liveness is only persisted by the Firestore implementation.
+  }
+
+  @override
+  Future<List<String>> reconcileStaleCallParticipants({required String callId}) async => const [];
+
+  @override
   Future<void> inviteParticipant({
     required String callId,
     required String userId,

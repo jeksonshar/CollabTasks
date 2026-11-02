@@ -22,6 +22,7 @@ class CallsState extends Equatable {
   /// intentionally turned off before backgrounding the app.
   final bool isCameraManuallyDisabled;
   final List<RtcParticipantMediaState> participantMediaStates;
+  final Set<String> offlineParticipantIds;
   final CallErrorType? errorType;
   final String? errorMessage;
   final String? currentUserId;
@@ -39,6 +40,7 @@ class CallsState extends Equatable {
     this.isCameraEnabled = true,
     this.isCameraManuallyDisabled = false,
     this.participantMediaStates = const [],
+    this.offlineParticipantIds = const {},
     this.errorType,
     this.errorMessage,
     this.currentUserId,
@@ -57,6 +59,7 @@ class CallsState extends Equatable {
     bool? isCameraEnabled,
     bool? isCameraManuallyDisabled,
     List<RtcParticipantMediaState>? participantMediaStates,
+    Set<String>? offlineParticipantIds,
     CallErrorType? Function()? errorType,
     String? Function()? errorMessage,
     String? Function()? currentUserId,
@@ -74,6 +77,7 @@ class CallsState extends Equatable {
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       isCameraManuallyDisabled: isCameraManuallyDisabled ?? this.isCameraManuallyDisabled,
       participantMediaStates: participantMediaStates ?? this.participantMediaStates,
+      offlineParticipantIds: offlineParticipantIds ?? this.offlineParticipantIds,
       errorType: errorType != null ? errorType() : this.errorType,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
       currentUserId: currentUserId != null ? currentUserId() : this.currentUserId,
@@ -94,6 +98,7 @@ class CallsState extends Equatable {
     isCameraEnabled,
     isCameraManuallyDisabled,
     participantMediaStates,
+    offlineParticipantIds,
     errorType,
     errorMessage,
     currentUserId,

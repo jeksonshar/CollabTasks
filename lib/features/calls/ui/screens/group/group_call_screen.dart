@@ -229,7 +229,8 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
             .where(
               (p) =>
                   p.status != CallParticipantStatus.left &&
-                  p.status != CallParticipantStatus.declined,
+                  p.status != CallParticipantStatus.declined &&
+                  !state.offlineParticipantIds.contains(normalizeCallIdentity(p.userId)),
             )
             .toList();
         // CallKit can navigate to the group screen before the first Firestore

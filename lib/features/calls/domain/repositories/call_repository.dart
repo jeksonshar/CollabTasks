@@ -36,6 +36,13 @@ abstract class CallRepository {
   /// Leaves an active call for a specific participant without terminating the call for others.
   Future<void> leaveCall({required String callId, required String userId});
 
+  /// Refreshes the authenticated participant's liveness during an active call.
+  Future<void> updateParticipantHeartbeat({required String callId, required String userId});
+
+  /// Reconciles call members with server-written heartbeats.
+  /// Returns participant IDs that the backend marked offline.
+  Future<List<String>> reconcileStaleCallParticipants({required String callId});
+
   /// Invites a new participant to an ongoing group call.
   Future<void> inviteParticipant({
     required String callId,

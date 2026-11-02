@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collab_tasks/features/calls/domain/models/call_data_entity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_identity.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_session.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
@@ -19,6 +20,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_
 import 'package:collab_tasks/features/calls/domain/use_cases/join_rtc_session_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/leave_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/leave_rtc_session_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/reconcile_stale_call_participants_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/reject_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/request_call_permissions_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/start_call_use_case.dart';
@@ -29,11 +31,13 @@ import 'package:collab_tasks/features/calls/domain/use_cases/switch_camera_use_c
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_camera_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_microphone_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/toggle_speaker_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/update_call_heartbeat_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/call_kit_event_bridge.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/call_liveness_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/calls_firestore_watch_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/bloc_components/calls_rtc_coordinator.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
@@ -60,9 +64,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   final StartIncomingAlertUseCase? _startIncomingAlertUseCase;
   final StartOutgoingAlertUseCase? _startOutgoingAlertUseCase;
   final StopCallAlertUseCase? _stopCallAlertUseCase;
+  final UpdateCallHeartbeatUseCase? _updateCallHeartbeatUseCase;
+  final ReconcileStaleCallParticipantsUseCase? _reconcileStaleCallParticipantsUseCase;
 
   late final CallsFirestoreWatchCoordinator _firestoreWatchCoordinator;
   late final CallsRtcCoordinator _rtcCoordinator;
+  late final CallLivenessCoordinator _callLivenessCoordinator;
   CallKitEventBridge? _callKitEventBridge;
   Timer? _outgoingCallTimeoutTimer;
   final Set<String> _callKitDismissalsPending = {};
@@ -113,6 +120,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     StartIncomingAlertUseCase? startIncomingAlertUseCase,
     StartOutgoingAlertUseCase? startOutgoingAlertUseCase,
     StopCallAlertUseCase? stopCallAlertUseCase,
+    UpdateCallHeartbeatUseCase? updateCallHeartbeatUseCase,
+    ReconcileStaleCallParticipantsUseCase? reconcileStaleCallParticipantsUseCase,
   }) : _startCallUseCase = startCallUseCase,
        _acceptCallUseCase = acceptCallUseCase,
        _acceptIncomingCallUseCase = acceptIncomingCallUseCase,
@@ -129,6 +138,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
        _startIncomingAlertUseCase = startIncomingAlertUseCase,
        _startOutgoingAlertUseCase = startOutgoingAlertUseCase,
        _stopCallAlertUseCase = stopCallAlertUseCase,
+       _updateCallHeartbeatUseCase = updateCallHeartbeatUseCase,
+       _reconcileStaleCallParticipantsUseCase = reconcileStaleCallParticipantsUseCase,
        super(const CallsState()) {
     _firestoreWatchCoordinator = CallsFirestoreWatchCoordinator(
       watchActiveCall: watchActiveCallUseCase,
@@ -144,6 +155,12 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
       watchConnectionState: watchRtcConnectionStateUseCase,
       watchParticipantMediaStates: watchRtcParticipantMediaStatesUseCase,
       dispatch: add,
+    );
+    _callLivenessCoordinator = CallLivenessCoordinator(
+      updateHeartbeat: updateCallHeartbeatUseCase,
+      dispatch: (event) {
+        if (!isClosed) add(event);
+      },
     );
     on<StartCallRequested>(_onStartCall);
     on<IncomingCallDetected>(_onIncomingCallDetected);
@@ -166,6 +183,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     on<ActiveCallUpdated>(_onActiveCallUpdated);
     on<RtcConnectionStateChanged>(_onRtcConnectionStateChanged);
     on<ParticipantMediaStatesUpdated>(_onParticipantMediaStatesUpdated);
+    on<CallLivenessCheckRequested>(_onCallLivenessCheckRequested);
     on<CallKitEventReceived>(_onCallKitEventReceived);
     on<CallKitAccepted>(_onCallKitAccepted);
     on<CallKitDeclined>(_onCallKitDeclined);
@@ -1090,6 +1108,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
 
     debugPrint('[CallsBloc] Active call updated: id=${call.id}, status=${call.status}');
     emit(state.copyWith(activeCall: () => call));
+    if (state.status == CallsStatus.active &&
+        state.rtcConnectionState == RtcConnectionState.connected) {
+      _startCallHeartbeatIfNeeded();
+    }
 
     // Caller scenario: callee accepted -> transition from ringing to active & join RTC
     if (state.status == CallsStatus.ringingOutgoing &&
@@ -1149,6 +1171,10 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     debugPrint('[CallsBloc] RTC Connection state changed: ${event.state}');
     emit(state.copyWith(rtcConnectionState: event.state));
 
+    if (event.state == RtcConnectionState.connected) {
+      _startCallHeartbeatIfNeeded();
+    }
+
     if (event.state == RtcConnectionState.failed) {
       // Guard against double-fire: Agora can emit `failed` twice when
       // leaveSession() (called from onError) triggers onConnectionStateChanged.
@@ -1176,7 +1202,81 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     ParticipantMediaStatesUpdated event,
     Emitter<CallsState> emit,
   ) {
-    emit(state.copyWith(participantMediaStates: event.mediaStates));
+    final callId = state.activeCall?.id;
+    if (event.callId != null && event.callId != callId) return;
+
+    final previousRemoteIds = state.participantMediaStates
+        .where((mediaState) => !mediaState.isLocal)
+        .map((mediaState) => normalizeCallIdentity(mediaState.participantId))
+        .toSet();
+    final currentRemoteIds = event.mediaStates
+        .where((mediaState) => !mediaState.isLocal)
+        .map((mediaState) => normalizeCallIdentity(mediaState.participantId))
+        .toSet();
+    final disconnectedIds = previousRemoteIds.difference(currentRemoteIds);
+    final returnedIds = currentRemoteIds;
+    final nextOfflineIds = {...state.offlineParticipantIds}..removeAll(returnedIds);
+    final disconnectedParticipantIds = <String>[];
+    if (callId != null && event.callId != null && state.status == CallsStatus.active) {
+      final participants = state.activeCall?.participants ?? const <CallParticipant>[];
+      for (final participantId in disconnectedIds) {
+        final matchingParticipants = participants.where((candidate) {
+          return normalizeCallIdentity(candidate.userId) == participantId;
+        });
+        if (matchingParticipants.isNotEmpty &&
+            matchingParticipants.first.status != CallParticipantStatus.left &&
+            matchingParticipants.first.status != CallParticipantStatus.declined) {
+          nextOfflineIds.add(participantId);
+          disconnectedParticipantIds.add(participantId);
+        }
+      }
+    }
+    emit(
+      state.copyWith(
+        participantMediaStates: event.mediaStates,
+        offlineParticipantIds: nextOfflineIds,
+      ),
+    );
+    if (callId != null) {
+      if (disconnectedParticipantIds.isNotEmpty) add(CallLivenessCheckRequested(callId));
+    }
+  }
+
+  Future<void> _onCallLivenessCheckRequested(
+    CallLivenessCheckRequested event,
+    Emitter<CallsState> emit,
+  ) async {
+    if (_reconcileStaleCallParticipantsUseCase == null ||
+        state.status != CallsStatus.active ||
+        state.activeCall?.id != event.callId) {
+      return;
+    }
+    if (!_reserveCallAction(event.callId)) {
+      return;
+    }
+
+    try {
+      final departedParticipantIds = await _reconcileStaleCallParticipantsUseCase.call(
+        callId: event.callId,
+      );
+      if (departedParticipantIds.isNotEmpty) {
+        emit(
+          state.copyWith(
+            offlineParticipantIds: {
+              ...state.offlineParticipantIds,
+              ...departedParticipantIds.map(normalizeCallIdentity),
+            },
+          ),
+        );
+        if (state.activeCall?.isGroup != true && state.activeCall?.id == event.callId) {
+          await _finishCall(emit, callId: event.callId, currentUserId: state.currentUserId);
+        }
+      }
+    } catch (error, stackTrace) {
+      debugPrint('[CallsBloc] Call liveness reconciliation failed: $error\n$stackTrace');
+    } finally {
+      _releaseCallAction(event.callId);
+    }
   }
 
   Future<void> _subscribeToActiveCall(String callId) async {
@@ -1303,6 +1403,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
   }
 
   Future<void> _cleanup() async {
+    _callLivenessCoordinator.stop();
     _stopOutgoingCallTimeout();
     await _stopCallAlertSafely();
 
@@ -1314,6 +1415,32 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     try {
       await _rtcCoordinator.leaveSession();
     } catch (_) {}
+  }
+
+  void _startCallHeartbeatIfNeeded() {
+    final callId = state.activeCall?.id;
+    final userId = state.currentUserId;
+    if (_updateCallHeartbeatUseCase == null ||
+        callId == null ||
+        userId == null ||
+        state.status != CallsStatus.active ||
+        state.rtcConnectionState != RtcConnectionState.connected) {
+      return;
+    }
+    _callLivenessCoordinator.startHeartbeat(
+      callId: callId,
+      userId: userId,
+      isCurrent: () =>
+          !isClosed &&
+          state.status == CallsStatus.active &&
+          state.activeCall?.id == callId &&
+          state.currentUserId == userId,
+    );
+    _callLivenessCoordinator.startReconciliation(
+      callId: callId,
+      isCurrent: () =>
+          !isClosed && state.status == CallsStatus.active && state.activeCall?.id == callId,
+    );
   }
 
   Future<void> _startIncomingAlertSafely() async {

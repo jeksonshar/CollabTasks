@@ -137,11 +137,21 @@ class RtcConnectionStateChanged extends CallsEvent {
 
 class ParticipantMediaStatesUpdated extends CallsEvent {
   final List<RtcParticipantMediaState> mediaStates;
+  final String? callId;
 
-  const ParticipantMediaStatesUpdated(this.mediaStates);
+  const ParticipantMediaStatesUpdated(this.mediaStates, {this.callId});
 
   @override
-  List<Object?> get props => [mediaStates];
+  List<Object?> get props => [mediaStates, callId];
+}
+
+class CallLivenessCheckRequested extends CallsEvent {
+  final String callId;
+
+  const CallLivenessCheckRequested(this.callId);
+
+  @override
+  List<Object?> get props => [callId];
 }
 
 class CancelCallRequested extends CallsEvent {

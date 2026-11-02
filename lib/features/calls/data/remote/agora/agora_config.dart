@@ -19,6 +19,13 @@ class AgoraConfig {
     defaultValue: 'https://us-central1-collabtasks-fda3f.cloudfunctions.net/getAgoraRtcToken',
   );
 
+  /// Authenticated Cloud Function for reconciling stale call participants.
+  static const String callLivenessServerUrl = String.fromEnvironment(
+    'CALL_LIVENESS_SERVER_URL',
+    defaultValue:
+        'https://europe-central2-collabtasks-fda3f.cloudfunctions.net/reconcileStaleCallParticipants',
+  );
+
   /// Token expiry in seconds (24 hours).
   static const int tokenExpirySeconds = 86400;
 }

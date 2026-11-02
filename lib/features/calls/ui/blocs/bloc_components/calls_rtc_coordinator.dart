@@ -55,7 +55,7 @@ class CallsRtcCoordinator {
     if (!_joiningOrJoinedCallIds.add(session.callId)) return;
 
     try {
-      await _subscribeToStreams();
+      await _subscribeToStreams(session.callId);
       await _joinRtcSession(session);
     } catch (_) {
       _joiningOrJoinedCallIds.remove(session.callId);
@@ -84,7 +84,7 @@ class CallsRtcCoordinator {
 
   Future<void> leaveSession() => _leaveRtcSession();
 
-  Future<void> _subscribeToStreams() async {
+  Future<void> _subscribeToStreams(String callId) async {
     await _connectionStateSubscription?.cancel();
     _connectionStateSubscription = _watchConnectionState().listen(
       (rtcState) => _dispatch(RtcConnectionStateChanged(rtcState)),
@@ -92,7 +92,7 @@ class CallsRtcCoordinator {
 
     await _participantMediaStatesSubscription?.cancel();
     _participantMediaStatesSubscription = _watchParticipantMediaStates().listen(
-      (mediaStates) => _dispatch(ParticipantMediaStatesUpdated(mediaStates)),
+      (mediaStates) => _dispatch(ParticipantMediaStatesUpdated(mediaStates, callId: callId)),
     );
   }
 }

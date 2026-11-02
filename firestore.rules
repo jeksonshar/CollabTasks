@@ -281,6 +281,34 @@ service cloud.firestore {
       allow update: if acceptCall() || acceptActiveGroupInvite() || rejectCall() || cancelCall() || endCall() ||
         leaveCall() || inviteParticipant();
       allow delete: if false;
+
+      match /heartbeats/{participantId} {
+        function connectedHeartbeatOwner() {
+          let callSnapshot = get(/databases/$(database)/documents/calls/$(callId));
+          let call = callSnapshot.data;
+          return signedIn() && callSnapshot.exists && call.status == 'active' &&
+            call.participantsByUser is map &&
+            participantId == participantKeyFor(call.participantsByUser) &&
+            call.participantsByUser.get(participantId, null) is map &&
+            call.participantsByUser[participantId].userId == participantId &&
+            call.participantsByUser[participantId].status == 'connected';
+        }
+
+        function validHeartbeat() {
+          return request.resource.data.keys().hasOnly(['lastSeenAt']) &&
+            request.resource.data.keys().hasAll(['lastSeenAt']) &&
+            request.resource.data.lastSeenAt is timestamp &&
+            request.resource.data.lastSeenAt == request.time;
+        }
+
+        allow create: if connectedHeartbeatOwner() && validHeartbeat();
+        allow update: if connectedHeartbeatOwner() &&
+          resource.data.keys().hasOnly(['lastSeenAt']) &&
+          resource.data.lastSeenAt is timestamp &&
+          resource.data.lastSeenAt < request.time - duration.value(5, 's') &&
+          changedFields().hasOnly(['lastSeenAt']) && validHeartbeat();
+        allow get, list, delete: if false;
+      }
     }
   }
 }
