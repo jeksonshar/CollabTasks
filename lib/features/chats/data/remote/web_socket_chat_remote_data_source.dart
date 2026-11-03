@@ -12,6 +12,7 @@ import 'package:collab_tasks/features/chats/data/remote/models/ws_typing_dto.dar
 import 'package:collab_tasks/features/chats/data/remote/models/ws_user_status_dto.dart';
 import 'package:collab_tasks/features/working_groups/data/local/working_groups_local_data_source.dart';
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Тип фабрики, создающей [WebSocketChannel] по URI.
@@ -116,6 +117,9 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   /// Максимальная задержка между попытками переподключения (секунды).
   static const int _maxReconnectDelaySec = 30;
+  static const Duration _serverStartupTimeout = Duration(minutes: 2);
+  static const Duration _healthRequestTimeout = Duration(seconds: 8);
+  static const Duration _healthRetryDelay = Duration(seconds: 2);
 
   // ---------------------------------------------------------------------------
   // Публичные реактивные потоки
@@ -759,6 +763,11 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
 
   @override
   Future<String> getOrCreateDirectChat(String targetUserId) async {
+    // Render can accept the app's cold-start request while its HTTP process is
+    // still starting. Wait for the existing health endpoint before sending the
+    // WebSocket command so the first request is not lost during startup.
+    await _waitForServerReady();
+
     // 1. Очищаем устаревшие Completers от прошлых сессий.
     //    DataSource — синглтон: без очистки старый Completer «съедает» ответ
     //    нового запроса и новый зависает навсегда.
@@ -780,6 +789,49 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
       onTimeout: () => throw const WebSocketConnectionException(
         'Превышено время ожидания ответа от сервера (120 с)',
       ),
+    );
+  }
+
+  Future<void> _waitForServerReady() async {
+    final baseUri = Uri.parse(_baseUrl);
+    final healthUri = baseUri.replace(
+      scheme: switch (baseUri.scheme) {
+        'wss' => 'https',
+        'ws' => 'http',
+        final scheme => scheme,
+      },
+      path: '/health',
+      query: null,
+      fragment: null,
+    );
+    final stopwatch = Stopwatch()..start();
+    Object? lastError;
+
+    while (stopwatch.elapsed < _serverStartupTimeout) {
+      if (_isDisposed) {
+        throw const WebSocketConnectionException('Chat data source was disposed');
+      }
+
+      final client = http.Client();
+      try {
+        final response = await client.get(healthUri).timeout(_healthRequestTimeout);
+        if (response.statusCode == 200) return;
+        lastError = WebSocketConnectionException(
+          'Chat server health check returned HTTP ${response.statusCode}',
+        );
+      } catch (error) {
+        lastError = error;
+      } finally {
+        client.close();
+      }
+
+      if (stopwatch.elapsed + _healthRetryDelay >= _serverStartupTimeout) break;
+      await Future<void>.delayed(_healthRetryDelay);
+    }
+
+    throw WebSocketConnectionException(
+      'Chat server did not become ready within '
+      '${_serverStartupTimeout.inSeconds} seconds: $lastError',
     );
   }
 

@@ -32,11 +32,6 @@ class WorkingGroupDetailsScreen extends StatefulWidget {
 class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
   int _tabIndex = 0;
 
-  /// Локальный флаг: `true` пока идёт подключение к чату (холодный старт WS).
-  /// Хранится в виджете, а не в Bloc, чтобы избежать race condition
-  /// с параллельным emit.forEach из _onStarted.
-  bool _isConnectingToChat = false;
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -49,7 +44,9 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
         listener: _onStateChanged,
         listenWhen: (previous, current) =>
             previous.status != current.status ||
-            previous.pendingDirectChat != current.pendingDirectChat,
+            previous.pendingDirectChat != current.pendingDirectChat ||
+            previous.errorMessage != current.errorMessage ||
+            previous.isOpeningDirectChat != current.isOpeningDirectChat,
         builder: _buildContent,
       ),
     );
@@ -80,7 +77,6 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
 
     // Уведомление: общая ошибка — сбрасываем флаг подключения
     if (state.status == GroupDetailsStatus.error && state.errorMessage != null) {
-      if (mounted) setState(() => _isConnectingToChat = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(state.errorMessage!)));
@@ -90,10 +86,8 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
     // Навигация: открыть личный чат с участником
     final pending = state.pendingDirectChat;
     if (pending != null) {
-      // Сбрасываем флаг ДО навигации, чтобы повторная перестройка не открыла чат снова
+      // Сбрасываем одноразовый результат ДО навигации, чтобы не открыть чат повторно.
       context.read<GroupDetailsBloc>().add(const GroupDirectChatConsumed());
-      // Скрываем оверлей
-      if (mounted) setState(() => _isConnectingToChat = false);
       if (context.mounted) {
         await Navigator.of(context).push(
           MaterialPageRoute(
@@ -195,7 +189,6 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
                 onRefresh: () => _handleRefresh(context),
                 // Вся бизнес-логика (getOrCreate чат + getParticipant) делегирована BLoC
                 onDirectChatTap: (participantId) {
-                  setState(() => _isConnectingToChat = true);
                   context.read<GroupDetailsBloc>().add(
                     GroupParticipantChatOpened(
                       groupId: group.id,
@@ -223,7 +216,7 @@ class _WorkingGroupDetailsScreenState extends State<WorkingGroupDetailsScreen> {
               TasksTab(state: state, onRefresh: () => _handleRefresh(context)),
             ],
           ),
-          if (_isConnectingToChat) _buildConnectingOverlay(context, localization),
+          if (state.isOpeningDirectChat) _buildConnectingOverlay(context, localization),
         ],
       ),
       floatingActionButton: (isParticipant && activeTab == 1)

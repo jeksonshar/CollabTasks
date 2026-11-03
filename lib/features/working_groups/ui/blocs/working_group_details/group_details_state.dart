@@ -27,6 +27,7 @@ class GroupDetailsState extends Equatable {
     this.group,
     this.errorMessage,
     this.pendingDirectChat,
+    this.isOpeningDirectChat = false,
   });
 
   final GroupDetailsStatus status;
@@ -41,6 +42,9 @@ class GroupDetailsState extends Equatable {
   /// Данные для навигации к личному чату.
   /// Сбрасывается в `null` сразу после того, как UI прочитал его.
   final DirectChatResult? pendingDirectChat;
+
+  /// True while a participant's direct chat is being resolved on the chat server.
+  final bool isOpeningDirectChat;
 
   bool get isCurrentUserParticipant {
     final userId = currentUserId;
@@ -115,6 +119,7 @@ class GroupDetailsState extends Equatable {
     WorkingGroup? group,
     String? errorMessage,
     DirectChatResult? pendingDirectChat,
+    bool? isOpeningDirectChat,
     bool clearPendingDirectChat = false,
   }) {
     return GroupDetailsState(
@@ -129,6 +134,7 @@ class GroupDetailsState extends Equatable {
       pendingDirectChat: clearPendingDirectChat
           ? null
           : (pendingDirectChat ?? this.pendingDirectChat),
+      isOpeningDirectChat: isOpeningDirectChat ?? this.isOpeningDirectChat,
     );
   }
 
@@ -144,5 +150,6 @@ class GroupDetailsState extends Equatable {
     errorMessage,
     isCurrentUserParticipant,
     pendingDirectChat,
+    isOpeningDirectChat,
   ];
 }

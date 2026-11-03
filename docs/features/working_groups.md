@@ -24,4 +24,5 @@
   metadata uses the synchronized local participant roster as authoritative when available, replacing stale server-side participant emails rather
   than merging departed users back into the call recipient list.
 - **Participant Actions:** Each participant item (except the current user) provides a three-dots popup menu (`PopupMenuButton<ParticipantAction>`) with options: direct chat, audio call (stub), and video call (stub). Tapping the item directly continues to open direct chat.
+- **Opening a participant chat:** `GroupDetailsBloc` owns the in-progress state so updates from its group streams cannot leave the loading overlay stale. Before sending `get_or_create_direct_chat`, the WebSocket data source polls the chat server's existing `/health` endpoint for up to two minutes; this wakes a sleeping Render service and sends the chat request only after the server is ready. The screen navigates when the Bloc emits `pendingDirectChat`, and clears the overlay on either success or error.
 
