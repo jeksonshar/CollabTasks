@@ -8,8 +8,7 @@ import 'package:collab_tasks/features/working_groups/domain/models/group_task_as
 import 'package:collab_tasks/features/working_groups/domain/models/working_group.dart';
 
 class FirebaseWorkingGroupsRemoteDataSource implements WorkingGroupsRemoteDataSource {
-  const FirebaseWorkingGroupsRemoteDataSource({required FirebaseFirestore firestore})
-    : _firestore = firestore;
+  const FirebaseWorkingGroupsRemoteDataSource({required this._firestore});
 
   static const _groupsCollection = 'workingGroups';
   static const _participantsCollection = 'participants';

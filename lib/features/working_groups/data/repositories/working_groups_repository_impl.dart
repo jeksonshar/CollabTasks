@@ -17,12 +17,10 @@ import 'package:uuid/uuid.dart';
 
 class WorkingGroupsRepositoryImpl implements WorkingGroupsRepository {
   WorkingGroupsRepositoryImpl({
-    required WorkingGroupsLocalDataSource localDataSource,
-    required WorkingGroupsRemoteDataSource remoteDataSource,
-    required AuthRepository authRepository,
-  }) : _localDataSource = localDataSource,
-       _remoteDataSource = remoteDataSource,
-       _authRepository = authRepository;
+    required this._localDataSource,
+    required this._remoteDataSource,
+    required this._authRepository,
+  });
 
   final WorkingGroupsLocalDataSource _localDataSource;
   final WorkingGroupsRemoteDataSource _remoteDataSource;

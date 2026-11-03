@@ -19,11 +19,7 @@ class ChatRepositoryImpl implements ChatRepository {
   /// `null` при использовании Firebase-backend — методы возвращают пустые потоки.
   final WebSocketChatRemoteDataSource? _wsDataSource;
 
-  const ChatRepositoryImpl({
-    required ChatRemoteDataSource remoteDataSource,
-    WebSocketChatRemoteDataSource? wsDataSource,
-  }) : _remoteDataSource = remoteDataSource,
-       _wsDataSource = wsDataSource;
+  const ChatRepositoryImpl({required this._remoteDataSource, this._wsDataSource});
 
   @override
   Stream<List<MessageEntity>> watchMessages(String chatId) {

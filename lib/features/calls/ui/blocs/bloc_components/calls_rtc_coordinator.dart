@@ -17,24 +17,16 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 /// CallsBloc remains responsible for state transitions and terminal policy.
 class CallsRtcCoordinator {
   CallsRtcCoordinator({
-    required JoinRtcSessionUseCase joinRtcSession,
-    required LeaveRtcSessionUseCase leaveRtcSession,
-    required ToggleMicrophoneUseCase toggleMicrophone,
-    required ToggleCameraUseCase toggleCamera,
-    required ToggleSpeakerUseCase toggleSpeaker,
-    required SwitchCameraUseCase switchCamera,
-    required WatchRtcConnectionStateUseCase watchConnectionState,
-    required WatchRtcParticipantMediaStatesUseCase watchParticipantMediaStates,
-    required void Function(CallsEvent event) dispatch,
-  }) : _joinRtcSession = joinRtcSession,
-       _leaveRtcSession = leaveRtcSession,
-       _toggleMicrophone = toggleMicrophone,
-       _toggleCamera = toggleCamera,
-       _toggleSpeaker = toggleSpeaker,
-       _switchCamera = switchCamera,
-       _watchConnectionState = watchConnectionState,
-       _watchParticipantMediaStates = watchParticipantMediaStates,
-       _dispatch = dispatch;
+    required this._joinRtcSession,
+    required this._leaveRtcSession,
+    required this._toggleMicrophone,
+    required this._toggleCamera,
+    required this._toggleSpeaker,
+    required this._switchCamera,
+    required this._watchConnectionState,
+    required this._watchParticipantMediaStates,
+    required this._dispatch,
+  });
 
   final JoinRtcSessionUseCase _joinRtcSession;
   final LeaveRtcSessionUseCase _leaveRtcSession;

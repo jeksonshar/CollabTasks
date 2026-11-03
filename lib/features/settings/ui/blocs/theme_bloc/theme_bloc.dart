@@ -10,12 +10,8 @@ class ThemeBloc extends Bloc<ThemeEvent, ThemeState> {
   final GetThemePreferenceUseCase _getThemePreferenceUseCase;
   final SetThemePreferenceUseCase _setThemePreferenceUseCase;
 
-  ThemeBloc({
-    required GetThemePreferenceUseCase getThemePreferenceUseCase,
-    required SetThemePreferenceUseCase setThemePreferenceUseCase,
-  }) : _getThemePreferenceUseCase = getThemePreferenceUseCase,
-       _setThemePreferenceUseCase = setThemePreferenceUseCase,
-       super(const ThemeState(themePreference: ThemePreference(mode: AppThemeMode.system))) {
+  ThemeBloc({required this._getThemePreferenceUseCase, required this._setThemePreferenceUseCase})
+    : super(const ThemeState(themePreference: ThemePreference(mode: AppThemeMode.system))) {
     on<ThemeInitialized>(_onThemeInitialized);
     on<ThemeModeChanged>(_onThemeModeChanged);
     _loadInitialTheme();

@@ -23,31 +23,19 @@ const _participantsOnlyActionError = 'Only group participants can perform this a
 
 class GroupDetailsBloc extends Bloc<GroupDetailsEvent, GroupDetailsState> {
   GroupDetailsBloc({
-    required String groupId,
-    required GetWorkingGroupUseCase getWorkingGroupUseCase,
-    required GetGroupTasksUseCase getGroupTasksUseCase,
-    required GetGroupParticipantsUseCase getGroupParticipantsUseCase,
-    required AddGroupTaskUseCase addGroupTaskUseCase,
-    required UpdateWorkingGroupUseCase updateWorkingGroupUseCase,
-    required DeleteWorkingGroupUseCase deleteWorkingGroupUseCase,
-    required InviteGroupParticipantUseCase inviteGroupParticipantUseCase,
-    required LeaveWorkingGroupUseCase leaveWorkingGroupUseCase,
-    required WatchAuthStateUseCase watchAuthStateUseCase,
-    required SyncWorkingGroupUseCase syncWorkingGroupUseCase,
-    required GetOrCreateDirectChatUseCase getOrCreateDirectChatUseCase,
-  }) : _groupId = groupId,
-       _getWorkingGroupUseCase = getWorkingGroupUseCase,
-       _getGroupTasksUseCase = getGroupTasksUseCase,
-       _getGroupParticipantsUseCase = getGroupParticipantsUseCase,
-       _addGroupTaskUseCase = addGroupTaskUseCase,
-       _updateWorkingGroupUseCase = updateWorkingGroupUseCase,
-       _deleteWorkingGroupUseCase = deleteWorkingGroupUseCase,
-       _inviteGroupParticipantUseCase = inviteGroupParticipantUseCase,
-       _leaveWorkingGroupUseCase = leaveWorkingGroupUseCase,
-       _watchAuthStateUseCase = watchAuthStateUseCase,
-       _syncWorkingGroupUseCase = syncWorkingGroupUseCase,
-       _getOrCreateDirectChatUseCase = getOrCreateDirectChatUseCase,
-       super(const GroupDetailsState()) {
+    required this._groupId,
+    required this._getWorkingGroupUseCase,
+    required this._getGroupTasksUseCase,
+    required this._getGroupParticipantsUseCase,
+    required this._addGroupTaskUseCase,
+    required this._updateWorkingGroupUseCase,
+    required this._deleteWorkingGroupUseCase,
+    required this._inviteGroupParticipantUseCase,
+    required this._leaveWorkingGroupUseCase,
+    required this._watchAuthStateUseCase,
+    required this._syncWorkingGroupUseCase,
+    required this._getOrCreateDirectChatUseCase,
+  }) : super(const GroupDetailsState()) {
     on<GroupDetailsStarted>(_onStarted);
     on<GroupTaskFilterChanged>((event, emit) => emit(state.copyWith(filter: event.filter)));
     on<GroupTaskAdded>(_onTaskAdded);

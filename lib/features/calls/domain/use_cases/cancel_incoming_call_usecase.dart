@@ -5,11 +5,7 @@ class CancelIncomingCallUseCase {
   final CallKitService _callKitService;
   final CallAlertService _callAlertService;
 
-  const CancelIncomingCallUseCase({
-    required CallKitService callKitService,
-    required CallAlertService callAlertService,
-  }) : _callKitService = callKitService,
-       _callAlertService = callAlertService;
+  const CancelIncomingCallUseCase({required this._callKitService, required this._callAlertService});
 
   Future<void> call(String callId) async {
     await _callKitService.endCall(callId);

@@ -37,25 +37,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   String _currentUserEmail = '';
 
   ChatBloc({
-    required WatchMessagesUseCase watchMessagesUseCase,
-    required SendMessageUseCase sendMessageUseCase,
-    required GetChatUseCase getChatUseCase,
-    required DeleteMessageUseCase deleteMessageUseCase,
-    required GetCurrentUserUseCase getCurrentUserUseCase,
-    required WatchUserStatusUseCase watchUserStatusUseCase,
-    required WatchTypingStatusUseCase watchTypingStatusUseCase,
-    required SendTypingStatusUseCase sendTypingStatusUseCase,
-    required LoadMoreMessagesUseCase loadMoreMessagesUseCase,
-  }) : _watchMessagesUseCase = watchMessagesUseCase,
-       _sendMessageUseCase = sendMessageUseCase,
-       _getChatUseCase = getChatUseCase,
-       _deleteMessageUseCase = deleteMessageUseCase,
-       _getCurrentUserUseCase = getCurrentUserUseCase,
-       _watchUserStatusUseCase = watchUserStatusUseCase,
-       _watchTypingStatusUseCase = watchTypingStatusUseCase,
-       _sendTypingStatusUseCase = sendTypingStatusUseCase,
-       _loadMoreMessagesUseCase = loadMoreMessagesUseCase,
-       super(const ChatInitial()) {
+    required this._watchMessagesUseCase,
+    required this._sendMessageUseCase,
+    required this._getChatUseCase,
+    required this._deleteMessageUseCase,
+    required this._getCurrentUserUseCase,
+    required this._watchUserStatusUseCase,
+    required this._watchTypingStatusUseCase,
+    required this._sendTypingStatusUseCase,
+    required this._loadMoreMessagesUseCase,
+  }) : super(const ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<DeleteMessageEvent>(_onDeleteMessage);

@@ -54,12 +54,10 @@ class WebSocketChatRemoteDataSource with WidgetsBindingObserver implements ChatR
   final WebSocketChannelFactory _channelFactory;
 
   WebSocketChatRemoteDataSource({
-    required String baseUrl,
-    required Future<String?> Function() getTokenProvider,
+    required this._baseUrl,
+    required this._getTokenProvider,
     WebSocketChannelFactory? channelFactory,
-  }) : _baseUrl = baseUrl,
-       _getTokenProvider = getTokenProvider,
-       _channelFactory = channelFactory ?? _defaultChannelFactory {
+  }) : _channelFactory = channelFactory ?? _defaultChannelFactory {
     // Регистрируемся как observer жизненного цикла приложения.
     // При переходе в resumed — проверяем/восстанавливаем соединение.
     WidgetsBinding.instance.addObserver(this);

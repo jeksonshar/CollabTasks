@@ -14,13 +14,10 @@ class GroupTaskDetailsBloc extends Bloc<GroupTaskDetailsEvent, GroupTaskDetailsS
   GroupTaskDetailsBloc({
     required GroupTask task,
     required WatchAuthStateUseCase watchAuthStateUseCase,
-    required ClaimGroupTaskUseCase claimGroupTaskUseCase,
-    required ReleaseGroupTaskUseCase releaseGroupTaskUseCase,
-    required UpdateGroupTaskUseCase updateGroupTaskUseCase,
-  }) : _claimGroupTaskUseCase = claimGroupTaskUseCase,
-       _releaseGroupTaskUseCase = releaseGroupTaskUseCase,
-       _updateGroupTaskUseCase = updateGroupTaskUseCase,
-       super(
+    required this._claimGroupTaskUseCase,
+    required this._releaseGroupTaskUseCase,
+    required this._updateGroupTaskUseCase,
+  }) : super(
          GroupTaskDetailsState(
            task: task,
            isAssignedToMe: false,

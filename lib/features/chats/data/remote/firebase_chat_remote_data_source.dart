@@ -16,8 +16,7 @@ class FirebaseChatRemoteDataSource implements ChatRemoteDataSource {
   static const _workingGroupsCollection = 'workingGroups';
   static const _groupMessagesSubcollection = 'messages';
 
-  const FirebaseChatRemoteDataSource({required FirebaseFirestore firestore})
-    : _firestore = firestore;
+  const FirebaseChatRemoteDataSource({required this._firestore});
 
   @override
   Stream<List<MessageDto>> watchMessages(String chatId) {

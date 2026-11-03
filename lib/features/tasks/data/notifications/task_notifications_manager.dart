@@ -30,13 +30,12 @@ class TaskNotificationsManager implements TaskNotificationService {
   NotificationTapPayload? _initialTapPayload;
 
   TaskNotificationsManager({
-    required TaskNotificationTitlesProvider titleProvider,
+    required this._titleProvider,
     FlutterLocalNotificationsPlugin? notificationsPlugin,
     StreamController<NotificationTapPayload>? notificationTapController,
   }) : _notificationsPlugin = notificationsPlugin ?? FlutterLocalNotificationsPlugin(),
        _notificationTapController =
-           notificationTapController ?? StreamController<NotificationTapPayload>.broadcast(),
-       _titleProvider = titleProvider;
+           notificationTapController ?? StreamController<NotificationTapPayload>.broadcast();
 
   Future<void> initialize() async {
     if (_isInitialized) {

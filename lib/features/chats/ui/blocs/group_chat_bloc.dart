@@ -22,19 +22,13 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
   String _groupId = '';
 
   GroupChatBloc({
-    required WatchGroupMessagesUseCase watchGroupMessagesUseCase,
-    required SendGroupMessageUseCase sendGroupMessageUseCase,
-    required GetGroupChatUseCase getGroupChatUseCase,
-    required GetCurrentUserUseCase getCurrentUserUseCase,
-    required LoadMoreGroupMessagesUseCase loadMoreGroupMessagesUseCase,
-    required SyncWorkingGroupUseCase syncWorkingGroupUseCase,
-  }) : _watchGroupMessagesUseCase = watchGroupMessagesUseCase,
-       _sendGroupMessageUseCase = sendGroupMessageUseCase,
-       _getGroupChatUseCase = getGroupChatUseCase,
-       _getCurrentUserUseCase = getCurrentUserUseCase,
-       _loadMoreGroupMessagesUseCase = loadMoreGroupMessagesUseCase,
-       _syncWorkingGroupUseCase = syncWorkingGroupUseCase,
-       super(const GroupChatInitial()) {
+    required this._watchGroupMessagesUseCase,
+    required this._sendGroupMessageUseCase,
+    required this._getGroupChatUseCase,
+    required this._getCurrentUserUseCase,
+    required this._loadMoreGroupMessagesUseCase,
+    required this._syncWorkingGroupUseCase,
+  }) : super(const GroupChatInitial()) {
     on<LoadGroupMessagesEvent>(_onLoadGroupMessages);
     on<SendGroupMessageEvent>(_onSendGroupMessage);
     on<LoadMoreGroupMessagesEvent>(_onLoadMoreGroupMessages);

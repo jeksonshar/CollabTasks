@@ -13,11 +13,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class FirebaseAuthRepositoryImpl implements AuthRepository {
   FirebaseAuthRepositoryImpl({
-    required firebase_auth.FirebaseAuth firebaseAuth,
-    required GoogleSignIn googleSignIn,
+    required this._firebaseAuth,
+    required this._googleSignIn,
     this.requireEmailVerifiedForEmailLogin = false,
-  }) : _firebaseAuth = firebaseAuth,
-       _googleSignIn = googleSignIn;
+  });
 
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;

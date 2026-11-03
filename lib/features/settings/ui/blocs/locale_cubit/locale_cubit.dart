@@ -7,12 +7,8 @@ class LocaleCubit extends Cubit<Locale?> {
   final GetSavedLanguageUseCase _getSavedLanguageUseCase;
   final SetSavedLanguageUseCase _setSavedLanguageUseCase;
 
-  LocaleCubit({
-    required GetSavedLanguageUseCase getSavedLanguageUseCase,
-    required SetSavedLanguageUseCase setSavedLanguageUseCase,
-  }) : _getSavedLanguageUseCase = getSavedLanguageUseCase,
-       _setSavedLanguageUseCase = setSavedLanguageUseCase,
-       super(null) {
+  LocaleCubit({required this._getSavedLanguageUseCase, required this._setSavedLanguageUseCase})
+    : super(null) {
     _loadSavedLocale();
   }
 

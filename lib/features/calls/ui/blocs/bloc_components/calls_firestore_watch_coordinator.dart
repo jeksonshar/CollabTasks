@@ -10,10 +10,9 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_call
 /// snapshots into events and validating active-call watch generations.
 class CallsFirestoreWatchCoordinator {
   CallsFirestoreWatchCoordinator({
-    required WatchActiveCallUseCase watchActiveCall,
-    required WatchIncomingCallsUseCase watchIncomingCalls,
-  }) : _watchActiveCall = watchActiveCall,
-       _watchIncomingCalls = watchIncomingCalls;
+    required this._watchActiveCall,
+    required this._watchIncomingCalls,
+  });
 
   final WatchActiveCallUseCase _watchActiveCall;
   final WatchIncomingCallsUseCase _watchIncomingCalls;

@@ -8,13 +8,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class WorkingGroupsBloc extends Bloc<WorkingGroupsEvent, WorkingGroupsState> {
   WorkingGroupsBloc({
-    required GetWorkingGroupsUseCase getWorkingGroupsUseCase,
-    required CreateWorkingGroupUseCase createWorkingGroupUseCase,
-    required SyncWorkingGroupsUseCase syncWorkingGroupsUseCase,
-  }) : _getWorkingGroupsUseCase = getWorkingGroupsUseCase,
-       _createWorkingGroupUseCase = createWorkingGroupUseCase,
-       _syncWorkingGroupsUseCase = syncWorkingGroupsUseCase,
-       super(const WorkingGroupsState()) {
+    required this._getWorkingGroupsUseCase,
+    required this._createWorkingGroupUseCase,
+    required this._syncWorkingGroupsUseCase,
+  }) : super(const WorkingGroupsState()) {
     on<WorkingGroupsStarted>(_onStarted);
     on<WorkingGroupsRefreshed>(_onRefreshed);
     on<WorkingGroupCreated>(_onCreated);

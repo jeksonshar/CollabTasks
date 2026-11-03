@@ -32,39 +32,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final WorkingGroupsRepository _workingGroupsRepository;
 
   AuthBloc({
-    required RegisterWithEmailUseCase registerWithEmailUseCase,
-    required LoginWithEmailUseCase loginWithEmailUseCase,
-    required SignInWithGoogleUseCase signInWithGoogleUseCase,
-    required ResetPasswordUseCase resetPasswordUseCase,
-    required ConfirmSignUpUseCase confirmSignUpUseCase,
-    required ConfirmResetPasswordUseCase confirmResetPasswordUseCase,
-    required ResendSignUpCodeUseCase resendSignUpCodeUseCase,
-    required LogOutUseCase logOutUseCase,
-    required WatchAuthStateUseCase watchAuthStateUseCase,
-    required TaskNotificationService notificationService,
-    required WorkingGroupsRepository workingGroupsRepository,
-    required ChatRemoteDataSource chatRemoteDataSource,
-    required ClearBiometricDataUseCase clearBiometricDataUseCase,
-    required CheckBiometricAvailabilityUseCase checkBiometricAvailabilityUseCase,
-    required GetBiometricEnabledUseCase getBiometricEnabledUseCase,
-    ChatNotificationService? chatNotificationService,
-  }) : _registerWithEmailUseCase = registerWithEmailUseCase,
-       _loginWithEmailUseCase = loginWithEmailUseCase,
-       _signInWithGoogleUseCase = signInWithGoogleUseCase,
-       _resetPasswordUseCase = resetPasswordUseCase,
-       _confirmSignUpUseCase = confirmSignUpUseCase,
-       _confirmResetPasswordUseCase = confirmResetPasswordUseCase,
-       _resendSignUpCodeUseCase = resendSignUpCodeUseCase,
-       _logOutUseCase = logOutUseCase,
-       _watchAuthStateUseCase = watchAuthStateUseCase,
-       _notificationService = notificationService,
-       _workingGroupsRepository = workingGroupsRepository,
-       _chatRemoteDataSource = chatRemoteDataSource,
-       _chatNotificationService = chatNotificationService,
-       _clearBiometricDataUseCase = clearBiometricDataUseCase,
-       _checkBiometricAvailabilityUseCase = checkBiometricAvailabilityUseCase,
-       _getBiometricEnabledUseCase = getBiometricEnabledUseCase,
-       super(const AuthState()) {
+    required this._registerWithEmailUseCase,
+    required this._loginWithEmailUseCase,
+    required this._signInWithGoogleUseCase,
+    required this._resetPasswordUseCase,
+    required this._confirmSignUpUseCase,
+    required this._confirmResetPasswordUseCase,
+    required this._resendSignUpCodeUseCase,
+    required this._logOutUseCase,
+    required this._watchAuthStateUseCase,
+    required this._notificationService,
+    required this._workingGroupsRepository,
+    required this._chatRemoteDataSource,
+    required this._clearBiometricDataUseCase,
+    required this._checkBiometricAvailabilityUseCase,
+    required this._getBiometricEnabledUseCase,
+    this._chatNotificationService,
+  }) : super(const AuthState()) {
     on<AuthSubscriptionStarted>(_onSubscriptionStarted);
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLoginRequested>(_onLoginRequested);
@@ -140,10 +124,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
           unawaited(() async {
             try {
-              final token = await FirebaseMessaging.instance.getToken();
-              if (token != null) {
-                _chatRemoteDataSource.syncFcmToken(token);
-              }
+              // В v17+ регистрируем устройство через FID (метод register() имеет тип Future<void>)
+              await FirebaseMessaging.instance.register();
+
+              // Если для WebSocket нужен актуальный идентификатор, слушаем его через onRegistered
+              // или передаем специфичный идентификатор / логику синхронизации в ChatRemoteDataSource
+              await FirebaseMessaging.instance.onRegistered.first.then((installationId) {
+                if (installationId.isNotEmpty) {
+                  _chatRemoteDataSource.syncFcmToken(installationId);
+                }
+              });
             } catch (error, stackTrace) {
               debugPrint('Failed to sync WebSocket FCM token: $error\n$stackTrace');
             }
@@ -394,10 +384,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
       try {
-        final token = await FirebaseMessaging.instance.getToken();
-        if (token != null) {
-          await _chatRemoteDataSource.removeFcmToken(token);
-        }
+        // Запускаем регистрацию/обновление и получаем installationId для WebSocket через stream
+        await FirebaseMessaging.instance.register();
+        await FirebaseMessaging.instance.onRegistered.first.then((installationId) {
+          if (installationId.isNotEmpty) {
+            _chatRemoteDataSource.removeFcmToken(installationId);
+          }
+        });
       } catch (e) {
         debugPrint('Failed to remove WebSocket FCM token on logout: $e');
       }

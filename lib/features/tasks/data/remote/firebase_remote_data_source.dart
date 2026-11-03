@@ -7,6 +7,7 @@ import 'package:collab_tasks/features/tasks/domain/models/task_attachment.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' hide Task;
 import 'package:flutter/foundation.dart';
+
 // import 'package:http/http.dart' as http;
 
 class FirebaseRemoteDataSource implements TasksRemoteDataSource {
@@ -18,12 +19,10 @@ class FirebaseRemoteDataSource implements TasksRemoteDataSource {
   final FirebaseAuth _auth;
 
   const FirebaseRemoteDataSource({
-    required FirebaseFirestore firestore,
-    required FirebaseStorage storage,
-    required FirebaseAuth auth,
-  }) : _firestore = firestore,
-       _storage = storage,
-       _auth = auth;
+    required this._firestore,
+    required this._storage,
+    required this._auth,
+  });
 
   @override
   Future<List<Task>> getTasks({required String ownerId}) async {

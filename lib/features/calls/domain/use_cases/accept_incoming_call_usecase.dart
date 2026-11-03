@@ -9,11 +9,7 @@ class AcceptIncomingCallUseCase {
   final CallRepository _callRepository;
   final CallKitService _callKitService;
 
-  const AcceptIncomingCallUseCase({
-    required CallRepository callRepository,
-    required CallKitService callKitService,
-  }) : _callRepository = callRepository,
-       _callKitService = callKitService;
+  const AcceptIncomingCallUseCase({required this._callRepository, required this._callKitService});
 
   Future<CallSession?> call({required CallDataEntity callData, required String userId}) async {
     final call = await _callRepository.getCallById(callData.callId);

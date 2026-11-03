@@ -9,10 +9,9 @@ import 'package:collab_tasks/features/working_groups/domain/repositories/working
 /// (формат `<groupId>:<userId>`) и [groupId], возвращает [DirectChatResult].
 class GetOrCreateDirectChatUseCase {
   const GetOrCreateDirectChatUseCase({
-    required ChatRepository chatRepository,
-    required WorkingGroupsRepository workingGroupsRepository,
-  }) : _chatRepository = chatRepository,
-       _workingGroupsRepository = workingGroupsRepository;
+    required this._chatRepository,
+    required this._workingGroupsRepository,
+  });
 
   final ChatRepository _chatRepository;
   final WorkingGroupsRepository _workingGroupsRepository;

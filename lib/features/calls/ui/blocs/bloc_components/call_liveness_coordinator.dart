@@ -7,11 +7,7 @@ import 'package:flutter/foundation.dart';
 /// Owns heartbeat and reconciliation timers; CallsBloc remains the source of
 /// call state and decides whether a reconciliation result is still relevant.
 class CallLivenessCoordinator {
-  CallLivenessCoordinator({
-    required UpdateCallHeartbeatUseCase? updateHeartbeat,
-    required void Function(CallsEvent event) dispatch,
-  }) : _updateHeartbeat = updateHeartbeat,
-       _dispatch = dispatch;
+  CallLivenessCoordinator({required this._updateHeartbeat, required this._dispatch});
 
   final UpdateCallHeartbeatUseCase? _updateHeartbeat;
   final void Function(CallsEvent event) _dispatch;

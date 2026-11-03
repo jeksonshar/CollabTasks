@@ -8,12 +8,10 @@ class DeclineIncomingCallUseCase {
   final CallKitService _callKitService;
 
   const DeclineIncomingCallUseCase({
-    required CallRepository callRepository,
-    required CallAlertService callAlertService,
-    required CallKitService callKitService,
-  }) : _callRepository = callRepository,
-       _callAlertService = callAlertService,
-       _callKitService = callKitService;
+    required this._callRepository,
+    required this._callAlertService,
+    required this._callKitService,
+  });
 
   Future<void> call({required String callId, required String userId}) async {
     try {

@@ -20,14 +20,11 @@ class TaskRepositoryImpl implements TaskRepository {
   final TaskNotificationService _notificationService;
 
   TaskRepositoryImpl({
-    required TasksLocalDataSource localDataSource,
-    required TasksRemoteDataSource remoteDataSource,
-    required AuthRepository authRepository,
-    required TaskNotificationService notificationService,
-  }) : _localDataSource = localDataSource,
-       _remoteDataSource = remoteDataSource,
-       _authRepository = authRepository,
-       _notificationService = notificationService;
+    required this._localDataSource,
+    required this._remoteDataSource,
+    required this._authRepository,
+    required this._notificationService,
+  });
 
   Future<void> _upsertTask(Task task, {required bool createRemote}) async {
     final ownerId = await _requireCurrentOwnerId();

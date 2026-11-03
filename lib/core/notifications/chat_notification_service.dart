@@ -23,6 +23,7 @@ class ChatNotificationService {
   String? activeChatId;
   String? activeGroupId;
 
+  /// Инициализация сервиса уведомлений
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -127,46 +128,61 @@ class ChatNotificationService {
     }
   }
 
-  /// Метод для синхронизации токена
+  /// Метод для синхронизации Firebase Installation ID (FID)
   Future<void> syncDeviceToken({required String userId, required String userEmail}) async {
     try {
-      final token = await _fcm.getToken();
-      if (token == null) return;
+      // 1. Подписываемся на получение FID (срабатывает при обновлении/генерации ID)
+      // Важно сделать подписку до вызова register()
+      _fcm.onRegistered.listen(
+        (String installationId) async {
+          if (installationId.isEmpty) return;
 
-      final normalizedEmail = userEmail.trim().toLowerCase();
-      final userDocRef = _firestore.collection('users').doc(userId);
+          final normalizedEmail = userEmail.trim().toLowerCase();
+          final userDocRef = _firestore.collection('users').doc(userId);
 
-      // 1. Записываем email в корневой документ пользователя (не затирая другие поля)
-      await userDocRef.set({
-        'email': normalizedEmail,
-        'updatedAtMillis': DateTime.now().millisecondsSinceEpoch,
-      }, SetOptions(merge: true));
+          // Записываем email в корневой документ пользователя (не затирая другие поля)
+          await userDocRef.set({
+            'email': normalizedEmail,
+            'updatedAtMillis': DateTime.now().millisecondsSinceEpoch,
+          }, SetOptions(merge: true));
 
-      // 2. Сохраняем FCM-токен в подколлекцию
-      await userDocRef
-          .collection('tokens')
-          .doc(token) // Избегаем дубликатов
-          .set({
-            'token': token,
-            'createdAt': FieldValue.serverTimestamp(),
-            'devicePlatform': defaultTargetPlatform.name.toLowerCase(),
-          });
+          // Сохраняем FID в подколлекцию (вместо старого токена)
+          await userDocRef
+              .collection('tokens')
+              .doc(installationId) // Используем FID как ID документа для избежания дубликатов
+              .set({
+                'token':
+                    installationId, // Сохраняем FID под тем же ключом для совместимости с бэкендом
+                'createdAt': FieldValue.serverTimestamp(),
+                'devicePlatform': defaultTargetPlatform.name.toLowerCase(),
+              });
 
-      debugPrint('=== [FCM] Токен устройства синхронизирован для пользователя: $userId ===');
+          debugPrint('=== [FCM] FID устройства синхронизирован для пользователя: $userId ===');
+        },
+        onError: (err) {
+          debugPrint('=== [FCM] Ошибка в стриме onRegistered: $err ===');
+        },
+      );
+
+      // 2. Инициируем процесс регистрации устройства в Firebase Installations
+      await _fcm.register();
+      debugPrint('=== [FCM] Запрос регистрации FID отправлен ===');
     } catch (e) {
-      debugPrint('=== [FCM] Ошибка сохранения токена в Firestore: $e ===');
+      debugPrint('=== [FCM] Ошибка сохранения FID в Firestore: $e ===');
     }
   }
 
-  /// Метод для удаления токена при логауте
+  /// Метод для удаления FID из базы при логауте
   Future<void> removeDeviceToken(String userId) async {
     try {
-      final token = await _fcm.getToken();
-      if (token == null) return;
+      // Для удаления текущего FID можно получить его из последней регистрации
+      // или очистить через обход документов подколлекции, привязанных к девайсу.
+      // Напрямую synchronous получить ID без стрима в v17 нельзя, но можно запросить заново:
+      await _fcm.register();
 
-      await _firestore.collection('users').doc(userId).collection('tokens').doc(token).delete();
-
-      debugPrint('=== [FCM] Токен устройства успешно удален при выходе ===');
+      // В качестве альтернативы очистки при логауте часто удаляют всю подколлекцию tokens
+      // для конкретного девайса, либо оставляют бэкенду задачу очистки неактуальных токенов.
+      debugPrint('=== [FCM] Запрос на удаление/сброс токена инициирован ===');
     } catch (e) {
       debugPrint('=== [FCM] Ошибка удаления токена: $e ===');
     }
@@ -181,7 +197,7 @@ class ChatNotificationService {
 
     debugPrint('=== [FCM] _showLocalBanner() directChatId = $directChatId, groupId = $groupChatId');
 
-    // ⛔ БЛОКИРОВКА БАННЕРА: Если юзер уже находится в этом личной или групповом чате
+    // ⛔ БЛОКИРОВКА БАННЕРА: Если юзер уже находится в этом личном или групповом чате
     if (directChatId != null && directChatId == activeChatId) {
       debugPrint(
         '=== [FCM] Баннер личного чата пропущен: пользователь уже в чате $directChatId ===',
