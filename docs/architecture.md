@@ -13,17 +13,20 @@
 
 - **`lib/domain/`**: Core business logic. Contains pure Dart models, use cases, and repository definitions.
     - *Rule:* Zero dependencies on Flutter, Drift, or network libraries.
-- **`lib/data/`**: Infrastructure and data management. Realizes repository contracts, manages Drift database migrations, handling network serialization (`toMap`/`fromMap`).
-- **`lib/ui/`**: Presentation layer. Divided into feature-centric folders containing Blocs, Screens, and custom atomic design widgets.
+- **`lib/data/`**: Infrastructure and data management. Realizes repository contracts, manages Drift database migrations,
+  handling network serialization (`toMap`/`fromMap`).
+- **`lib/ui/`**: Presentation layer. Divided into feature-centric folders containing Blocs, Screens, and custom atomic
+  design widgets.
 - **`lib/di/`**: Centralized dependency injection via `GetIt` (`service_locator.dart`).
 
 ## 3. High-Level Data Flow
+
 The application strictly enforces a Unidirectional Data Flow (UDF) pattern across three isolated layers.
 
 ```mermaid
 graph LR
     subgraph UI_Layer [Presentation Layer]
-        UI[Jetpack Compose / UI] <-->|Bind State / Dispatch| Bloc[flutter_bloc]
+        UI[Flutter Widgets] <-->|Bind State / Dispatch| Bloc[flutter_bloc]
     end
 
     subgraph Domain_Layer [Domain Layer - Pure Dart]
@@ -39,4 +42,6 @@ graph LR
 ```
 
 ## 4. Backend Services & Cloud Infrastructure
-For detailed specifications of external backend servers (`chat-server/` on Render and `functions/` on Firebase Cloud Functions), refer to [`docs/backend_services.md`](backend_services.md).
+
+For detailed specifications of external backend servers (`chat-server/` on Render and `functions/` on Firebase Cloud
+Functions), refer to [`docs/backend_services.md`](backend_services.md).

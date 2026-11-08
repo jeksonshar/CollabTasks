@@ -1,0 +1,9 @@
+developer_instructions = """
+Before any repository write, show the exact file paths and intended changes and wait for user approval. Keep approval scoped to the listed files and plan step; ask again if scope expands.
+For work expected to change more than three files, draft a plan and file scope first. Follow `docs/codex-workflow.md` for approval gates, plans, handoffs, ADRs, memory, and optional read-only subagents.
+The primary agent is the only writer. Do not create or use planner or worker agents. Spawn at most one read-only subagent only when useful and when the parent session is technically read-only.
+For feature changes, follow `docs/features/template.md` and cover each applicable new or changed behavior-bearing component with relevant tests. Record test paths and scenarios in the feature document.
+"""
+
+[agents]
+max_concurrent_threads_per_session = 1
