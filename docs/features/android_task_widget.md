@@ -3,8 +3,11 @@
 ## 1. Business Goal & Value
 
 - **Purpose:** Display a dark, vertically scrollable list of personal tasks in an Android home-screen widget.
+- **Task metadata indicators:** Show checklist, alarm, and attach-file icons for subtasks, deadlines, and attachments,
+  respectively, alongside their counts or deadline date.
 - **User Stories Covered:** Tap a task to open personal tasks with that task expanded; tap the widget background to open
-  personal tasks with every task collapsed; tap the refresh action to redraw the widget from its latest saved task snapshot
+  personal tasks with every task collapsed; tap the refresh action to redraw the widget from its latest saved task
+  snapshot
   without opening the app.
 - The widget UI is authored in Kotlin with Jetpack Glance; Android's required widget metadata XML only registers the
   widget and provides its initial loading layout.
@@ -39,10 +42,10 @@
 
 ## 3. Testing Matrix
 
-| Component                                    | Layer           | Test file(s) | Behaviors and cases covered                                                                                                            |
-|:---------------------------------------------|:----------------|:-------------|:---------------------------------------------------------------------------------------------------------------------------------------|
-| Task widget bridge and Android Glance widget | Data / Platform | N/A | No direct tests added; launcher hit targets, icon rendering, and cache refresh need device or emulator integration coverage. |
-| Widget task navigation and refresh | Bloc / UI | N/A | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added. |
+| Component                                    | Layer           | Test file(s) | Behaviors and cases covered                                                                                                                                                                  |
+|:---------------------------------------------|:----------------|:-------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Task widget bridge and Android Glance widget | Data / Platform | N/A          | No direct automated tests; manually verify a task with subtasks, a deadline, and attachments displays the matching icons and values in the launcher widget, including overdue deadline tint. |
+| Widget task navigation and refresh           | Bloc / UI       | N/A          | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added.                                                                             |
 
 - **Domain:** N/A; no domain behavior changed.
 - **Data:** Android mirrors the presentation snapshot into per-widget Glance state; Drift remains the application task
@@ -51,7 +54,9 @@
 - **Bloc/Cubit:** Widget task taps reuse `NotificationTaskOpened`; `WidgetHomeOpened` clears highlighted state and
   resets the filter/search. Widget refresh redraws from the cached task snapshot and does not start a repository sync.
 - **Widgets and screens:** Existing highlighted-task expansion flow is reused.
-- **Integration or regression:** Device-level launcher integration remains to be exercised.
+- **Integration or regression:** Device-level launcher integration remains to be exercised. Verify
+  checklist/alarm/attach-file
+  indicators, their values, and overdue coloring on a task containing all three metadata types.
 
 ## 4. Data Flow & State Machine (Mermaid)
 

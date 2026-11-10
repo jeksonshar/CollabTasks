@@ -157,10 +157,12 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
             .fillMaxSize()
             .background(widgetColor(AndroidColor.rgb(21, 22, 28)))
             .padding(12.dp),
-        /*.clickable(openHomeAction)*/
     ) {
         Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .clickable(openHomeAction)
+                .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -271,29 +273,72 @@ private fun TaskWidgetRow(task: WidgetTask) {
 //                )
             }
 
-            val indicators = buildList {
-                if (task.subtasksCount > 0) add("☷ ${task.completedSubtasksCount}/${task.subtasksCount}")
-                task.deadlineMillis?.let { add("◷ ${formatDeadline(it)}") }
-                if (task.attachmentsCount > 0) add("▧ ${task.attachmentsCount}")
-            }
-            if (indicators.isNotEmpty()) {
+            val hasSubtasksIndicator = task.subtasksCount > 0
+            val hasDeadlineIndicator = task.deadlineMillis != null
+            val hasAttachmentsIndicator = task.attachmentsCount > 0
+            if (hasSubtasksIndicator || hasDeadlineIndicator || hasAttachmentsIndicator) {
                 Spacer(modifier = GlanceModifier.height(3.dp))
-                Text(
-                    text = indicators.joinToString("   "),
-                    maxLines = 1,
-                    style = TextStyle(
-                        color = widgetColor(
-                            if (task.deadlineMillis != null && task.deadlineMillis < System.currentTimeMillis()) {
-                                AndroidColor.rgb(255, 120, 120)
-                            } else {
-                                AndroidColor.rgb(164, 166, 179)
-                            },
-                        ),
-                        fontSize = 10.sp,
-                    ),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (hasSubtasksIndicator) {
+                        TaskWidgetIndicator(
+                            iconRes = R.drawable.ic_widget_checklist,
+                            contentDescription = "Подзадачи",
+                            value = "${task.completedSubtasksCount}/${task.subtasksCount}",
+                        )
+                    }
+
+                    task.deadlineMillis?.let { deadlineMillis ->
+                        if (hasSubtasksIndicator) Spacer(modifier = GlanceModifier.width(8.dp))
+                        val deadlineColor = if (deadlineMillis < System.currentTimeMillis()) {
+                            AndroidColor.rgb(255, 120, 120)
+                        } else {
+                            AndroidColor.rgb(164, 166, 179)
+                        }
+                        TaskWidgetIndicator(
+                            iconRes = R.drawable.ic_widget_alarm,
+                            contentDescription = "Срок выполнения",
+                            value = formatDeadline(deadlineMillis),
+                            color = widgetColor(deadlineColor),
+                        )
+                    }
+
+                    if (hasAttachmentsIndicator) {
+                        if (hasSubtasksIndicator || hasDeadlineIndicator) {
+                            Spacer(modifier = GlanceModifier.width(8.dp))
+                        }
+                        TaskWidgetIndicator(
+                            iconRes = R.drawable.ic_widget_attach_file,
+                            contentDescription = "Вложения",
+                            value = "${task.attachmentsCount}",
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@androidx.glance.GlanceComposable
+@androidx.compose.runtime.Composable
+private fun TaskWidgetIndicator(
+    iconRes: Int,
+    contentDescription: String,
+    value: String,
+    color: ColorProvider = widgetColor(AndroidColor.rgb(164, 166, 179)),
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            provider = ImageProvider(iconRes),
+            contentDescription = contentDescription,
+            modifier = GlanceModifier.size(14.dp),
+            colorFilter = ColorFilter.tint(color),
+        )
+        Spacer(modifier = GlanceModifier.width(3.dp))
+        Text(
+            text = value,
+            maxLines = 1,
+            style = TextStyle(color = color, fontSize = 10.sp),
+        )
     }
 }
 
