@@ -35,6 +35,7 @@ import 'package:collab_tasks/features/settings/ui/blocs/locale_cubit/locale_cubi
 import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_bloc.dart';
 import 'package:collab_tasks/features/settings/ui/blocs/theme_bloc/theme_state.dart';
 import 'package:collab_tasks/features/tasks/data/notifications/task_notifications_manager.dart';
+import 'package:collab_tasks/features/tasks/data/widgets/task_widget_bridge.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/main_screen/main_screen.dart';
 import 'package:collab_tasks/firebase_options.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
@@ -60,6 +61,7 @@ Future<void> main() async {
   await _configureSelectedAuthBackend();
   final sharedPreferences = await SharedPreferences.getInstance();
   setupLocator(sharedPreferences);
+  TaskWidgetBridge.initialize();
   await getIt<TaskNotificationsManager>().initialize();
 
   // Инициализируем FCM ТОЛЬКО если выбран бэкенд Firebase

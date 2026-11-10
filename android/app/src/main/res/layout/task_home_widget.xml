@@ -1,0 +1,39 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:padding="8dp"
+              android:background="#F5F5FA">
+
+    <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:text="Личные задачи"
+            android:textColor="#20212A"
+            android:textSize="16sp"
+            android:textStyle="bold"/>
+
+    <GridView
+            android:id="@+id/task_grid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:horizontalSpacing="4dp"
+            android:numColumns="3"
+            android:verticalSpacing="4dp"
+            android:stretchMode="columnWidth"
+            android:gravity="center"/>
+
+    <TextView
+            android:id="@+id/empty_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Откройте приложение, чтобы загрузить задачи"
+            android:textColor="#666875"
+            android:textSize="12sp"/>
+</LinearLayout>

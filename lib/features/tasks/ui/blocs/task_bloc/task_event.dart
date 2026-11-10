@@ -90,3 +90,7 @@ class NotificationTaskOpened extends TaskEvent {
   @override
   List<Object?> get props => [taskId];
 }
+
+class WidgetHomeOpened extends TaskEvent {
+  const WidgetHomeOpened();
+}

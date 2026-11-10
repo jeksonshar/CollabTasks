@@ -1,0 +1,25 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/task_item"
+              android:layout_width="match_parent"
+              android:layout_height="72dp"
+              android:orientation="vertical"
+              android:gravity="center_vertical"
+              android:padding="6dp"
+              android:background="#FFFFFFFF">
+
+    <TextView
+            android:id="@+id/task_status"
+            android:layout_width="match_parent"
+            android:layout_height="18dp"
+            android:textColor="#5157A8"
+            android:textSize="13sp"/>
+
+    <TextView
+            android:id="@+id/task_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textColor="#20212A"
+            android:textSize="11sp"/>
+</LinearLayout>

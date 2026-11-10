@@ -32,6 +32,10 @@ class _HomeTasksScreenState extends State<HomeTasksScreen> {
   void initState() {
     super.initState();
 
+    final taskState = context.read<TaskBloc>().state;
+    _forcedExpandedTaskId = taskState.highlightedTaskId;
+    _forcedExpansionVersion = taskState.highlightedTaskVersion;
+
     // Дожидаемся окончания отрисовки первого кадра
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && getIt.isRegistered<ChatNotificationService>()) {

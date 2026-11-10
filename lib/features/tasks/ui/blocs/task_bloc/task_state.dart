@@ -50,6 +50,7 @@ class TaskState extends Equatable {
     String? lastActionTaskTitle,
     String? highlightedTaskId,
     int? highlightedTaskVersion,
+    bool clearHighlightedTask = false,
   }) {
     return TaskState(
       status: status ?? this.status,
@@ -61,7 +62,7 @@ class TaskState extends Equatable {
       searchQuery: searchQuery ?? this.searchQuery,
       lastAction: lastAction ?? this.lastAction,
       lastActionTaskTitle: lastActionTaskTitle,
-      highlightedTaskId: highlightedTaskId ?? this.highlightedTaskId,
+      highlightedTaskId: clearHighlightedTask ? null : highlightedTaskId ?? this.highlightedTaskId,
       highlightedTaskVersion: highlightedTaskVersion ?? this.highlightedTaskVersion,
     );
   }

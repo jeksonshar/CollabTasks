@@ -59,6 +59,18 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<FilterChanged>(_onFilterChanged);
     on<SearchChanged>(_onSearchChanged);
     on<NotificationTaskOpened>(_onNotificationTaskOpened);
+    on<WidgetHomeOpened>((event, emit) {
+      emit(
+        state.copyWith(
+          status: TaskStatus.loading,
+          filterType: TaskFilterType.all,
+          searchQuery: '',
+          clearHighlightedTask: true,
+          highlightedTaskVersion: state.highlightedTaskVersion + 1,
+        ),
+      );
+      _restartTasksSubscription();
+    });
     on<TasksRefreshRequested>(_onTasksRefreshRequested);
 
     // Внутренние события синхронизации данных из Stream -> Bloc
