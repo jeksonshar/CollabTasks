@@ -1,0 +1,81 @@
+# Feature: AndroidGroupsWidget
+
+## 1. Business Goal & Value
+
+- **Purpose:** Display working groups in a dark, vertically scrollable Android home-screen widget with expandable
+  participant and task sections.
+- **User Stories Covered:** Expand or collapse a group; open a participant's direct chat; open a group task; open the
+  working groups screen from the widget background; reflect group, participant, and task stream changes while the app is
+  active.
+- The widget uses AndroidX Glance, the Jetpack Compose-based app-widget API. Its provider is registered separately from
+  the personal task widget and uses an independent MethodChannel and cache.
+
+## 2. Architectural Blueprint (Clean Architecture)
+
+### Domain Layer
+
+- **Models:** Existing `WorkingGroup`, `GroupParticipant`, and `GroupTask` models; no domain model changes.
+- **Use Cases:** Existing `GetWorkingGroupsUseCase`, `GetGroupParticipantsUseCase`, `GetGroupTasksUseCase`,
+  `SyncWorkingGroupUseCase`, and `GetOrCreateDirectChatUseCase`.
+- **Repository Interface:** Existing `WorkingGroupsRepository` and chat repository contracts; no contract changes.
+
+### Data Layer
+
+- **Local Persistence (Drift):** No Drift schema change. Android stores a compact JSON presentation snapshot in
+  app-private SharedPreferences and mirrors it into Glance per-widget state.
+- **Data Mappers:** `GroupsWidgetBridge` maps group, participant, and task models to the native snapshot, including a
+  resolved assignee name. Native JSON parsing creates widget-only presentation models.
+- **Remote Data:** Existing working-group streams and sync use case update the local snapshot; no new remote API.
+
+### Presentation Layer (UI & Bloc)
+
+- **Bloc / Cubit:** None added. `GroupsWidgetBlocListener` owns stream subscriptions and navigation wiring at the main
+  screen boundary; group state remains in the existing use cases/repository streams.
+- **Components & Screens:** `GroupsHomeGlanceWidget` renders the dark 3×3 default widget as a scrollable list. Each
+  group row toggles its expanded state in Glance preferences. Expanded content shows participants first, then tasks.
+  Native item taps return through `MainActivity` and the groups MethodChannel. A background tap selects the existing
+  groups tab in `MainScreen`, preserving bottom navigation and root back behavior. A participant tap displays a
+  full-screen loading route while `GetOrCreateDirectChatUseCase` resolves the chat ID, then replaces that route with
+  `ChatScreen`; the home tab is not exposed during the request. Task taps open `WorkingGroupTaskDetailsScreen`.
+- **Coexistence:** The groups widget has a distinct Android receiver, provider metadata, SharedPreferences file, Glance
+  state keys, MethodChannel, and intent extras. The personal widget's receiver, task cache, channel, and intent extras
+  remain separate.
+
+## 3. Testing Matrix
+
+| Component                                       | Layer                 | Test file(s)                                                                                     | Behaviors and cases covered                                                                                                                                                |
+|:------------------------------------------------|:----------------------|:-------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Groups Glance provider and Android registration | Platform              | No automated widget test; verify with Android compilation and launcher scenario.                 | Provider is independently installable at 3×3 size; list scrolls; group expansion works; background and item taps route correctly; personal widget remains registered.      |
+| Groups snapshot bridge and stream listener      | Data / UI             | No automated bridge/listener test added; verify with focused Flutter analysis and app scenarios. | Group add/remove updates, participant/task stream updates, empty state, direct chat loading and completion, task details, and groups-tab selection with bottom navigation. |
+| Existing personal task widget                   | Platform / Regression | No new automated test; verify in the same launcher scenario.                                     | Personal widget remains installable and its task/background actions still work beside GroupsWidget.                                                                        |
+
+- **Domain:** N/A; existing models and use cases are reused.
+- **Data:** No database or repository implementation changes; Android JSON cache behavior is covered by the widget
+  snapshot scenarios.
+- **Persistence and migrations:** N/A; Drift is unchanged.
+- **Bloc/Cubit:** N/A; no Bloc state transitions were added.
+- **Widgets and screens:** Verify list rendering, expand/collapse, participant and task navigation, and empty states on
+  an Android launcher. Confirm a background tap selects the groups tab with bottom navigation and no nested back arrow.
+  Confirm participant taps show the loading route instead of the home task screen while direct chat is resolved.
+- **Integration or regression:** Install both widgets, add and delete a group from the app, and confirm GroupsWidget
+  reflects the changes while the personal task widget retains its existing behavior.
+
+## 4. Data Flow & State Machine (Mermaid)
+
+```mermaid
+graph TD
+    Repo[(WorkingGroupsRepository streams)] --> Listener[GroupsWidgetBlocListener]
+    Listener -->|group, participant, task models| Bridge[GroupsWidgetBridge]
+    Bridge -->|JSON over groups MethodChannel| Activity[MainActivity]
+    Activity --> Cache[(Groups SharedPreferences cache)]
+    Cache --> GlanceState[(Groups Glance state)]
+    GlanceState --> Provider[GroupsHomeGlanceWidget]
+    Provider --> List[Dark scrollable groups list]
+    List -->|group tap| Expanded[Toggle expanded group state]
+    Expanded --> Sections[Participants then tasks]
+    Sections -->|participant tap| Activity
+    Sections -->|task tap| Activity
+    List -->|background tap| Activity
+    Activity -->|groups navigation request| Bridge
+    Bridge -->|open groups, direct chat, or task details| Screens[Existing Flutter screens]
+```

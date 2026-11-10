@@ -1,3 +1,4 @@
 <resources>
     <string name="task_widget_description">Прокручиваемая сетка личных задач</string>
+    <string name="groups_widget_description">Прокручиваемый список групп, участников и задач</string>
 </resources>

@@ -29,6 +29,9 @@
   SharedPreferences and mirrors it into per-widget Glance state so active widget compositions observe changes.
 - **Data Mappers:** Flutter maps domain tasks to the widget payload in `TaskWidgetBridge`.
 - **Remote Data:** None.
+- **Coexistence:** The Android GroupsWidget is registered as a separate provider and uses a separate MethodChannel,
+  cache, Glance state, and intent extras. The personal task widget keeps its own receiver and task snapshot flow, so
+  both widget types can be installed independently.
 
 ### Presentation Layer (UI & Bloc)
 
@@ -46,6 +49,7 @@
 |:---------------------------------------------|:----------------|:-------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Task widget bridge and Android Glance widget | Data / Platform | N/A          | No direct automated tests; manually verify a task with subtasks, a deadline, and attachments displays the matching icons and values in the launcher widget, including overdue deadline tint. |
 | Widget task navigation and refresh           | Bloc / UI       | N/A          | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added.                                                                             |
+| Widget coexistence regression                | Platform        | N/A          | Install both Android widgets, verify both are listed and render independently, then check personal task taps and background navigation after using GroupsWidget.                             |
 
 - **Domain:** N/A; no domain behavior changed.
 - **Data:** Android mirrors the presentation snapshot into per-widget Glance state; Drift remains the application task
@@ -76,4 +80,5 @@ graph TD
     Screen --> Expanded[Selected task expanded]
     List -->|refresh tap| Callback[Glance ActionCallback]
     Callback -->|updateAll| Provider
+    GroupsChannel[Groups widget MethodChannel and provider] -. separate flow .-> Activity
 ```

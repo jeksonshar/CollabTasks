@@ -6,6 +6,7 @@ import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_state.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/group_screen/group_screen.dart';
 import 'package:collab_tasks/features/tasks/ui/screens/home_screen/home_tasks_screen.dart';
 import 'package:collab_tasks/features/tasks/ui/widgets/task_widget_bloc_listener.dart';
+import 'package:collab_tasks/features/working_groups/ui/widgets/groups_widget_bloc_listener.dart';
 import 'package:collab_tasks/l10n/l10n_mixin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,34 +40,44 @@ class _MainScreenState extends State<MainScreen> with L10nMixin {
         return getIt<TaskBloc>()..add(LoadTasksStarted());
       },
       child: TaskWidgetBlocListener(
-        child: BlocListener<TaskBloc, TaskState>(
-          listenWhen: (previous, current) =>
-              previous.highlightedTaskVersion != current.highlightedTaskVersion,
-          listener: (context, state) {
-            if (_selectedIndex == 0) {
-              return;
+        child: GroupsWidgetBlocListener(
+          onOpenGroups: () {
+            if (_selectedIndex != 1) {
+              setState(() => _selectedIndex = 1);
             }
-            setState(() {
-              _selectedIndex = 0;
-            });
           },
-          child: Scaffold(
-            body: _screens[_selectedIndex],
-            bottomNavigationBar: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              elevation: 12,
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-              selectedItemColor: Colors.indigo,
-              // unselectedItemColor: Colors.blue.shade200,
-              items: [
-                BottomNavigationBarItem(icon: const Icon(Icons.home), label: localization.home),
-                BottomNavigationBarItem(icon: const Icon(Icons.group), label: localization.groups),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.settings),
-                  label: localization.settings,
-                ),
-              ],
+          child: BlocListener<TaskBloc, TaskState>(
+            listenWhen: (previous, current) =>
+                previous.highlightedTaskVersion != current.highlightedTaskVersion,
+            listener: (context, state) {
+              if (_selectedIndex == 0) {
+                return;
+              }
+              setState(() {
+                _selectedIndex = 0;
+              });
+            },
+            child: Scaffold(
+              body: _screens[_selectedIndex],
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                elevation: 12,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                selectedItemColor: Colors.indigo,
+                // unselectedItemColor: Colors.blue.shade200,
+                items: [
+                  BottomNavigationBarItem(icon: const Icon(Icons.home), label: localization.home),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.group),
+                    label: localization.groups,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.settings),
+                    label: localization.settings,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
