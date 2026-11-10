@@ -75,7 +75,7 @@ class ParticipantsTab extends StatelessWidget {
                   trailing: isMe
                       ? null
                       : PopupMenuButton<ParticipantAction>(
-                          icon: const Icon(Icons.more_vert),
+                          icon: const Icon(Icons.chevron_right),
                           onSelected: (action) {
                             switch (action) {
                               case ParticipantAction.directChat:
