@@ -6,35 +6,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
+import androidx.glance.*
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.*
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
-import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
-import androidx.glance.background
-import androidx.glance.currentState
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.padding
-import androidx.glance.layout.size
-import androidx.glance.layout.width
+import androidx.glance.layout.*
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -226,7 +209,12 @@ private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
                 .padding(horizontal = 11.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("▦", style = TextStyle(color = widgetColor(AndroidColor.rgb(160, 170, 255)), fontSize = 18.sp))
+            Image(
+                provider = ImageProvider(R.drawable.ic_widget_groups),
+                contentDescription = "Группа",
+                modifier = GlanceModifier.size(18.dp),
+                colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(160, 170, 255))),
+            )
             Spacer(modifier = GlanceModifier.width(9.dp))
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(
@@ -246,9 +234,14 @@ private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
                     )
                 }
             }
-            Text(
-                if (isExpanded) "⌃" else "⌄",
-                style = TextStyle(color = widgetColor(AndroidColor.rgb(180, 182, 198)), fontSize = 16.sp)
+            Image(
+                provider = ImageProvider(
+                    if (isExpanded) R.drawable.ic_widget_keyboard_arrow_up
+                    else R.drawable.ic_widget_keyboard_arrow_down,
+                ),
+                contentDescription = if (isExpanded) "Свернуть группу" else "Развернуть группу",
+                modifier = GlanceModifier.size(20.dp),
+                colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(180, 182, 198))),
             )
         }
 
@@ -329,7 +322,12 @@ private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant
             modifier = GlanceModifier.defaultWeight(),
             style = TextStyle(color = widgetColor(AndroidColor.rgb(230, 231, 239)), fontSize = 12.sp)
         )
-        Text("›", style = TextStyle(color = widgetColor(AndroidColor.rgb(130, 132, 148)), fontSize = 17.sp))
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_chevron_right),
+            contentDescription = null,
+            modifier = GlanceModifier.size(16.dp),
+            colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(130, 132, 148))),
+        )
     }
 }
 
@@ -349,9 +347,13 @@ private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
             .padding(start = 12.dp, end = 11.dp, top = 4.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            if (task.isCompleted) "✓" else "○",
-            style = TextStyle(color = widgetColor(priorityColor), fontSize = 14.sp)
+        Image(
+            provider = ImageProvider(
+                if (task.isCompleted) R.drawable.ic_widget_task_alt else R.drawable.ic_widget_circle_outlined,
+            ),
+            contentDescription = if (task.isCompleted) "Задача выполнена" else "Задача не выполнена",
+            modifier = GlanceModifier.size(16.dp),
+            colorFilter = ColorFilter.tint(widgetColor(priorityColor)),
         )
         Spacer(modifier = GlanceModifier.width(8.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
@@ -368,7 +370,12 @@ private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
                 )
             }
         }
-        Text("›", style = TextStyle(color = widgetColor(AndroidColor.rgb(130, 132, 148)), fontSize = 17.sp))
+        Image(
+            provider = ImageProvider(R.drawable.ic_widget_chevron_right),
+            contentDescription = null,
+            modifier = GlanceModifier.size(16.dp),
+            colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(130, 132, 148))),
+        )
     }
 }
 

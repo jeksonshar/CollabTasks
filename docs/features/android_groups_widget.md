@@ -33,6 +33,8 @@
   screen boundary; group state remains in the existing use cases/repository streams.
 - **Components & Screens:** `GroupsHomeGlanceWidget` renders the dark 3×3 default widget as a scrollable list. Each
   group row toggles its expanded state in Glance preferences. Expanded content shows participants first, then tasks.
+  Group rows, expansion controls, participant/task chevrons, and task status use tinted Android vector drawables through
+  Glance `ImageProvider`; the task status vectors are shared with the personal task widget.
   Native item taps return through `MainActivity` and the groups MethodChannel. A background tap selects the existing
   groups tab in `MainScreen`, preserving bottom navigation and root back behavior. A participant tap displays a
   full-screen loading route while `GetOrCreateDirectChatUseCase` resolves the chat ID, then replaces that route with
@@ -43,11 +45,11 @@
 
 ## 3. Testing Matrix
 
-| Component                                       | Layer                 | Test file(s)                                                                                     | Behaviors and cases covered                                                                                                                                                |
-|:------------------------------------------------|:----------------------|:-------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Groups Glance provider and Android registration | Platform              | No automated widget test; verify with Android compilation and launcher scenario.                 | Provider is independently installable at 3×3 size; list scrolls; group expansion works; background and item taps route correctly; personal widget remains registered.      |
-| Groups snapshot bridge and stream listener      | Data / UI             | No automated bridge/listener test added; verify with focused Flutter analysis and app scenarios. | Group add/remove updates, participant/task stream updates, empty state, direct chat loading and completion, task details, and groups-tab selection with bottom navigation. |
-| Existing personal task widget                   | Platform / Regression | No new automated test; verify in the same launcher scenario.                                     | Personal widget remains installable and its task/background actions still work beside GroupsWidget.                                                                        |
+| Component                                       | Layer                 | Test file(s)                                                                                     | Behaviors and cases covered                                                                                                                                                                                            |
+|:------------------------------------------------|:----------------------|:-------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Groups Glance provider and Android registration | Platform              | No automated widget test; verify with Android compilation and launcher scenario.                 | Provider is independently installable at 3×3 size; vector icons render for groups, expansion, navigation, and task status; list scrolls; background and item taps route correctly; personal widget remains registered. |
+| Groups snapshot bridge and stream listener      | Data / UI             | No automated bridge/listener test added; verify with focused Flutter analysis and app scenarios. | Group add/remove updates, participant/task stream updates, empty state, direct chat loading and completion, task details, and groups-tab selection with bottom navigation.                                             |
+| Existing personal task widget                   | Platform / Regression | No new automated test; verify in the same launcher scenario.                                     | Personal widget remains installable and its task/background actions still work beside GroupsWidget.                                                                                                                    |
 
 - **Domain:** N/A; existing models and use cases are reused.
 - **Data:** No database or repository implementation changes; Android JSON cache behavior is covered by the widget
@@ -57,6 +59,9 @@
 - **Widgets and screens:** Verify list rendering, expand/collapse, participant and task navigation, and empty states on
   an Android launcher. Confirm a background tap selects the groups tab with bottom navigation and no nested back arrow.
   Confirm participant taps show the loading route instead of the home task screen while direct chat is resolved.
+- **Widget icons:** Verify the groups, expansion arrow, chevron, and task status vector drawables render with the
+  expected
+  tints in the launcher widget.
 - **Integration or regression:** Install both widgets, add and delete a group from the app, and confirm GroupsWidget
   reflects the changes while the personal task widget retains its existing behavior.
 
