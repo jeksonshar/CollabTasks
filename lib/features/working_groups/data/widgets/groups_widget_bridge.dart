@@ -46,13 +46,17 @@ class GroupsWidgetBridge {
     required List<WorkingGroup> groups,
     required Map<String, List<GroupParticipant>> participantsByGroupId,
     required Map<String, List<GroupTask>> tasksByGroupId,
+    String? currentUserId,
+    String? currentUserEmail,
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
       final payload = jsonEncode(
         groups
             .map((group) {
-              final participants = participantsByGroupId[group.id] ?? const <GroupParticipant>[];
+              final participants = _deduplicateParticipants(
+                participantsByGroupId[group.id] ?? const <GroupParticipant>[],
+              );
               final participantsByUserId = <String, GroupParticipant>{
                 for (final participant in participants) participant.userId: participant,
               };
@@ -66,6 +70,11 @@ class GroupsWidgetBridge {
                         'id': participant.id,
                         'userId': participant.userId,
                         'name': participant.name,
+                        'isCurrentUser': _isCurrentUser(
+                          participant,
+                          currentUserId: currentUserId,
+                          currentUserEmail: currentUserEmail,
+                        ),
                       },
                     )
                     .toList(growable: false),
@@ -93,6 +102,36 @@ class GroupsWidgetBridge {
       // A widget cache update must not interrupt group screens.
     }
   }
+}
+
+List<GroupParticipant> _deduplicateParticipants(List<GroupParticipant> participants) {
+  final byIdentity = <String, GroupParticipant>{};
+  for (final participant in participants) {
+    final identity = participant.id.split(':').last.trim().toLowerCase();
+    final existing = byIdentity[identity];
+    final existingIsInvitation = existing?.id.toLowerCase().contains(':invite:') ?? false;
+    final participantIsInvitation = participant.id.toLowerCase().contains(':invite:');
+    if (existing == null || (existingIsInvitation && !participantIsInvitation)) {
+      byIdentity[identity] = participant;
+    }
+  }
+  return byIdentity.values.toList(growable: false);
+}
+
+bool _isCurrentUser(
+  GroupParticipant participant, {
+  required String? currentUserId,
+  required String? currentUserEmail,
+}) {
+  final participantUserId = participant.userId.trim();
+  final normalizedCurrentUserId = currentUserId?.trim();
+  final normalizedCurrentUserEmail = currentUserEmail?.trim().toLowerCase();
+  return (normalizedCurrentUserId != null &&
+          normalizedCurrentUserId.isNotEmpty &&
+          participantUserId == normalizedCurrentUserId) ||
+      (normalizedCurrentUserEmail != null &&
+          normalizedCurrentUserEmail.isNotEmpty &&
+          participantUserId.toLowerCase() == normalizedCurrentUserEmail);
 }
 
 class GroupsWidgetNavigationRequest {

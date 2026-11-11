@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/auth/domain/entities/auth_user.dart';
+import 'package:collab_tasks/features/auth/domain/usecases/watch_auth_state_use_case.dart';
 import 'package:collab_tasks/features/chats/domain/use_cases/get_or_create_direct_chat_use_case.dart';
 import 'package:collab_tasks/features/chats/ui/screens/chat_screen.dart';
 import 'package:collab_tasks/features/working_groups/data/widgets/groups_widget_bridge.dart';
@@ -28,6 +30,7 @@ class GroupsWidgetBlocListener extends StatefulWidget {
 }
 
 class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
+  StreamSubscription<AuthUser?>? _authStateSubscription;
   StreamSubscription<GroupsWidgetNavigationRequest>? _navigationSubscription;
   StreamSubscription<List<WorkingGroup>>? _groupsSubscription;
   final Map<String, StreamSubscription<List<GroupParticipant>>> _participantSubscriptions = {};
@@ -35,6 +38,7 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
   final Map<String, List<GroupParticipant>> _participantsByGroupId = {};
   final Map<String, List<GroupTask>> _tasksByGroupId = {};
   final Set<String> _syncingGroupIds = {};
+  AuthUser? _currentUser;
   List<WorkingGroup> _groups = const [];
 
   @override
@@ -43,6 +47,15 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
     GroupsWidgetBridge.initialize();
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
 
+    _authStateSubscription = getIt<WatchAuthStateUseCase>()().listen(
+      (user) {
+        _currentUser = user;
+        _publishSnapshot();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('[GroupsWidget] Failed to watch auth state: $error\n$stackTrace');
+      },
+    );
     _navigationSubscription = GroupsWidgetBridge.navigationRequests.listen(_handleNavigation);
     _groupsSubscription = getIt<GetWorkingGroupsUseCase>()().listen(
       _onGroupsChanged,
@@ -120,6 +133,8 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
         groups: _groups,
         participantsByGroupId: _participantsByGroupId,
         tasksByGroupId: _tasksByGroupId,
+        currentUserId: _currentUser?.id,
+        currentUserEmail: _currentUser?.email,
       ),
     );
   }
@@ -195,6 +210,7 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
 
   @override
   void dispose() {
+    _authStateSubscription?.cancel();
     _navigationSubscription?.cancel();
     _groupsSubscription?.cancel();
     for (final subscription in _participantSubscriptions.values) {

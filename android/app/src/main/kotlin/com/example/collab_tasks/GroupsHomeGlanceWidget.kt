@@ -97,7 +97,12 @@ private data class WidgetGroup(
     val tasks: List<WidgetGroupTask>,
 )
 
-private data class WidgetParticipant(val id: String, val userId: String, val name: String)
+private data class WidgetParticipant(
+    val id: String,
+    val userId: String,
+    val name: String,
+    val isCurrentUser: Boolean,
+)
 
 private data class WidgetGroupTask(
     val id: String,
@@ -123,6 +128,7 @@ private fun String?.toWidgetGroups(): List<WidgetGroup> = runCatching {
                     id = participant.optString("id"),
                     userId = participant.optString("userId"),
                     name = participant.optString("name"),
+                    isCurrentUser = participant.optBoolean("isCurrentUser"),
                 )
             },
             tasks = List(tasksJson.length()) { taskIndex ->
@@ -139,7 +145,7 @@ private fun String?.toWidgetGroups(): List<WidgetGroup> = runCatching {
     }
 }.getOrDefault(emptyList())
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<String>) {
     val openGroupsAction = actionStartActivity<MainActivity>(actionParametersOf(openGroupsParameter to true))
@@ -194,7 +200,7 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
     }
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
     val toggleAction = actionRunCallback<ToggleGroupExpansionAction>(actionParametersOf(groupIdParameter to group.id))
@@ -263,7 +269,7 @@ private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
     }
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun SectionHeading(title: String) {
     Text(
@@ -277,7 +283,7 @@ private fun SectionHeading(title: String) {
     )
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun SectionEmpty(text: String) {
     Text(
@@ -287,7 +293,7 @@ private fun SectionEmpty(text: String) {
     )
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant) {
     val action = actionStartActivity<MainActivity>(
@@ -296,9 +302,10 @@ private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant
             participantIdParameter to participant.id,
         )
     )
+    val rowModifier = GlanceModifier.fillMaxWidth()
+        .padding(start = 11.dp, end = 11.dp, top = 4.dp, bottom = 5.dp)
     Row(
-        modifier = GlanceModifier.fillMaxWidth().clickable(action)
-            .padding(start = 11.dp, end = 11.dp, top = 4.dp, bottom = 5.dp),
+        modifier = if (participant.isCurrentUser) rowModifier else rowModifier.clickable(action),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -322,16 +329,18 @@ private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant
             modifier = GlanceModifier.defaultWeight(),
             style = TextStyle(color = widgetColor(AndroidColor.rgb(230, 231, 239)), fontSize = 12.sp)
         )
-        Image(
-            provider = ImageProvider(R.drawable.ic_widget_chevron_right),
-            contentDescription = null,
-            modifier = GlanceModifier.size(16.dp),
-            colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(130, 132, 148))),
-        )
+        if (!participant.isCurrentUser) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_widget_chevron_right),
+                contentDescription = null,
+                modifier = GlanceModifier.size(16.dp),
+                colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(130, 132, 148))),
+            )
+        }
     }
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
     val action =
