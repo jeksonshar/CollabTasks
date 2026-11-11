@@ -199,7 +199,11 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
             Box(modifier = GlanceModifier.defaultWeight().fillMaxWidth().clickable(openGroupsAction)) {
                 LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
                     items(items = groups, itemId = { it.id.hashCode().toLong() }) { group ->
-                        GroupWidgetSection(group, group.id in expandedIds)
+                        Box(
+                            modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            GroupWidgetSection(group, group.id in expandedIds)
+                        }
                     }
                 }
             }
@@ -212,8 +216,10 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
 private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
     val toggleAction = actionRunCallback<ToggleGroupExpansionAction>(actionParametersOf(groupIdParameter to group.id))
     Column(
-        modifier = GlanceModifier.fillMaxWidth().padding(top = 7.dp)
-            .background(widgetColor(AndroidColor.rgb(36, 37, 45))).cornerRadius(12.dp),
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .background(widgetColor(AndroidColor.rgb(36, 37, 45)))
+            .cornerRadius(12.dp),
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().clickable(toggleAction)
