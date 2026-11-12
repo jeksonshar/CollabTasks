@@ -70,6 +70,18 @@ class TaskWidgetBridge {
       // A widget cache update should not interrupt the task screen.
     }
   }
+
+  static Future<void> updateWidgetLocale(String languageCode) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    if (!const {'en', 'ru', 'uk'}.contains(languageCode)) return;
+    try {
+      await _channel.invokeMethod<void>('setWidgetLocale', languageCode);
+    } on MissingPluginException {
+      // The Android host may not have registered the widget channel in tests.
+    } on PlatformException {
+      // A widget locale update must not interrupt the app.
+    }
+  }
 }
 
 class WidgetNavigationRequest {

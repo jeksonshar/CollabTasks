@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/settings/ui/screens/settings_screen/settings_screen.dart';
+import 'package:collab_tasks/features/tasks/data/widgets/task_widget_bridge.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_bloc.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_event.dart';
 import 'package:collab_tasks/features/tasks/ui/blocs/task_bloc/task_state.dart';
@@ -20,6 +23,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with L10nMixin {
   int _selectedIndex = 0;
+  String? _lastWidgetLanguageCode;
 
   final List<Widget> _screens = [
     const HomeTasksScreen(),
@@ -30,6 +34,17 @@ class _MainScreenState extends State<MainScreen> with L10nMixin {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_lastWidgetLanguageCode == languageCode) return;
+    _lastWidgetLanguageCode = languageCode;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(TaskWidgetBridge.updateWidgetLocale(languageCode));
     });
   }
 

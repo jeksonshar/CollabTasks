@@ -1,0 +1,50 @@
+<resources>
+    <string name="task_widget_description">Прокручиваемый список личных задач</string>
+    <string name="groups_widget_description">Прокручиваемый список групп, участников и задач</string>
+    <string name="widget_task_title">Личные задачи</string>
+    <string name="widget_task_empty">Нет задач</string>
+    <string name="widget_task_refresh">Обновить задачи</string>
+    <string name="widget_task_completed">Задача выполнена</string>
+    <string name="widget_task_not_completed">Задача не выполнена</string>
+    <string name="widget_task_subtasks">Подзадачи</string>
+    <string name="widget_task_deadline">Срок выполнения</string>
+    <string name="widget_task_attachments">Вложения</string>
+    <string name="widget_groups_title">Группы</string>
+    <string name="widget_groups_empty">Нет групп</string>
+    <string name="widget_group_accessibility">Группа</string>
+    <string name="widget_group_collapse">Свернуть группу</string>
+    <string name="widget_group_expand">Развернуть группу</string>
+    <plurals name="widget_participants_count">
+        <item quantity="one">Участник (%1$d)</item>
+        <item quantity="few">Участника (%1$d)</item>
+        <item quantity="many">Участников (%1$d)</item>
+        <item quantity="other">Участника (%1$d)</item>
+    </plurals>
+    <string name="widget_participants_empty">Нет участников</string>
+    <plurals name="widget_group_tasks_count">
+        <item quantity="one">Задача (%1$d)</item>
+        <item quantity="few">Задачи (%1$d)</item>
+        <item quantity="many">Задач (%1$d)</item>
+        <item quantity="other">Задачи (%1$d)</item>
+    </plurals>
+    <string name="widget_group_tasks_empty">Нет задач</string>
+    <string name="widget_task_assignee">Исполнитель: %1$s</string>
+    <string name="widget_preview_task_1">Подготовить проект</string>
+    <string name="widget_preview_task_2">Отправить отчёт</string>
+    <string name="widget_preview_task_3">Проверить макет</string>
+    <string name="widget_preview_task_4">Позвонить команде</string>
+    <string name="widget_preview_task_line_1">Подготовить проект ☷ 1/2 ◷ 15 нояб.</string>
+    <string name="widget_preview_task_line_2">Отправить отчёт ◷ 20 нояб.</string>
+    <string name="widget_preview_task_line_3">Проверить макет ◷ 22 нояб.</string>
+    <string name="widget_preview_task_line_4">Позвонить команде ◷ 25 нояб.</string>
+    <string name="widget_preview_group_1">Первая группа</string>
+    <string name="widget_preview_group_1_description">Проект команды</string>
+    <string name="widget_preview_group_2">Рабочий проект</string>
+    <string name="widget_preview_participant">Дмитрий Иванов</string>
+    <string name="widget_preview_participant_initials">ДИ</string>
+    <string name="widget_preview_participant_initials_and_name">ДИ Дмитрий Иванов</string>
+    <string name="widget_preview_participants_count">Участники (1)</string>
+    <string name="widget_preview_group_tasks_count">Задачи (1)</string>
+    <string name="widget_preview_group_task">Подготовить презентацию</string>
+    <string name="widget_preview_group_task_line">○ Подготовить презентацию ›</string>
+</resources>

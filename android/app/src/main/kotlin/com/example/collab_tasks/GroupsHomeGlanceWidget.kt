@@ -41,8 +41,9 @@ class GroupsHomeGlanceWidget : GlanceAppWidget() {
         provideContent {
             val preferences = currentState<Preferences>()
             val groupsSnapshot = preferences[groupsSnapshotKey] ?: cachedGroupsSnapshot ?: "[]"
+            val widgetContext = WidgetLocalization.localizedContext(context, preferences[groupsWidgetLocaleKey])
             val expandedIds = preferences[expandedGroupsKey].orEmpty().split('|').filter(String::isNotBlank).toSet()
-            GroupsWidgetContent(groupsSnapshot.toWidgetGroups(), expandedIds)
+            GroupsWidgetContent(widgetContext, groupsSnapshot.toWidgetGroups(), expandedIds)
         }
     }
 }
@@ -61,14 +62,34 @@ object GroupsHomeWidgetCache {
 
         glanceIds.forEach { glanceId ->
             updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { preferences ->
-                preferences.toMutablePreferences().apply { this[groupsSnapshotKey] = groupsSnapshot }
+                preferences.toMutablePreferences().apply {
+                    this[groupsSnapshotKey] = groupsSnapshot
+                    this[groupsWidgetLocaleKey] = WidgetLocalization.languageCode(context)
+                }
             }
         }
         widget.updateAll(context)
     }
+
+    suspend fun updateLocale(context: Context, languageCode: String) = updateMutex.withLock {
+        val groupsSnapshot = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getString(GROUPS_KEY, "[]") ?: "[]"
+        val glanceIds = GlanceAppWidgetManager(context).getGlanceIds(GroupsHomeGlanceWidget::class.java)
+        val widget = GroupsHomeGlanceWidget()
+        glanceIds.forEach { glanceId ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { preferences ->
+                preferences.toMutablePreferences().apply {
+                    this[groupsSnapshotKey] = groupsSnapshot
+                    this[groupsWidgetLocaleKey] = languageCode
+                }
+            }
+            widget.update(context, glanceId)
+        }
+    }
 }
 
 private val groupsSnapshotKey = stringPreferencesKey("groups_snapshot")
+private val groupsWidgetLocaleKey = stringPreferencesKey("widget_locale")
 private val expandedGroupsKey = stringPreferencesKey("expanded_groups")
 private val groupIdParameter = ActionParameters.Key<String>("group_id")
 private val openGroupsParameter = ActionParameters.Key<Boolean>(MainActivity.EXTRA_GROUPS_OPEN_HOME)
@@ -147,7 +168,7 @@ private fun String?.toWidgetGroups(): List<WidgetGroup> = runCatching {
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<String>) {
+private fun GroupsWidgetContent(context: Context, groups: List<WidgetGroup>, expandedIds: Set<String>) {
     val openGroupsAction = actionStartActivity<MainActivity>(actionParametersOf(openGroupsParameter to true))
     Column(
         modifier = GlanceModifier
@@ -160,7 +181,7 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Группы",
+                text = context.getString(R.string.widget_groups_title),
                 style = TextStyle(
                     color = widgetColor(AndroidColor.rgb(245, 245, 250)),
                     fontSize = 16.sp,
@@ -180,7 +201,7 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Нет групп",
+                    context.getString(R.string.widget_groups_empty),
                     style = TextStyle(color = widgetColor(AndroidColor.rgb(160, 162, 176)), fontSize = 13.sp)
                 )
             }
@@ -191,7 +212,7 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
                         Box(
                             modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp)
                         ) {
-                            GroupWidgetSection(group, group.id in expandedIds)
+                            GroupWidgetSection(context, group, group.id in expandedIds)
                         }
                     }
                 }
@@ -202,7 +223,7 @@ private fun GroupsWidgetContent(groups: List<WidgetGroup>, expandedIds: Set<Stri
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
+private fun GroupWidgetSection(context: Context, group: WidgetGroup, isExpanded: Boolean) {
     val toggleAction = actionRunCallback<ToggleGroupExpansionAction>(actionParametersOf(groupIdParameter to group.id))
     Column(
         modifier = GlanceModifier
@@ -217,7 +238,7 @@ private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
         ) {
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_groups),
-                contentDescription = "Группа",
+                contentDescription = context.getString(R.string.widget_group_accessibility),
                 modifier = GlanceModifier.size(18.dp),
                 colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(160, 170, 255))),
             )
@@ -245,25 +266,39 @@ private fun GroupWidgetSection(group: WidgetGroup, isExpanded: Boolean) {
                     if (isExpanded) R.drawable.ic_widget_keyboard_arrow_up
                     else R.drawable.ic_widget_keyboard_arrow_down,
                 ),
-                contentDescription = if (isExpanded) "Свернуть группу" else "Развернуть группу",
+                contentDescription = context.getString(
+                    if (isExpanded) R.string.widget_group_collapse else R.string.widget_group_expand,
+                ),
                 modifier = GlanceModifier.size(20.dp),
                 colorFilter = ColorFilter.tint(widgetColor(AndroidColor.rgb(180, 182, 198))),
             )
         }
 
         if (isExpanded) {
-            SectionHeading("Участники (${group.participants.size})")
+            SectionHeading(
+                context.resources.getQuantityString(
+                    R.plurals.widget_participants_count,
+                    group.participants.size,
+                    group.participants.size,
+                ),
+            )
             if (group.participants.isEmpty()) {
-                SectionEmpty("Нет участников")
+                SectionEmpty(context.getString(R.string.widget_participants_empty))
             } else {
                 group.participants.forEach { participant -> ParticipantWidgetRow(group.id, participant) }
             }
 
-            SectionHeading("Задачи (${group.tasks.size})")
+            SectionHeading(
+                context.resources.getQuantityString(
+                    R.plurals.widget_group_tasks_count,
+                    group.tasks.size,
+                    group.tasks.size,
+                ),
+            )
             if (group.tasks.isEmpty()) {
-                SectionEmpty("Нет задач")
+                SectionEmpty(context.getString(R.string.widget_group_tasks_empty))
             } else {
-                group.tasks.forEach { task -> GroupTaskWidgetRow(group.id, task) }
+                group.tasks.forEach { task -> GroupTaskWidgetRow(context, group.id, task) }
             }
         }
     }
@@ -342,7 +377,7 @@ private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
+private fun GroupTaskWidgetRow(context: Context, groupId: String, task: WidgetGroupTask) {
     val action =
         actionStartActivity<MainActivity>(actionParametersOf(taskGroupParameter to groupId, taskIdParameter to task.id))
     val priorityColor = when (task.priority) {
@@ -360,7 +395,9 @@ private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
             provider = ImageProvider(
                 if (task.isCompleted) R.drawable.ic_widget_task_alt else R.drawable.ic_widget_circle_outlined,
             ),
-            contentDescription = if (task.isCompleted) "Задача выполнена" else "Задача не выполнена",
+            contentDescription = context.getString(
+                if (task.isCompleted) R.string.widget_task_completed else R.string.widget_task_not_completed,
+            ),
             modifier = GlanceModifier.size(16.dp),
             colorFilter = ColorFilter.tint(widgetColor(priorityColor)),
         )
@@ -373,7 +410,7 @@ private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
             )
             task.assignedUserName?.let {
                 Text(
-                    "Исполнитель: $it",
+                    context.getString(R.string.widget_task_assignee, it),
                     maxLines = 1,
                     style = TextStyle(color = widgetColor(AndroidColor.rgb(145, 147, 164)), fontSize = 9.sp)
                 )

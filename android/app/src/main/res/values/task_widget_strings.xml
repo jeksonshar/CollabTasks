@@ -1,4 +1,46 @@
 <resources>
-    <string name="task_widget_description">Прокручиваемая сетка личных задач</string>
-    <string name="groups_widget_description">Прокручиваемый список групп, участников и задач</string>
+    <string name="task_widget_description">Scrollable list of personal tasks</string>
+    <string name="groups_widget_description">Scrollable list of groups, participants, and tasks</string>
+    <string name="widget_task_title">Personal tasks</string>
+    <string name="widget_task_empty">No tasks yet</string>
+    <string name="widget_task_refresh">Refresh tasks</string>
+    <string name="widget_task_completed">Task completed</string>
+    <string name="widget_task_not_completed">Task not completed</string>
+    <string name="widget_task_subtasks">Subtasks</string>
+    <string name="widget_task_deadline">Due date</string>
+    <string name="widget_task_attachments">Attachments</string>
+    <string name="widget_groups_title">Groups</string>
+    <string name="widget_groups_empty">No groups</string>
+    <string name="widget_group_accessibility">Group</string>
+    <string name="widget_group_collapse">Collapse group</string>
+    <string name="widget_group_expand">Expand group</string>
+    <plurals name="widget_participants_count">
+        <item quantity="one">Participant (%1$d)</item>
+        <item quantity="other">Participants (%1$d)</item>
+    </plurals>
+    <string name="widget_participants_empty">No participants</string>
+    <plurals name="widget_group_tasks_count">
+        <item quantity="one">Task (%1$d)</item>
+        <item quantity="other">Tasks (%1$d)</item>
+    </plurals>
+    <string name="widget_group_tasks_empty">No tasks</string>
+    <string name="widget_task_assignee">Assigned: %1$s</string>
+    <string name="widget_preview_task_1">Prepare project</string>
+    <string name="widget_preview_task_2">Send report</string>
+    <string name="widget_preview_task_3">Review layout</string>
+    <string name="widget_preview_task_4">Call the team</string>
+    <string name="widget_preview_task_line_1">Prepare project ☷ 1/2 ◷ Nov 15</string>
+    <string name="widget_preview_task_line_2">Send report ◷ Nov 20</string>
+    <string name="widget_preview_task_line_3">Review layout ◷ Nov 22</string>
+    <string name="widget_preview_task_line_4">Call the team ◷ Nov 25</string>
+    <string name="widget_preview_group_1">First group</string>
+    <string name="widget_preview_group_1_description">Team project</string>
+    <string name="widget_preview_group_2">Work project</string>
+    <string name="widget_preview_participant">Alex Morgan</string>
+    <string name="widget_preview_participant_initials">AM</string>
+    <string name="widget_preview_participant_initials_and_name">AM Alex Morgan</string>
+    <string name="widget_preview_participants_count">Participants (1)</string>
+    <string name="widget_preview_group_tasks_count">Tasks (1)</string>
+    <string name="widget_preview_group_task">Prepare a presentation</string>
+    <string name="widget_preview_group_task_line">○ Prepare a presentation ›</string>
 </resources>

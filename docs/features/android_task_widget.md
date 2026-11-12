@@ -13,6 +13,10 @@
   widget and provides its initial loading layout.
 - The Android widget picker uses a static, rounded dark `previewLayout` with generic example tasks, plus a matching
   `previewImage` PNG fallback. These resources are separate from the live Glance widget and do not expose user data.
+- Fixed labels and accessibility descriptions in the live Glance widget are localized in English, Russian, and
+  Ukrainian. The selected app language is stored in each widget instance's Glance state; changing it explicitly updates
+  every installed task widget. Picker layouts and fallback images are Android resources, so their language follows the
+  device's Android resource locale.
 - The same scrollable home-screen widget is not available on iOS because iOS widgets do not support user-controlled
   scrolling.
 
@@ -53,6 +57,7 @@
 | Widget task navigation and refresh           | Bloc / UI            | N/A          | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added.                                                                             |
 | Widget coexistence regression                | Platform             | N/A          | Install both Android widgets, verify both are listed and render independently, then check personal task taps and background navigation after using GroupsWidget.                             |
 | Widget picker preview                        | Platform / Resources | N/A          | Verify the rounded dark preview, sample task cards and fallback image in the launcher picker; preview data is static and generic.                                                            |
+| Widget locale synchronization                | Platform / UI        | N/A          | Change app language to English, Russian, and Ukrainian; verify the task widget header, empty state, accessibility labels, and deadline month update without restarting the app.              |
 
 - **Domain:** N/A; no domain behavior changed.
 - **Data:** Android mirrors the presentation snapshot into per-widget Glance state; Drift remains the application task

@@ -1,0 +1,50 @@
+<resources>
+    <string name="task_widget_description">Список особистих завдань із прокручуванням</string>
+    <string name="groups_widget_description">Список груп, учасників і завдань із прокручуванням</string>
+    <string name="widget_task_title">Особисті завдання</string>
+    <string name="widget_task_empty">Немає завдань</string>
+    <string name="widget_task_refresh">Оновити завдання</string>
+    <string name="widget_task_completed">Завдання виконано</string>
+    <string name="widget_task_not_completed">Завдання не виконано</string>
+    <string name="widget_task_subtasks">Підзавдання</string>
+    <string name="widget_task_deadline">Термін виконання</string>
+    <string name="widget_task_attachments">Вкладення</string>
+    <string name="widget_groups_title">Групи</string>
+    <string name="widget_groups_empty">Немає груп</string>
+    <string name="widget_group_accessibility">Група</string>
+    <string name="widget_group_collapse">Згорнути групу</string>
+    <string name="widget_group_expand">Розгорнути групу</string>
+    <plurals name="widget_participants_count">
+        <item quantity="one">Учасник (%1$d)</item>
+        <item quantity="few">Учасники (%1$d)</item>
+        <item quantity="many">Учасників (%1$d)</item>
+        <item quantity="other">Учасника (%1$d)</item>
+    </plurals>
+    <string name="widget_participants_empty">Немає учасників</string>
+    <plurals name="widget_group_tasks_count">
+        <item quantity="one">Завдання (%1$d)</item>
+        <item quantity="few">Завдання (%1$d)</item>
+        <item quantity="many">Завдань (%1$d)</item>
+        <item quantity="other">Завдання (%1$d)</item>
+    </plurals>
+    <string name="widget_group_tasks_empty">Немає завдань</string>
+    <string name="widget_task_assignee">Виконавець: %1$s</string>
+    <string name="widget_preview_task_1">Підготувати проєкт</string>
+    <string name="widget_preview_task_2">Надіслати звіт</string>
+    <string name="widget_preview_task_3">Перевірити макет</string>
+    <string name="widget_preview_task_4">Зателефонувати команді</string>
+    <string name="widget_preview_task_line_1">Підготувати проєкт ☷ 1/2 ◷ 15 лист.</string>
+    <string name="widget_preview_task_line_2">Надіслати звіт ◷ 20 лист.</string>
+    <string name="widget_preview_task_line_3">Перевірити макет ◷ 22 лист.</string>
+    <string name="widget_preview_task_line_4">Зателефонувати команді ◷ 25 лист.</string>
+    <string name="widget_preview_group_1">Перша група</string>
+    <string name="widget_preview_group_1_description">Проєкт команди</string>
+    <string name="widget_preview_group_2">Робочий проєкт</string>
+    <string name="widget_preview_participant">Дмитро Іванов</string>
+    <string name="widget_preview_participant_initials">ДІ</string>
+    <string name="widget_preview_participant_initials_and_name">ДІ Дмитро Іванов</string>
+    <string name="widget_preview_participants_count">Учасники (1)</string>
+    <string name="widget_preview_group_tasks_count">Завдання (1)</string>
+    <string name="widget_preview_group_task">Підготувати презентацію</string>
+    <string name="widget_preview_group_task_line">○ Підготувати презентацію ›</string>
+</resources>

@@ -11,6 +11,10 @@
   the personal task widget and uses an independent MethodChannel and cache.
 - The Android widget picker has a separate rounded dark `previewLayout` with generic collapsed and expanded group
   examples, plus a matching `previewImage` PNG fallback. Preview content is static and does not expose live group data.
+- Fixed labels and accessibility descriptions in the live Glance widget are localized in English, Russian, and
+  Ukrainian. The selected app language is stored in each widget instance's Glance state; changing it explicitly updates
+  every installed groups widget. Picker layouts and fallback images are Android resources, so their language follows
+  the device's Android resource locale.
 
 ## 2. Architectural Blueprint (Clean Architecture)
 
@@ -56,6 +60,7 @@
 | Groups snapshot bridge and stream listener      | Data / UI             | No automated bridge/listener test added; verify with focused Flutter analysis and app scenarios. | Group add/remove updates, invited/accepted participant deduplication with accepted-record preference, self identity flag, participant/task stream updates, empty state, direct chat loading and completion, task details, and groups-tab selection with bottom navigation. |
 | Existing personal task widget                   | Platform / Regression | No new automated test; verify in the same launcher scenario.                                     | Personal widget remains installable and its task/background actions still work beside GroupsWidget.                                                                                                                                                                        |
 | Groups widget picker preview                    | Platform / Resources  | N/A                                                                                              | Verify the rounded dark preview, collapsed/expanded sample cards, and fallback image in the launcher picker; preview data is static and generic.                                                                                                                           |
+| Groups widget locale synchronization            | Platform / UI         | N/A                                                                                              | Change app language to English, Russian, and Ukrainian; verify empty state, participant/task plural labels, task status accessibility descriptions, and assignee prefix update without restarting the app.                                                                 |
 
 - **Domain:** N/A; existing models and use cases are reused.
 - **Data:** No database or repository implementation changes; Android JSON cache behavior is covered by the widget

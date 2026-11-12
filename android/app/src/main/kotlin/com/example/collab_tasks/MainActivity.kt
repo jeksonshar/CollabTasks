@@ -1,13 +1,17 @@
 package com.example.collab_tasks
 
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import androidx.core.content.edit
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.core.content.edit
+import kotlinx.coroutines.withContext
+import java.util.*
 
 class MainActivity : FlutterFragmentActivity() {
     private val channelName = "com.collab_tasks/task_widget"
@@ -49,6 +53,23 @@ class MainActivity : FlutterFragmentActivity() {
                         TaskHomeWidgetCache.updateAllWidgets(applicationContext)
                     }
                     result.success(null)
+                }
+
+                "setWidgetLocale" -> {
+                    val languageCode = call.arguments as? String
+                    val supportedLanguage = languageCode?.takeIf { it in SUPPORTED_WIDGET_LANGUAGES } ?: "en"
+                    WidgetLocalization.saveLanguage(applicationContext, supportedLanguage)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            TaskHomeWidgetCache.updateLocale(applicationContext, supportedLanguage)
+                            GroupsHomeWidgetCache.updateLocale(applicationContext, supportedLanguage)
+                            withContext(Dispatchers.Main) { result.success(null) }
+                        } catch (error: Exception) {
+                            withContext(Dispatchers.Main) {
+                                result.error("widget_locale_update_failed", error.message, null)
+                            }
+                        }
+                    }
                 }
 
                 else -> result.notImplemented()
@@ -130,6 +151,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     companion object {
+        private val SUPPORTED_WIDGET_LANGUAGES = setOf("en", "ru", "uk")
+
         const val EXTRA_TASK_ID = "com.collab_tasks.extra.TASK_ID"
         const val EXTRA_OPEN_HOME = "com.collab_tasks.extra.OPEN_HOME"
         const val EXTRA_REFRESH_TASKS = "com.collab_tasks.extra.REFRESH_TASKS"
@@ -138,5 +161,32 @@ class MainActivity : FlutterFragmentActivity() {
         const val EXTRA_GROUPS_PARTICIPANT_ID = "com.collab_tasks.extra.GROUPS_PARTICIPANT_ID"
         const val EXTRA_GROUPS_TASK_GROUP_ID = "com.collab_tasks.extra.GROUPS_TASK_GROUP_ID"
         const val EXTRA_GROUPS_TASK_ID = "com.collab_tasks.extra.GROUPS_TASK_ID"
+    }
+}
+
+internal object WidgetLocalization {
+    private const val PREFERENCES = "widget_localization"
+    private const val LANGUAGE_CODE_KEY = "language_code"
+    private val supportedLanguages = setOf("en", "ru", "uk")
+
+    fun languageCode(context: Context): String {
+        val savedCode = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getString(LANGUAGE_CODE_KEY, null)
+        return savedCode?.takeIf { it in supportedLanguages }
+            ?: Locale.getDefault().language.takeIf { it in supportedLanguages }
+            ?: "en"
+    }
+
+    fun localizedContext(context: Context, localeCode: String? = null): Context {
+        val configuration = Configuration(context.resources.configuration)
+        val selectedLanguage = localeCode?.takeIf { it in supportedLanguages } ?: languageCode(context)
+        configuration.setLocale(Locale.forLanguageTag(selectedLanguage))
+        return context.createConfigurationContext(configuration)
+    }
+
+    fun saveLanguage(context: Context, languageCode: String) {
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit {
+            putString(LANGUAGE_CODE_KEY, languageCode)
+        }
     }
 }

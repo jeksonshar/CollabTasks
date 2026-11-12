@@ -42,7 +42,8 @@ class TaskHomeGlanceWidget : GlanceAppWidget() {
         provideContent {
             val preferences = currentState<Preferences>()
             val taskSnapshot = preferences[taskSnapshotKey] ?: cachedTaskSnapshot ?: "[]"
-            TaskWidgetContent(taskSnapshot.toWidgetTasks())
+            val widgetContext = WidgetLocalization.localizedContext(context, preferences[taskWidgetLocaleKey])
+            TaskWidgetContent(widgetContext, taskSnapshot.toWidgetTasks())
         }
     }
 }
@@ -61,23 +62,46 @@ object TaskHomeWidgetCache {
 
         glanceIds.forEach { glanceId ->
             updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { preferences ->
-                preferences.toMutablePreferences().apply { this[taskSnapshotKey] = taskSnapshot }
+                preferences.toMutablePreferences().apply {
+                    this[taskSnapshotKey] = taskSnapshot
+                    this[taskWidgetLocaleKey] = WidgetLocalization.languageCode(context)
+                }
             }
         }
         widget.updateAll(context)
+    }
+
+    suspend fun updateLocale(context: Context, languageCode: String) = updateMutex.withLock {
+        val taskSnapshot = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getString(TASKS_KEY, "[]") ?: "[]"
+        val glanceIds = GlanceAppWidgetManager(context).getGlanceIds(TaskHomeGlanceWidget::class.java)
+        val widget = TaskHomeGlanceWidget()
+        glanceIds.forEach { glanceId ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { preferences ->
+                preferences.toMutablePreferences().apply {
+                    this[taskSnapshotKey] = taskSnapshot
+                    this[taskWidgetLocaleKey] = languageCode
+                }
+            }
+            widget.update(context, glanceId)
+        }
     }
 
     suspend fun refreshWidget(context: Context, glanceId: GlanceId) = updateMutex.withLock {
         val taskSnapshot = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .getString(TASKS_KEY, "[]") ?: "[]"
         updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { preferences ->
-            preferences.toMutablePreferences().apply { this[taskSnapshotKey] = taskSnapshot }
+            preferences.toMutablePreferences().apply {
+                this[taskSnapshotKey] = taskSnapshot
+                this[taskWidgetLocaleKey] = WidgetLocalization.languageCode(context)
+            }
         }
         TaskHomeGlanceWidget().update(context, glanceId)
     }
 }
 
 private val taskSnapshotKey = stringPreferencesKey("task_snapshot")
+private val taskWidgetLocaleKey = stringPreferencesKey("widget_locale")
 
 class RefreshTaskHomeWidgetAction : ActionCallback {
     override suspend fun onAction(
@@ -128,7 +152,7 @@ private val openHomeKey = ActionParameters.Key<Boolean>(MainActivity.EXTRA_OPEN_
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun TaskWidgetContent(tasks: List<WidgetTask>) {
+private fun TaskWidgetContent(context: Context, tasks: List<WidgetTask>) {
     val openHomeAction = actionStartActivity<MainActivity>(actionParametersOf(openHomeKey to true))
     val refreshTasksAction = actionRunCallback<RefreshTaskHomeWidgetAction>()
     Column(
@@ -145,7 +169,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Личные задачи",
+                text = context.getString(R.string.widget_task_title),
                 style = TextStyle(
                     color = widgetColor(AndroidColor.rgb(245, 245, 250)),
                     fontSize = 16.sp,
@@ -160,7 +184,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
             Spacer(modifier = GlanceModifier.width(10.dp))
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_refresh),
-                contentDescription = "Обновить задачи",
+                contentDescription = context.getString(R.string.widget_task_refresh),
                 modifier = GlanceModifier
                     .size(32.dp)
                     .background(widgetColor(AndroidColor.rgb(45, 46, 55)))
@@ -177,7 +201,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "Нет задач",
+                    text = context.getString(R.string.widget_task_empty),
                     style = TextStyle(color = widgetColor(AndroidColor.rgb(160, 162, 176)), fontSize = 13.sp),
                 )
             }
@@ -190,7 +214,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
                         Box(
                             modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp)
                         ) {
-                            TaskWidgetRow(task)
+                            TaskWidgetRow(context, task)
                         }
                     }
                 }
@@ -201,7 +225,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun TaskWidgetRow(task: WidgetTask) {
+private fun TaskWidgetRow(context: Context, task: WidgetTask) {
     val priorityColor = when (task.priority) {
         1 -> AndroidColor.rgb(76, 175, 80)
         2 -> AndroidColor.rgb(255, 193, 7)
@@ -223,7 +247,9 @@ private fun TaskWidgetRow(task: WidgetTask) {
             provider = ImageProvider(
                 if (task.isCompleted) R.drawable.ic_widget_task_alt else R.drawable.ic_widget_circle_outlined,
             ),
-            contentDescription = if (task.isCompleted) "Задача выполнена" else "Задача не выполнена",
+            contentDescription = context.getString(
+                if (task.isCompleted) R.string.widget_task_completed else R.string.widget_task_not_completed,
+            ),
             modifier = GlanceModifier.width(22.dp).height(22.dp),
             colorFilter = ColorFilter.tint(widgetColor(priorityColor)),
         )
@@ -261,7 +287,7 @@ private fun TaskWidgetRow(task: WidgetTask) {
                     if (hasSubtasksIndicator) {
                         TaskWidgetIndicator(
                             iconRes = R.drawable.ic_widget_checklist,
-                            contentDescription = "Подзадачи",
+                            contentDescription = context.getString(R.string.widget_task_subtasks),
                             value = "${task.completedSubtasksCount}/${task.subtasksCount}",
                         )
                     }
@@ -275,8 +301,8 @@ private fun TaskWidgetRow(task: WidgetTask) {
                         }
                         TaskWidgetIndicator(
                             iconRes = R.drawable.ic_widget_alarm,
-                            contentDescription = "Срок выполнения",
-                            value = formatDeadline(deadlineMillis),
+                            contentDescription = context.getString(R.string.widget_task_deadline),
+                            value = formatDeadline(context, deadlineMillis),
                             color = widgetColor(deadlineColor),
                         )
                     }
@@ -287,7 +313,7 @@ private fun TaskWidgetRow(task: WidgetTask) {
                         }
                         TaskWidgetIndicator(
                             iconRes = R.drawable.ic_widget_attach_file,
-                            contentDescription = "Вложения",
+                            contentDescription = context.getString(R.string.widget_task_attachments),
                             value = "${task.attachmentsCount}",
                         )
                     }
@@ -321,7 +347,8 @@ private fun TaskWidgetIndicator(
     }
 }
 
-private fun formatDeadline(deadlineMillis: Long): String =
-    SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(deadlineMillis))
+private fun formatDeadline(context: Context, deadlineMillis: Long): String =
+    SimpleDateFormat("d MMM", Locale.forLanguageTag(WidgetLocalization.languageCode(context)))
+        .format(Date(deadlineMillis))
 
 private fun widgetColor(color: Int): ColorProvider = androidx.glance.color.ColorProvider(Color(color), Color(color))

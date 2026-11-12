@@ -19,7 +19,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Группы"
+                    android:text="@string/widget_groups_title"
                     android:textColor="#F5F5FA"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
@@ -60,7 +60,7 @@
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Первая группа"
+                        android:text="@string/widget_preview_group_1"
                         android:textColor="#F5F5FA"
                         android:textSize="13sp"
                         android:textStyle="bold"/>
@@ -70,7 +70,7 @@
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Проект команды"
+                        android:text="@string/widget_preview_group_1_description"
                         android:textColor="#A0A2B0"
                         android:textSize="10sp"/>
             </LinearLayout>
@@ -109,7 +109,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:text="Рабочий проект"
+                        android:text="@string/widget_preview_group_2"
                         android:textColor="#F5F5FA"
                         android:textSize="13sp"
                         android:textStyle="bold"/>
@@ -126,7 +126,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Участники (1)"
+                    android:text="@string/widget_preview_participants_count"
                     android:textColor="#AEB1C7"
                     android:textSize="11sp"
                     android:textStyle="bold"/>
@@ -137,7 +137,7 @@
                     android:layout_marginTop="3dp"
                     android:background="@drawable/widget_preview_card"
                     android:padding="5dp"
-                    android:text="  ДИ     Дмитрий Иванов"
+                    android:text="@string/widget_preview_participant_initials_and_name"
                     android:textColor="#E6E7EF"
                     android:textSize="12sp"/>
 
@@ -145,7 +145,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="7dp"
-                    android:text="Задачи (1)"
+                    android:text="@string/widget_preview_group_tasks_count"
                     android:textColor="#AEB1C7"
                     android:textSize="11sp"
                     android:textStyle="bold"/>
@@ -154,7 +154,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="○   Подготовить презентацию       ›"
+                    android:text="@string/widget_preview_group_task_line"
                     android:textColor="#E6E7EF"
                     android:textSize="11sp"/>
         </LinearLayout>

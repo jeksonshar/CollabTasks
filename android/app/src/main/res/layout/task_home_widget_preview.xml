@@ -21,7 +21,7 @@
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="Личные задачи"
+                    android:text="@string/widget_task_title"
                     android:textColor="#F5F5FA"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
@@ -73,7 +73,7 @@
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Подготовить проект     ☷ 1/2   ◷ 15 нояб."
+                        android:text="@string/widget_preview_task_line_1"
                         android:textColor="#F5F5FA"
                         android:textSize="12sp"/>
             </LinearLayout>
@@ -100,7 +100,7 @@
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Отправить отчёт          ◷ 20 нояб."
+                        android:text="@string/widget_preview_task_line_2"
                         android:textColor="#F5F5FA"
                         android:textSize="12sp"/>
             </LinearLayout>
@@ -127,7 +127,7 @@
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Проверить макет          ◷ 22 нояб."
+                        android:text="@string/widget_preview_task_line_3"
                         android:textColor="#F5F5FA"
                         android:textSize="12sp"/>
             </LinearLayout>
@@ -154,7 +154,7 @@
                         android:layout_weight="1"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:text="Позвонить команде         ◷ 25 нояб."
+                        android:text="@string/widget_preview_task_line_4"
                         android:textColor="#F5F5FA"
                         android:textSize="12sp"/>
             </LinearLayout>
