@@ -1,14 +1,12 @@
 # Workflow Handoff
 
 - **Status:** Idle
-- **Active plan:** [`docs/plans/0009-android-widget-locale-refresh.md`](../plans/0009-android-widget-locale-refresh.md).
-- **Last completed step:** Implemented per-instance locale state and awaited refresh calls for both Glance providers;
-  Android compilation and `git diff --check` succeeded.
-- **Next action:** Verify the visible update without widget interaction on an Android device when available.
-- **Changed or uncommitted files:** See the approved scope in [
-  `docs/plans/0009-android-widget-locale-refresh.md`](../plans/0009-android-widget-locale-refresh.md); no commit was
-  made.
-- **Known failures or blockers:** Device verification is pending; implementation requests a per-instance update after
-  changing Glance locale state.
+- **Last completed step:** Completed plan 0010. Both focused Flutter bridge test files passed (12 tests total), and
+  `git diff --check` passed.
+- **Next action:** Android Glance rendering and launcher behavior can be verified on a device when available.
+- **Changed or uncommitted files:** See completed scope in [
+  `docs/plans/0010-android-widget-tests.md`](../plans/0010-android-widget-tests.md); no commit was made.
+- **Known failures or blockers:** Native Glance rendering and launcher behavior are not covered by the Flutter test
+  harness and were not verified here.
 - **Manual step for first use:** Trust this repository in Codex Desktop, then open a fresh project chat so
   project-scoped settings and custom agents load.
