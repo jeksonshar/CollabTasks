@@ -391,4 +391,4 @@ private fun GroupTaskWidgetRow(groupId: String, task: WidgetGroupTask) {
 private fun String.initials(): String = trim().split(Regex("\\s+")).filter(String::isNotBlank)
     .take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("").ifBlank { "?" }
 
-private fun widgetColor(color: Int): ColorProvider = ColorProvider(Color(color))
+private fun widgetColor(color: Int): ColorProvider = androidx.glance.color.ColorProvider(Color(color), Color(color))

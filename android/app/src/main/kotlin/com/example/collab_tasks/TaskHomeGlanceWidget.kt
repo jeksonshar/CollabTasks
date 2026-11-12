@@ -6,39 +6,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.glance.ColorFilter
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
+import androidx.glance.*
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.*
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
-import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
-import androidx.glance.background
-import androidx.glance.currentState
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
-import androidx.glance.layout.padding
-import androidx.glance.layout.size
-import androidx.glance.layout.width
+import androidx.glance.layout.*
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -147,7 +126,7 @@ private fun String?.toWidgetTasks(): List<WidgetTask> = runCatching {
 private val taskIdKey = ActionParameters.Key<String>(MainActivity.EXTRA_TASK_ID)
 private val openHomeKey = ActionParameters.Key<Boolean>(MainActivity.EXTRA_OPEN_HOME)
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun TaskWidgetContent(tasks: List<WidgetTask>) {
     val openHomeAction = actionStartActivity<MainActivity>(actionParametersOf(openHomeKey to true))
@@ -220,7 +199,7 @@ private fun TaskWidgetContent(tasks: List<WidgetTask>) {
     }
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun TaskWidgetRow(task: WidgetTask) {
     val priorityColor = when (task.priority) {
@@ -269,7 +248,7 @@ private fun TaskWidgetRow(task: WidgetTask) {
 //                        3 -> "P3"
 //                        else -> "—"
 //                    },
-//                    style = TextStyle(color = widgetColor(priorityColor), fontSize = 10.sp),
+//                    style = TextStyle(color = widgetColor(priorityColor), fontSize = 10.sp)
 //                )
             }
 
@@ -318,7 +297,7 @@ private fun TaskWidgetRow(task: WidgetTask) {
     }
 }
 
-@androidx.glance.GlanceComposable
+@GlanceComposable
 @androidx.compose.runtime.Composable
 private fun TaskWidgetIndicator(
     iconRes: Int,
@@ -345,4 +324,4 @@ private fun TaskWidgetIndicator(
 private fun formatDeadline(deadlineMillis: Long): String =
     SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(deadlineMillis))
 
-private fun widgetColor(color: Int): ColorProvider = ColorProvider(Color(color))
+private fun widgetColor(color: Int): ColorProvider = androidx.glance.color.ColorProvider(Color(color), Color(color))

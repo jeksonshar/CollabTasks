@@ -7,6 +7,7 @@ import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 class MainActivity : FlutterFragmentActivity() {
     private val channelName = "com.collab_tasks/task_widget"
@@ -41,9 +42,9 @@ class MainActivity : FlutterFragmentActivity() {
                 "updateTasks" -> {
                     val tasksJson = call.arguments as? String ?: "[]"
                     getSharedPreferences(TaskHomeWidgetCache.PREFERENCES, MODE_PRIVATE)
-                        .edit()
-                        .putString(TaskHomeWidgetCache.TASKS_KEY, tasksJson)
-                        .apply()
+                        .edit {
+                            putString(TaskHomeWidgetCache.TASKS_KEY, tasksJson)
+                        }
                     CoroutineScope(Dispatchers.IO).launch {
                         TaskHomeWidgetCache.updateAllWidgets(applicationContext)
                     }
@@ -66,9 +67,9 @@ class MainActivity : FlutterFragmentActivity() {
                 "updateGroups" -> {
                     val groupsJson = call.arguments as? String ?: "[]"
                     getSharedPreferences(GroupsHomeWidgetCache.PREFERENCES, MODE_PRIVATE)
-                        .edit()
-                        .putString(GroupsHomeWidgetCache.GROUPS_KEY, groupsJson)
-                        .apply()
+                        .edit {
+                            putString(GroupsHomeWidgetCache.GROUPS_KEY, groupsJson)
+                        }
                     CoroutineScope(Dispatchers.IO).launch {
                         GroupsHomeWidgetCache.updateAllWidgets(applicationContext)
                     }
