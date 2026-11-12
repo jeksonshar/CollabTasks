@@ -1,45 +1,158 @@
 # Feature: Calls
 
 ## 1. Business Goal & Value
+
 - **Purpose:** Process native incoming-call actions and prepare RTC session data.
 - **User Stories Covered:** Accept, decline, and cancel incoming calls from the CallKit interface.
 
 ## 2. Architectural Blueprint (Clean Architecture)
 
 ### Domain Layer
+
 - **Models:** `CallDataEntity` contains the CallKit and RTC fields supplied by the incoming-call payload.
 - **Use Cases:**
     - `AcceptIncomingCallUseCase` accepts a call, dismisses the native screen, and returns a `CallSession`.
     - `DeclineIncomingCallUseCase` rejects the call and stops call alerts and the native screen.
     - `CancelIncomingCallUseCase` stops call alerts and dismisses the native screen.
-- **Bloc Events and States:** `CallKitEventReceived` forwards native plugin events to `CallsBloc`; `CallAcceptedState` carries the call payload and RTC session, while `CallsState.acceptedCallData` keeps the payload available through `copyWith` and resume restoration. Terminal outcomes emit an idle `CallEndedState` with a unique terminal event ID; active call, RTC session, and media participant data are cleared, while the authenticated recipient identity is retained for the next call. That identity is cleared when incoming-call listening stops on logout. Root navigation and incoming-call dialogs remain driven by UI-layer Bloc listeners.
-- **Bloc Internal Components:** `CallsBloc` creates one `CallKitEventBridge` for the injected plugin stream and closes it with the Bloc; the bridge only forwards non-null plugin events as `CallKitEventReceived`. CallKit actions that affect call state remain handled by the Bloc so they share its lifecycle reservation and terminal-state guards. `CallsRtcCoordinator`, owned by the Bloc, handles RTC join deduplication, RTC stream subscriptions, media commands, and leaving the RTC session. `CallsFirestoreWatchCoordinator` owns only the incoming-call and active-call Firestore subscription handles. `CallsBloc` still chooses when to start, replace, stop, and close those subscriptions, constructs `ActiveCallUpdated` with the watched call ID and generation, handles stream errors, and validates event freshness before changing state. The coordinator reports no call state itself; `CallsBloc` remains the sole owner of `CallsState` transitions.
-- **Lifecycle Concurrency:** Bloc event handlers remain concurrent across event types. `CallsBloc` reserves one lifecycle action per call ID before awaiting UseCases, rejects duplicate starts while a call is being created, and deduplicates terminal outcomes. Firestore updates carry both `watchedCallId` and a watch-generation token; terminal updates received during an action are deferred until its reservation is released, then ignored if that action already ended the same call. RTC join deduplication is scoped to the owned `CallsRtcCoordinator` and is cleared during terminal cleanup.
-- **Navigation and Restore:** The app restores persisted CallKit actions before starting the Firestore incoming-call listener. Pending accept IDs remain suppressed while queued events drain, preventing a Firestore snapshot from opening a duplicate dialog. The in-app incoming dialog is shown only while the app is resumed; while backgrounded, incoming UI belongs to CallKit. `CallAcceptedState` routes through the root navigator once per call ID; the app also rechecks the current accepted state after restoration and resume in case the state was emitted before the navigation listener was ready. On app resume it refreshes preferences and checks `FlutterCallkitIncoming.activeCalls()` as a fallback. Android's main Flutter activity uses `singleTop` so CallKit's accept intent can be delivered to the existing app activity.
-- **Repository Interface:** `FirestoreCallRepository` uses Firestore transactions for accept, reject, leave, invite, cancel, and end. It validates the authenticated actor and the current call/participant status before writing. Ordinary accept changes `ringing` to `active`; active group invite acceptance changes only the invitee record. Leave changes the caller's participant record while preserving `calleeIds`, or marks a callee `left` and removes that identity; neither leave nor invite writes call-level terminal fields. A group decline changes only the declining participant. Missing calls, invalid transitions, and Firestore read/write failures propagate to the caller.
-- **Abrupt process termination:** Flutter cleanup cannot be relied on after Android force-stop or process kill. Cloud Functions seed server-timestamp heartbeats when a participant becomes connected; while connected to RTC, `CallLivenessCoordinator` refreshes `calls/{callId}/heartbeats/{participantId}` every 15 seconds. It also invokes `reconcileStaleCallParticipants` every 10 seconds; Agora's `onUserOffline` triggers an immediate extra check and the RTC event is tagged with its owning `callId`. The function verifies that the requester is a connected call member, then independently checks all other connected members' server-written heartbeats. A heartbeat at least 30 seconds old marks a group participant `left` and removes them from `calleeIds`, or ends a direct call. The endpoint chooses stale members itself; the client cannot nominate a target. `GroupCallScreen` also hides a participant as soon as Agora reports them absent. The scheduled `expireStaleCallParticipants` function remains a fallback when no peer can reconcile: it runs every minute and cleans heartbeats older than two minutes, rechecking the call and heartbeat inside a transaction. Firestore Rules and the heartbeat collection-group index remain required for heartbeat writes and fallback queries. This change requires deploying the Cloud Function and installing an app build with the 10-second reconciliation timer; no Firestore Rules change is needed.
+- **Bloc Events and States:** `CallKitEventReceived` forwards native plugin events to `CallsBloc`; `CallAcceptedState`
+  carries the call payload and RTC session, while `CallsState.acceptedCallData` keeps the payload available through
+  `copyWith` and resume restoration. RTC participant-media updates are matched against `acceptedCallData.callId` when an
+  accepted state does not expose an `activeCall`, so the accepted session's media state is not discarded. Terminal
+  outcomes emit an idle `CallEndedState` with a unique terminal event ID; active call, RTC session, and media
+  participant data are cleared, while the authenticated recipient identity is retained for the next call. That identity
+  is cleared when incoming-call listening stops on logout. Root navigation and incoming-call dialogs remain driven by
+  UI-layer Bloc listeners.
+- **Bloc Internal Components:** `CallsBloc` creates one `CallKitEventBridge` for the injected plugin stream and closes
+  it with the Bloc; the bridge only forwards non-null plugin events as `CallKitEventReceived`. CallKit actions that
+  affect call state remain handled by the Bloc so they share its lifecycle reservation and terminal-state guards.
+  `CallsRtcCoordinator`, owned by the Bloc, handles RTC join deduplication, RTC stream subscriptions, media commands,
+  and leaving the RTC session. `CallsFirestoreWatchCoordinator` owns only the incoming-call and active-call Firestore
+  subscription handles. `CallsBloc` still chooses when to start, replace, stop, and close those subscriptions,
+  constructs `ActiveCallUpdated` with the watched call ID and generation, handles stream errors, and validates event
+  freshness before changing state. The coordinator reports no call state itself; `CallsBloc` remains the sole owner of
+  `CallsState` transitions.
+- **Lifecycle Concurrency:** Bloc event handlers remain concurrent across event types. `CallsBloc` reserves one
+  lifecycle action per call ID before awaiting UseCases, rejects duplicate starts while a call is being created, and
+  deduplicates terminal outcomes. Firestore updates carry both `watchedCallId` and a watch-generation token; terminal
+  updates received during an action are deferred until its reservation is released, then ignored if that action already
+  ended the same call. RTC join deduplication is scoped to the owned `CallsRtcCoordinator` and is cleared during
+  terminal cleanup.
+- **Navigation and Restore:** The app restores persisted CallKit actions before starting the Firestore incoming-call
+  listener. Pending accept IDs remain suppressed while queued events drain, preventing a Firestore snapshot from opening
+  a duplicate dialog. The in-app incoming dialog is shown only while the app is resumed; while backgrounded, incoming UI
+  belongs to CallKit. `CallAcceptedState` routes through the root navigator once per call ID; the app also rechecks the
+  current accepted state after restoration and resume in case the state was emitted before the navigation listener was
+  ready. On app resume it refreshes preferences and checks `FlutterCallkitIncoming.activeCalls()` as a fallback.
+  Android's main Flutter activity uses `singleTop` so CallKit's accept intent can be delivered to the existing app
+  activity.
+- **Repository Interface:** `FirestoreCallRepository` uses Firestore transactions for accept, reject, leave, invite,
+  cancel, and end. It validates the authenticated actor and the current call/participant status before writing. Ordinary
+  accept changes `ringing` to `active`; active group invite acceptance changes only the invitee record. Leave changes
+  the caller's participant record while preserving `calleeIds`, or marks a callee `left` and removes that identity;
+  neither leave nor invite writes call-level terminal fields. A group decline changes only the declining participant.
+  Missing calls, invalid transitions, and Firestore read/write failures propagate to the caller.
+- **Abrupt process termination:** Flutter cleanup cannot be relied on after Android force-stop or process kill. Cloud
+  Functions seed server-timestamp heartbeats when a participant becomes connected; while connected to RTC,
+  `CallLivenessCoordinator` refreshes `calls/{callId}/heartbeats/{participantId}` every 15 seconds. It also invokes
+  `reconcileStaleCallParticipants` every 10 seconds; Agora's `onUserOffline` triggers an immediate extra check and the
+  RTC event is tagged with its owning `callId`. The function verifies that the requester is a connected call member,
+  then independently checks all other connected members' server-written heartbeats. A heartbeat at least 30 seconds old
+  marks a group participant `left` and removes them from `calleeIds`, or ends a direct call. The endpoint chooses stale
+  members itself; the client cannot nominate a target. `GroupCallScreen` also hides a participant as soon as Agora
+  reports them absent. The scheduled `expireStaleCallParticipants` function remains a fallback when no peer can
+  reconcile: it runs every minute and cleans heartbeats older than two minutes, rechecking the call and heartbeat inside
+  a transaction. Firestore Rules and the heartbeat collection-group index remain required for heartbeat writes and
+  fallback queries. This change requires deploying the Cloud Function and installing an app build with the 10-second
+  reconciliation timer; no Firestore Rules change is needed.
 
 ### Data Layer
+
 - **Remote Data:** `CallRepository` implementation sends accept/reject requests to the configured backend.
-- **Native Integration:** `CallKitService` abstracts the platform call UI; `CallKitServiceImpl` uses the local `packages/flutter_callkit_incoming` fork. On Android, the lock-screen activity listens for a package-scoped end broadcast; the intent must not target the Activity component, or the dynamic receiver will not receive the request to finish.
-- **Push Payload:** The FCM background handler accepts `incoming_call` and `cancel_call` in either the `action` or `type` field. It registers the CallKit action callback in the FCM-started process before presenting an incoming call, so native Decline can reach Dart even when Android had to recreate the process. Incoming call messages include the target `calleeId`, allowing a background decline to reject the correct call participant. The handler logs message receipt and CallKit presentation under `[FCMCall]`; Cloud Function `onCallCreated` logs recipient-token counts and per-send FCM errors. The foreground notification listener ignores call messages; the app's incoming-call UI remains the foreground control surface.
-- **CallKit Actions:** A background CallKit event handler persists Accept actions and queues Decline for retry if its Firestore write fails. A native Decline uses the recipient ID from the call payload if app authentication state is not yet restored, so the Firestore rejection does not wait for Bloc identity initialization. Decline cleanup still dismisses native UI and stops ringing when the remote write fails. Accepted CallKit calls subscribe to Firestore updates so a remote hangup ends local RTC state. Terminal call status changes (`cancelled`, `rejected`, or `ended`) send cancellation pushes even after the call became active; the client dismisses the native ongoing-call notification and clears matching call state. Call dismissal also clears the Android incoming notification and ringing audio.
-- **Terminal call outcomes:** Rejection, cancellation, end, leave, timeout, permission denial, accept failure, and RTC connection failure share terminal cleanup. `CallsBloc` returns to `idle`, preserves the authenticated user ID, clears stale active call/session data, and records an error once when relevant. Root navigation displays terminal errors once; call screens and incoming dialogs close only on a status transition, avoiding repeated pops.
-- **Group Calls & Dynamic Invitations:** When initiating a group call from a group chat, all group participants (excluding the caller) are passed as `calleeIds`. Participant records are stored in the Firestore `participantsByUser` map, keyed by normalized email or Firebase UID, and converted back to the `Call.participants` list for UI. The group call host immediately joins Agora RTC session and transitions `CallsStatus` to `active`, bypassing the 1-to-1 outgoing dial tone and 45-second timeout. Incoming call streams monitor both `ringing` calls and `active` calls where the authenticated user's email or UID has a ringing record. When a participant leaves a group call (`leaveCall`), they are removed from `calleeIds` and their record changes to `left`; `GroupCallScreen` filters out participants with `left` or `declined` status. A caller may re-invite a `left` or `declined` participant during an active group call, returning only that user's map entry to `ringing`; the participant can accept by changing their own entry to `connected` without changing the call status or other records. Cloud Function `onCallUpdated` detects new callees and participant map entries that transition to `ringing`, dispatching `incoming_call` FCM data pushes to wake backgrounded or locked devices. It also aggregates group declines and departures because client Rules do not permit participants to rewrite other entries to calculate group-wide terminal status. `CallsBloc` clears prior resolution flags for active calls with ringing participants, allowing re-invited devices to present the incoming call dialog and rejoin the call. `CallAcceptedState` retains `activeCall` state so group call screens display the full participant grid with email identifiers and call duration timer.
-- **Agora Video Streaming & Group UID Synchronization:** For video calls, `AgoraRtcService` applies mobile-optimized video encoder configurations (`640x360 @ 15fps, 600 kbps`) and enables dual-stream mode upon session start. `AgoraUidMapper` derives positive 31-bit UIDs from SHA-256 of normalized call participant IDs. The same mapper instance is injected into `FirestoreCallRepository` and `AgoraRtcService`; the repository sends the computed local UID to the token function and carries the verified roster mapping in `CallSession`. RTC verifies that the session UID matches the stable mapping before `joinChannel`, and the video factory resolves remote views through that mapping. Email is normalized to lowercase while Firebase UID case is preserved. The current user's email/UID aliases are linked only from `FirebaseAuth`; other participant IDs use the canonical identifier stored in that call. A hash collision within a call roster aborts session preparation with an explicit error rather than assigning order-dependent UIDs. `GroupCallScreen` matches media states by normalized participant identity and does not compute a separate UID. The `calls` document schema remains unchanged and does not persist Agora UIDs. Every new RTC session resets microphone mute and speakerphone to off and configures camera tracks from the session media type; the current speakerphone route is applied after Agora confirms channel entry. `leaveSession` resets SDK media, routing, and the in-memory participant mapping. Background camera suspension remains distinct from the user's manual camera toggle.
+- **Native Integration:** `CallKitService` abstracts the platform call UI; `CallKitServiceImpl` uses the local
+  `packages/flutter_callkit_incoming` fork. On Android, the lock-screen activity listens for a package-scoped end
+  broadcast; the intent must not target the Activity component, or the dynamic receiver will not receive the request to
+  finish.
+- **Push Payload:** The FCM background handler accepts `incoming_call` and `cancel_call` in either the `action` or
+  `type` field. It registers the CallKit action callback in the FCM-started process before presenting an incoming call,
+  so native Decline can reach Dart even when Android had to recreate the process. Incoming call messages include the
+  target `calleeId`, allowing a background decline to reject the correct call participant. The handler logs message
+  receipt and CallKit presentation under `[FCMCall]`; Cloud Function `onCallCreated` logs recipient-token counts and
+  per-send FCM errors. The foreground notification listener ignores call messages; the app's incoming-call UI remains
+  the foreground control surface.
+- **CallKit Actions:** A background CallKit event handler persists Accept actions and queues Decline for retry if its
+  Firestore write fails. A native Decline uses the recipient ID from the call payload if app authentication state is not
+  yet restored, so the Firestore rejection does not wait for Bloc identity initialization. Decline cleanup still
+  dismisses native UI and stops ringing when the remote write fails. Accepted CallKit calls subscribe to Firestore
+  updates so a remote hangup ends local RTC state. Terminal call status changes (`cancelled`, `rejected`, or `ended`)
+  send cancellation pushes even after the call became active; the client dismisses the native ongoing-call notification
+  and clears matching call state. Call dismissal also clears the Android incoming notification and ringing audio.
+- **Terminal call outcomes:** Rejection, cancellation, end, leave, timeout, permission denial, accept failure, and RTC
+  connection failure share terminal cleanup. `CallsBloc` returns to `idle`, preserves the authenticated user ID, clears
+  stale active call/session data, and records an error once when relevant. Root navigation displays terminal errors
+  once; call screens and incoming dialogs close only on a status transition, avoiding repeated pops.
+- **Group Calls & Dynamic Invitations:** When initiating a group call from a group chat, all group participants
+  (excluding the caller) are passed as `calleeIds`. Participant records are stored in the Firestore `participantsByUser`
+  map, keyed by normalized email or Firebase UID, and converted back to the `Call.participants` list for UI. The group
+  call host immediately joins Agora RTC session and transitions `CallsStatus` to `active`, bypassing the 1-to-1 outgoing
+  dial tone and 45-second timeout. Incoming call streams monitor both `ringing` calls and `active` calls where the
+  authenticated user's email or UID has a ringing record. When a participant leaves a group call (`leaveCall`), they are
+  removed from `calleeIds` and their record changes to `left`; `GroupCallScreen` filters out participants with `left` or
+  `declined` status. A caller may re-invite a `left` or `declined` participant during an active group call, returning
+  only that user's map entry to `ringing`; the participant can accept by changing their own entry to `connected` without
+  changing the call status or other records. Cloud Function `onCallUpdated` detects new callees and participant map
+  entries that transition to `ringing`, dispatching `incoming_call` FCM data pushes to wake backgrounded or locked
+  devices. It also aggregates group declines and departures because client Rules do not permit participants to rewrite
+  other entries to calculate group-wide terminal status. `CallsBloc` clears prior resolution flags for active calls with
+  ringing participants, allowing re-invited devices to present the incoming call dialog and rejoin the call.
+  `CallAcceptedState` retains `activeCall` state so group call screens display the full participant grid with email
+  identifiers and call duration timer.
+- **Agora Video Streaming & Group UID Synchronization:** For video calls, `AgoraRtcService` applies mobile-optimized
+  video encoder configurations (`640x360 @ 15fps, 600 kbps`) and enables dual-stream mode upon session start.
+  `AgoraUidMapper` derives positive 31-bit UIDs from SHA-256 of normalized call participant IDs. The same mapper
+  instance is injected into `FirestoreCallRepository` and `AgoraRtcService`; the repository sends the computed local UID
+  to the token function and carries the verified roster mapping in `CallSession`. RTC verifies that the session UID
+  matches the stable mapping before `joinChannel`, and the video factory resolves remote views through that mapping.
+  Email is normalized to lowercase while Firebase UID case is preserved. The current user's email/UID aliases are linked
+  only from `FirebaseAuth`; other participant IDs use the canonical identifier stored in that call. A hash collision
+  within a call roster aborts session preparation with an explicit error rather than assigning order-dependent UIDs.
+  `GroupCallScreen` matches media states by normalized participant identity and does not compute a separate UID. The
+  `calls` document schema remains unchanged and does not persist Agora UIDs. Every new RTC session resets microphone
+  mute and speakerphone to off and configures camera tracks from the session media type; the current speakerphone route
+  is applied after Agora confirms channel entry. `leaveSession` resets SDK media, routing, and the in-memory participant
+  mapping. Background camera suspension remains distinct from the user's manual camera toggle.
 
 ### Presentation Layer (UI & Bloc)
+
 - **Native Actions:** Use cases can be called from native CallKit action callbacks without requiring the in-app call UI.
-- **Responsive Group Call Grid & Controls:** `GroupCallScreen` renders 1-2 participants in single-column layout and switches to a 2-column `GridView` for 3+ participants. Grid cells responsively scale avatar radius, text sizes, and padding depending on column count. Participant name tags wrap in an `Expanded` container with `TextOverflow.ellipsis`, ensuring long email addresses and suffixes (`(You)`, `(Calling...)`) never trigger `RenderFlex` overflows. For ringing participants, a prominent status badge with spinner renders below the center avatar. The bottom controls bar uses an evenly-spaced full-width row with compact padding, ensuring comfortable button distribution across the entire screen width without unwanted margins.
-- **Feature Localization (l10n/i18n):** All presentation layer components (`IncomingCallDialog`, `AudioCallScreen`, `VideoCallScreen`, `GroupCallScreen`) strictly consume localized text from `AppLocalizations` across English (`en`), Russian (`ru`), and Ukrainian (`uk`). Localized strings cover incoming call alerts, call and RTC connection states (`calling`, `ringing`, `connecting`, `reconnecting`, `failed`, `disconnected`), action tooltips and buttons (`mute`/`unmute`, camera toggles, switch camera, speaker, end call, leave call, end for all), invitation dialog fields, and participant badges. Business logic in `domain` and `data` remains strictly separated without any UI or localization coupling.
+- **Responsive Group Call Grid & Controls:** `GroupCallScreen` renders 1-2 participants in single-column layout and
+  switches to a 2-column `GridView` for 3+ participants. Grid cells responsively scale avatar radius, text sizes, and
+  padding depending on column count. Participant name tags wrap in an `Expanded` container with `TextOverflow.ellipsis`,
+  ensuring long email addresses and suffixes (`(You)`, `(Calling...)`) never trigger `RenderFlex` overflows. For ringing
+  participants, a prominent status badge with spinner renders below the center avatar. The bottom controls bar uses an
+  evenly-spaced full-width row with compact padding, ensuring comfortable button distribution across the entire screen
+  width without unwanted margins.
+- **Feature Localization (l10n/i18n):** All presentation layer components (`IncomingCallDialog`, `AudioCallScreen`,
+  `VideoCallScreen`, `GroupCallScreen`) strictly consume localized text from `AppLocalizations` across English (`en`),
+  Russian (`ru`), and Ukrainian (`uk`). Localized strings cover incoming call alerts, call and RTC connection states
+  (`calling`, `ringing`, `connecting`, `reconnecting`, `failed`, `disconnected`), action tooltips and buttons (`mute`/
+  `unmute`, camera toggles, switch camera, speaker, end call, leave call, end for all), invitation dialog fields, and
+  participant badges. Business logic in `domain` and `data` remains strictly separated without any UI or localization
+  coupling.
 
 ## 3. Testing Matrix
+
 - [ ] **Unit:** Verify repository calls, RTC session result, alert stop, and CallKit dismissal.
-- [ ] **Agora UID:** Verify fixed SHA-256 UID vectors, stable results in separate mapper instances, verified local email/UID aliases, explicit roster collision errors, and token/session/join UID equality.
-- [ ] **RTC:** Verify video-to-audio session cleanup, media track publication, and mute/speaker reset. Verify a system camera pause does not override a manual camera-off choice.
-- [ ] **Liveness:** Verify heartbeat writes during a normal backgrounded call; confirm the 10-second server reconciliation ends a direct call or marks only stale group participants `left` after the 30-second heartbeat threshold. Verify Agora offline events immediately hide a group participant, the two-minute scheduled fallback cleans up when no peer survives, and a `left` participant can be invited again.
+- [ ] **Agora UID:** Verify fixed SHA-256 UID vectors, stable results in separate mapper instances, verified local
+  email/UID aliases, explicit roster collision errors, and token/session/join UID equality.
+- [ ] **RTC:** Verify video-to-audio session cleanup, media track publication, and mute/speaker reset. Verify a system
+  camera pause does not override a manual camera-off choice.
+- [ ] **Liveness:** Verify heartbeat writes during a normal backgrounded call; confirm the 10-second server
+  reconciliation ends a direct call or marks only stale group participants `left` after the 30-second heartbeat
+  threshold. Verify Agora offline events immediately hide a group participant, the two-minute scheduled fallback cleans
+  up when no peer survives, and a `left` participant can be invited again.
 
 ## 4. Data Flow & State Machine (Mermaid)
+
 ```mermaid
 graph TD
     Native[FlutterCallkitIncoming Event Stream] --> Bloc[CallsBloc]

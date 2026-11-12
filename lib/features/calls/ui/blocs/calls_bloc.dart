@@ -1185,7 +1185,7 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
     ParticipantMediaStatesUpdated event,
     Emitter<CallsState> emit,
   ) {
-    final callId = state.activeCall?.id;
+    final callId = state.acceptedCallData?.callId ?? state.activeCall?.id;
     if (event.callId != null && event.callId != callId) return;
 
     final previousRemoteIds = state.participantMediaStates
