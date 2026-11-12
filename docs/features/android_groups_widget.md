@@ -9,6 +9,8 @@
   active.
 - The widget uses AndroidX Glance, the Jetpack Compose-based app-widget API. Its provider is registered separately from
   the personal task widget and uses an independent MethodChannel and cache.
+- The Android widget picker has a separate rounded dark `previewLayout` with generic collapsed and expanded group
+  examples, plus a matching `previewImage` PNG fallback. Preview content is static and does not expose live group data.
 
 ## 2. Architectural Blueprint (Clean Architecture)
 
@@ -53,6 +55,7 @@
 | Groups Glance provider and Android registration | Platform              | No automated widget test; verify with Android compilation and launcher scenario.                 | Provider is independently installable at 3×3 size; vector icons render for groups, expansion, navigation, and task status; list scrolls; background and item taps route correctly; personal widget remains registered.                                                     |
 | Groups snapshot bridge and stream listener      | Data / UI             | No automated bridge/listener test added; verify with focused Flutter analysis and app scenarios. | Group add/remove updates, invited/accepted participant deduplication with accepted-record preference, self identity flag, participant/task stream updates, empty state, direct chat loading and completion, task details, and groups-tab selection with bottom navigation. |
 | Existing personal task widget                   | Platform / Regression | No new automated test; verify in the same launcher scenario.                                     | Personal widget remains installable and its task/background actions still work beside GroupsWidget.                                                                                                                                                                        |
+| Groups widget picker preview                    | Platform / Resources  | N/A                                                                                              | Verify the rounded dark preview, collapsed/expanded sample cards, and fallback image in the launcher picker; preview data is static and generic.                                                                                                                           |
 
 - **Domain:** N/A; existing models and use cases are reused.
 - **Data:** No database or repository implementation changes; Android JSON cache behavior is covered by the widget

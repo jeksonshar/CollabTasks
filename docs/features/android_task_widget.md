@@ -11,6 +11,8 @@
   without opening the app.
 - The widget UI is authored in Kotlin with Jetpack Glance; Android's required widget metadata XML only registers the
   widget and provides its initial loading layout.
+- The Android widget picker uses a static, rounded dark `previewLayout` with generic example tasks, plus a matching
+  `previewImage` PNG fallback. These resources are separate from the live Glance widget and do not expose user data.
 - The same scrollable home-screen widget is not available on iOS because iOS widgets do not support user-controlled
   scrolling.
 
@@ -45,11 +47,12 @@
 
 ## 3. Testing Matrix
 
-| Component                                    | Layer           | Test file(s) | Behaviors and cases covered                                                                                                                                                                  |
-|:---------------------------------------------|:----------------|:-------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Task widget bridge and Android Glance widget | Data / Platform | N/A          | No direct automated tests; manually verify a task with subtasks, a deadline, and attachments displays the matching icons and values in the launcher widget, including overdue deadline tint. |
-| Widget task navigation and refresh           | Bloc / UI       | N/A          | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added.                                                                             |
-| Widget coexistence regression                | Platform        | N/A          | Install both Android widgets, verify both are listed and render independently, then check personal task taps and background navigation after using GroupsWidget.                             |
+| Component                                    | Layer                | Test file(s) | Behaviors and cases covered                                                                                                                                                                  |
+|:---------------------------------------------|:---------------------|:-------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Task widget bridge and Android Glance widget | Data / Platform      | N/A          | No direct automated tests; manually verify a task with subtasks, a deadline, and attachments displays the matching icons and values in the launcher widget, including overdue deadline tint. |
+| Widget task navigation and refresh           | Bloc / UI            | N/A          | Task taps reuse highlighted-task state; background taps clear the highlight. No direct automated coverage added.                                                                             |
+| Widget coexistence regression                | Platform             | N/A          | Install both Android widgets, verify both are listed and render independently, then check personal task taps and background navigation after using GroupsWidget.                             |
+| Widget picker preview                        | Platform / Resources | N/A          | Verify the rounded dark preview, sample task cards and fallback image in the launcher picker; preview data is static and generic.                                                            |
 
 - **Domain:** N/A; no domain behavior changed.
 - **Data:** Android mirrors the presentation snapshot into per-widget Glance state; Drift remains the application task

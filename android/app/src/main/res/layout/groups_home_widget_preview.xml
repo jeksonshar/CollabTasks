@@ -1,0 +1,162 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:background="@drawable/widget_preview_background">
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Группы"
+                    android:textColor="#F5F5FA"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3"
+                    android:textColor="#A0A2B0"
+                    android:textSize="14sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/widget_preview_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="10dp">
+
+            <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription=""
+                    android:src="@drawable/ic_widget_groups"
+                    android:tint="#A0AAFF"/>
+
+            <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="Первая группа"
+                        android:textColor="#F5F5FA"
+                        android:textSize="13sp"
+                        android:textStyle="bold"/>
+
+                <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="Проект команды"
+                        android:textColor="#A0A2B0"
+                        android:textSize="10sp"/>
+            </LinearLayout>
+
+            <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription=""
+                    android:src="@drawable/ic_widget_keyboard_arrow_down"
+                    android:tint="#B4B6C6"/>
+        </LinearLayout>
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/widget_preview_card"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription=""
+                        android:src="@drawable/ic_widget_groups"
+                        android:tint="#A0AAFF"/>
+
+                <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="Рабочий проект"
+                        android:textColor="#F5F5FA"
+                        android:textSize="13sp"
+                        android:textStyle="bold"/>
+
+                <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription=""
+                        android:src="@drawable/ic_widget_keyboard_arrow_up"
+                        android:tint="#B4B6C6"/>
+            </LinearLayout>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Участники (1)"
+                    android:textColor="#AEB1C7"
+                    android:textSize="11sp"
+                    android:textStyle="bold"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/widget_preview_card"
+                    android:padding="5dp"
+                    android:text="  ДИ     Дмитрий Иванов"
+                    android:textColor="#E6E7EF"
+                    android:textSize="12sp"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:text="Задачи (1)"
+                    android:textColor="#AEB1C7"
+                    android:textSize="11sp"
+                    android:textStyle="bold"/>
+
+            <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="○   Подготовить презентацию       ›"
+                    android:textColor="#E6E7EF"
+                    android:textSize="11sp"/>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
