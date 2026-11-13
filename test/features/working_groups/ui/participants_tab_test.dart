@@ -95,10 +95,11 @@ void main() {
     expect(tappedParticipantId, otherParticipant.id);
   });
 
-  testWidgets('popup menu provides direct chat, audio call and video call actions', (tester) async {
+  // testWidgets('popup menu provides direct chat, audio call and video call actions', (tester) async {
+  testWidgets('popup menu provides direct chat while call actions are disabled', (tester) async {
     String? directChatParticipantId;
-    String? audioCallParticipantId;
-    String? videoCallParticipantId;
+    // String? audioCallParticipantId;
+    // String? videoCallParticipantId;
 
     const state = GroupDetailsState(
       status: GroupDetailsStatus.loaded,
@@ -113,8 +114,8 @@ void main() {
           isParticipant: true,
           onRefresh: () async {},
           onDirectChatTap: (id) => directChatParticipantId = id,
-          onAudioCallTap: (id) => audioCallParticipantId = id,
-          onVideoCallTap: (id) => videoCallParticipantId = id,
+          // onAudioCallTap: (id) => audioCallParticipantId = id,
+          // onVideoCallTap: (id) => videoCallParticipantId = id,
         ),
       ),
     );
@@ -125,27 +126,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Open direct chat'), findsOneWidget);
-    expect(find.text('Audio call'), findsOneWidget);
-    expect(find.text('Video call'), findsOneWidget);
+    // expect(find.text('Audio call'), findsOneWidget);
+    // expect(find.text('Video call'), findsOneWidget);
+    expect(find.text('Audio call'), findsNothing);
+    expect(find.text('Video call'), findsNothing);
 
     await tester.tap(find.text('Open direct chat'));
     await tester.pumpAndSettle();
     expect(directChatParticipantId, otherParticipant.id);
-
-    // 2. Test Audio call
-    await tester.tap(find.byType(PopupMenuButton<ParticipantAction>));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Audio call'));
-    await tester.pumpAndSettle();
-    expect(audioCallParticipantId, otherParticipant.id);
-
-    // 3. Test Video call
-    await tester.tap(find.byType(PopupMenuButton<ParticipantAction>));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Video call'));
-    await tester.pumpAndSettle();
-    expect(videoCallParticipantId, otherParticipant.id);
+    //
+    // // 2. Test Audio call
+    // await tester.tap(find.byType(PopupMenuButton<ParticipantAction>));
+    // await tester.pumpAndSettle();
+    //
+    // await tester.tap(find.text('Audio call'));
+    // await tester.pumpAndSettle();
+    // expect(audioCallParticipantId, otherParticipant.id);
+    //
+    // // 3. Test Video call
+    // await tester.tap(find.byType(PopupMenuButton<ParticipantAction>));
+    // await tester.pumpAndSettle();
+    //
+    // await tester.tap(find.text('Video call'));
+    // await tester.pumpAndSettle();
+    // expect(videoCallParticipantId, otherParticipant.id);
   });
 }
