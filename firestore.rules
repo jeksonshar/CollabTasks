@@ -20,10 +20,20 @@ service cloud.firestore {
       return isIdentity(call.callerId);
     }
 
+    function isCallGroupMember(call) {
+      return signedIn() && call.isGroup == true && call.groupId is string &&
+        exists(/databases/$(database)/documents/workingGroups/$(call.groupId)) && (
+          request.auth.uid in get(/databases/$(database)/documents/workingGroups/$(call.groupId)).data.get('participantUserIds', []) ||
+          (request.auth.token.keys().hasAny(['email']) &&
+            request.auth.token.email.lower() in get(/databases/$(database)/documents/workingGroups/$(call.groupId)).data.get('participantEmails', []))
+        );
+    }
+
     function isCallMember(call) {
       return signedIn() && (
         isCallCaller(call) ||
-        call.calleeIds.hasAny(authIds())
+        call.calleeIds.hasAny(authIds()) ||
+        isCallGroupMember(call)
       );
     }
 

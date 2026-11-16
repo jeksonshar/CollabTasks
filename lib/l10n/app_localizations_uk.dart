@@ -723,6 +723,39 @@ class AppLocalizationsUk extends AppLocalizations {
   String get group_chat_videoCallTitle => 'Груповий відеодзвінок';
 
   @override
+  String get callHistoryTitle => 'Історія дзвінків';
+
+  @override
+  String get callHistoryEmpty => 'Дзвінків поки немає';
+
+  @override
+  String get callHistoryLoadError => 'Не вдалося завантажити історію дзвінків';
+
+  @override
+  String get callHistoryAudio => 'аудіодзвінок';
+
+  @override
+  String get callHistoryVideo => 'відеодзвінок';
+
+  @override
+  String callHistoryIncoming(Object type) {
+    return 'Вхідний $type';
+  }
+
+  @override
+  String callHistoryOutgoing(Object type) {
+    return 'Вихідний $type';
+  }
+
+  @override
+  String callHistoryMissed(Object type) {
+    return 'Пропущений $type';
+  }
+
+  @override
+  String get callHistoryNoDuration => '—';
+
+  @override
   String get chat_connectingToServer => 'Сервер завантажується…';
 
   @override

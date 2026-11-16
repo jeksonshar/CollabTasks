@@ -719,6 +719,39 @@ class AppLocalizationsRu extends AppLocalizations {
   String get group_chat_videoCallTitle => 'Групповой видео звонок';
 
   @override
+  String get callHistoryTitle => 'История звонков';
+
+  @override
+  String get callHistoryEmpty => 'Звонков пока нет';
+
+  @override
+  String get callHistoryLoadError => 'Не удалось загрузить историю звонков';
+
+  @override
+  String get callHistoryAudio => 'аудиозвонок';
+
+  @override
+  String get callHistoryVideo => 'видеозвонок';
+
+  @override
+  String callHistoryIncoming(Object type) {
+    return 'Входящий $type';
+  }
+
+  @override
+  String callHistoryOutgoing(Object type) {
+    return 'Исходящий $type';
+  }
+
+  @override
+  String callHistoryMissed(Object type) {
+    return 'Пропущенный $type';
+  }
+
+  @override
+  String get callHistoryNoDuration => '—';
+
+  @override
   String get chat_connectingToServer => 'Сервер загружается…';
 
   @override

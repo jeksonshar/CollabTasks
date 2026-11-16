@@ -2,8 +2,9 @@
 
 ## 1. Business Goal & Value
 
-- **Purpose:** Process native incoming-call actions and prepare RTC session data.
-- **User Stories Covered:** Accept, decline, and cancel incoming calls from the CallKit interface.
+- **Purpose:** Process calls, prepare RTC session data, and display persisted call history.
+- **User Stories Covered:** Accept, decline, and cancel incoming calls from CallKit; review call direction,
+  media type, timestamp, and duration in a direct or group conversation.
 
 ## 2. Architectural Blueprint (Clean Architecture)
 
@@ -51,6 +52,18 @@
   the caller's participant record while preserving `calleeIds`, or marks a callee `left` and removes that identity;
   neither leave nor invite writes call-level terminal fields. A group decline changes only the declining participant.
   Missing calls, invalid transitions, and Firestore read/write failures propagate to the caller.
+- **Call History:** `GetCallHistoryUseCase` reads call documents from the existing `calls` collection through
+  `CallRepository.getCallHistory`. Group history is filtered by `groupId`. Direct history is assembled from caller and
+  callee identity queries and filtered against call participants, including participants who left and were removed from
+  `calleeIds`. Results are sorted by `createdAt` descending. No additional Firestore collection or schema migration is
+  required. Firestore Rules allow the group history query only when the authenticated UID or email belongs to the
+  matching `workingGroups/{groupId}` document. The `groupId`/`isGroup` composite index is defined in
+  `firestore.indexes.json`.
+- **History Classification:** Direction is based on the current user's normalized identity matching `callerId`. A call
+  is shown as missed when it is incoming, has no `startedAt`, and has a terminal status (`missed`, `rejected`,
+  `cancelled`, or `busy`). Existing documents do not distinguish an unanswered call from a declined call or an outgoing
+  cancellation; those records therefore share the missed label for the recipient. Duration is `endedAt - startedAt`
+  and is omitted when either timestamp is absent.
 - **Abrupt process termination:** Flutter cleanup cannot be relied on after Android force-stop or process kill. Cloud
   Functions seed server-timestamp heartbeats when a participant becomes connected; while connected to RTC,
   `CallLivenessCoordinator` refreshes `calls/{callId}/heartbeats/{participantId}` every 15 seconds. It also invokes
@@ -123,6 +136,11 @@
 
 ### Presentation Layer (UI & Bloc)
 
+- **Call History:** `CallHistoryBloc` loads the requested direct or group history through
+  `GetCallHistoryUseCase`. `CallHistoryScreen` renders a newest-first vertical list with a direction/missed icon,
+  localized audio/video description, localized date and time, and elapsed duration. The Direct chat and group chat
+  app bars expose the screen through a history icon beside their call controls.
+
 - **Native Actions:** Use cases can be called from native CallKit action callbacks without requiring the in-app call UI.
 - **Responsive Group Call Grid & Controls:** `GroupCallScreen` renders 1-2 participants in single-column layout and
   switches to a 2-column `GridView` for 3+ participants. Grid cells responsively scale avatar radius, text sizes, and
@@ -164,4 +182,9 @@ graph TD
     Repo --> Session[CallSession RTC Credentials]
     Bloc -->|CallAcceptedState| Screen[Audio or Video Call Screen]
     Screen -->|EndCallRequested| Bloc
+    Chat[Direct or Group Chat] -->|History action| HistoryScreen[CallHistoryScreen]
+    HistoryScreen --> HistoryBloc[CallHistoryBloc]
+    HistoryBloc --> HistoryUC[GetCallHistoryUseCase]
+    HistoryUC --> CallRepo[CallRepository]
+    CallRepo --> CallsCollection[(Firestore calls collection)]
 ```

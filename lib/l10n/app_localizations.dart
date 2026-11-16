@@ -1414,6 +1414,60 @@ abstract class AppLocalizations {
   /// **'Group video call'**
   String get group_chat_videoCallTitle;
 
+  /// No description provided for @callHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Call history'**
+  String get callHistoryTitle;
+
+  /// No description provided for @callHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No calls yet'**
+  String get callHistoryEmpty;
+
+  /// No description provided for @callHistoryLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load call history'**
+  String get callHistoryLoadError;
+
+  /// No description provided for @callHistoryAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'audio call'**
+  String get callHistoryAudio;
+
+  /// No description provided for @callHistoryVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'video call'**
+  String get callHistoryVideo;
+
+  /// No description provided for @callHistoryIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming {type}'**
+  String callHistoryIncoming(Object type);
+
+  /// No description provided for @callHistoryOutgoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Outgoing {type}'**
+  String callHistoryOutgoing(Object type);
+
+  /// No description provided for @callHistoryMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed {type}'**
+  String callHistoryMissed(Object type);
+
+  /// No description provided for @callHistoryNoDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get callHistoryNoDuration;
+
   /// No description provided for @chat_connectingToServer.
   ///
   /// In en, this message translates to:

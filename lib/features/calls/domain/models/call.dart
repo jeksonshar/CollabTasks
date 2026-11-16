@@ -37,6 +37,24 @@ class Call extends Equatable {
     this.endedAt,
   });
 
+  bool isOutgoingFor(String userId) =>
+      normalizeCallIdentity(callerId) == normalizeCallIdentity(userId);
+
+  bool isMissedFor(String userId) =>
+      !isOutgoingFor(userId) &&
+      startedAt == null &&
+      (status == CallStatus.missed ||
+          status == CallStatus.rejected ||
+          status == CallStatus.cancelled ||
+          status == CallStatus.busy);
+
+  Duration? get duration {
+    if (startedAt == null || endedAt == null) return null;
+    return endedAt!.difference(startedAt!).isNegative
+        ? Duration.zero
+        : endedAt!.difference(startedAt!);
+  }
+
   Call copyWith({
     String? id,
     String? callerId,

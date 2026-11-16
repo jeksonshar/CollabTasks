@@ -634,6 +634,75 @@ class FirestoreCallRepository implements CallRepository {
     return Call.fromMap(doc.data()!);
   }
 
+  @override
+  Future<List<Call>> getCallHistory({
+    required String currentUserId,
+    String? groupId,
+    String? opponentId,
+  }) async {
+    final calls = _firestore.collection(_callsCollection);
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents;
+    if (groupId != null) {
+      final snapshot = await calls
+          .where('groupId', isEqualTo: groupId)
+          .where('isGroup', isEqualTo: true)
+          .get();
+      documents = snapshot.docs;
+    } else {
+      if (opponentId == null) return const [];
+      final queryIdentities = _authenticatedIdentityAliases();
+      final queries = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
+      for (final identity in queryIdentities) {
+        queries
+          ..add(calls.where('callerId', isEqualTo: identity).get())
+          ..add(calls.where('calleeIds', arrayContains: identity).get());
+      }
+      final snapshots = await Future.wait(queries);
+      final byId = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+      for (final snapshot in snapshots) {
+        for (final document in snapshot.docs) {
+          byId[document.id] = document;
+        }
+      }
+      documents = byId.values.toList();
+    }
+
+    final currentIdentities = _identityAliases(currentUserId);
+    final opponentIdentity = _normalizeIdentity(opponentId ?? '');
+    final history = documents.map((document) => Call.fromMap(document.data())).where((call) {
+      if (groupId != null) return call.isGroup && call.groupId == groupId;
+      if (call.isGroup) return false;
+      final calleeIds = call.calleeIds.map(_normalizeIdentity).toSet();
+      final participants = call.participants.map((p) => _normalizeIdentity(p.userId)).toSet();
+      final allMembers = {...calleeIds, ...participants, _normalizeIdentity(call.callerId)};
+      final currentIsMember = currentIdentities.any(allMembers.contains);
+      final opponentIsMember = allMembers.contains(opponentIdentity);
+      return currentIsMember && opponentIsMember;
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return history;
+  }
+
+  Set<String> _authenticatedIdentityAliases() {
+    final user = _auth.currentUser;
+    if (user == null) return const {};
+    return {
+      _normalizeIdentity(user.uid),
+      if (user.email?.trim().isNotEmpty == true) _normalizeIdentity(user.email!),
+    };
+  }
+
+  Set<String> _identityAliases(String userId) {
+    final identities = <String>{_normalizeIdentity(userId)};
+    final user = _auth.currentUser;
+    if (user != null) {
+      identities
+        ..add(_normalizeIdentity(user.uid))
+        ..add(_normalizeIdentity(user.email ?? ''))
+        ..remove('');
+    }
+    return identities;
+  }
+
   String _fallbackCanonicalIdentity(String userId, User currentUser) {
     final uid = currentUser.uid.trim();
     final email = currentUser.email?.trim();

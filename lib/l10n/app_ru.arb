@@ -301,6 +301,19 @@
   "group_chat_audioCallTitle": "Групповой аудио звонок",
   "group_chat_videoCallTitle": "Групповой видео звонок",
 
+  "callHistoryTitle": "История звонков",
+  "callHistoryEmpty": "Звонков пока нет",
+  "callHistoryLoadError": "Не удалось загрузить историю звонков",
+  "callHistoryAudio": "аудиозвонок",
+  "callHistoryVideo": "видеозвонок",
+  "callHistoryIncoming": "Входящий {type}",
+  "@callHistoryIncoming": { "placeholders": { "type": {} } },
+  "callHistoryOutgoing": "Исходящий {type}",
+  "@callHistoryOutgoing": { "placeholders": { "type": {} } },
+  "callHistoryMissed": "Пропущенный {type}",
+  "@callHistoryMissed": { "placeholders": { "type": {} } },
+  "callHistoryNoDuration": "—",
+
   "chat_connectingToServer": "Сервер загружается…",
 
   "biometricLockTitle": "Приложение заблокировано",

@@ -5,6 +5,7 @@ import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
+import 'package:collab_tasks/features/calls/ui/screens/call_history_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/direct/audio_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/direct/video_call_screen.dart';
 import 'package:collab_tasks/features/chats/ui/blocs/chat_bloc.dart';
@@ -204,6 +205,19 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
                         ),
                       );
                     },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.history),
+                    tooltip: localization.callHistoryTitle,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CallHistoryScreen(
+                          title: localization.callHistoryTitle,
+                          currentUserId: state.currentUserId,
+                          opponentId: state.opponentEmail,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],

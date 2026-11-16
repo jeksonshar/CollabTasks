@@ -301,6 +301,19 @@
   "group_chat_audioCallTitle": "Group audio call",
   "group_chat_videoCallTitle": "Group video call",
 
+  "callHistoryTitle": "Call history",
+  "callHistoryEmpty": "No calls yet",
+  "callHistoryLoadError": "Could not load call history",
+  "callHistoryAudio": "audio call",
+  "callHistoryVideo": "video call",
+  "callHistoryIncoming": "Incoming {type}",
+  "@callHistoryIncoming": { "placeholders": { "type": {} } },
+  "callHistoryOutgoing": "Outgoing {type}",
+  "@callHistoryOutgoing": { "placeholders": { "type": {} } },
+  "callHistoryMissed": "Missed {type}",
+  "@callHistoryMissed": { "placeholders": { "type": {} } },
+  "callHistoryNoDuration": "—",
+
   "chat_connectingToServer": "Server is starting up…",
 
   "biometricLockTitle": "App is locked",

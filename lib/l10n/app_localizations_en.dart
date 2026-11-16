@@ -721,6 +721,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get group_chat_videoCallTitle => 'Group video call';
 
   @override
+  String get callHistoryTitle => 'Call history';
+
+  @override
+  String get callHistoryEmpty => 'No calls yet';
+
+  @override
+  String get callHistoryLoadError => 'Could not load call history';
+
+  @override
+  String get callHistoryAudio => 'audio call';
+
+  @override
+  String get callHistoryVideo => 'video call';
+
+  @override
+  String callHistoryIncoming(Object type) {
+    return 'Incoming $type';
+  }
+
+  @override
+  String callHistoryOutgoing(Object type) {
+    return 'Outgoing $type';
+  }
+
+  @override
+  String callHistoryMissed(Object type) {
+    return 'Missed $type';
+  }
+
+  @override
+  String get callHistoryNoDuration => '—';
+
+  @override
   String get chat_connectingToServer => 'Server is starting up…';
 
   @override

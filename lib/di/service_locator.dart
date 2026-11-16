@@ -49,6 +49,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/cancel_call_use_cas
 import 'package:collab_tasks/features/calls/domain/use_cases/cancel_incoming_call_usecase.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/decline_incoming_call_usecase.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/end_call_use_case.dart';
+import 'package:collab_tasks/features/calls/domain/use_cases/get_call_history_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/get_call_session_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/invite_participant_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/join_rtc_session_use_case.dart';
@@ -70,6 +71,7 @@ import 'package:collab_tasks/features/calls/domain/use_cases/watch_active_call_u
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_incoming_calls_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_connection_state_use_case.dart';
 import 'package:collab_tasks/features/calls/domain/use_cases/watch_rtc_participant_media_states_use_case.dart';
+import 'package:collab_tasks/features/calls/ui/blocs/call_history_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/features/chats/data/remote/chat_remote_data_source.dart';
@@ -496,6 +498,8 @@ void setupLocator(SharedPreferences sharedPreferences) {
       },
     )
     ..registerLazySingleton(() => StartCallUseCase(getIt<CallRepository>()))
+    ..registerLazySingleton(() => GetCallHistoryUseCase(getIt<CallRepository>()))
+    ..registerFactory(() => CallHistoryBloc(getIt<GetCallHistoryUseCase>()))
     ..registerLazySingleton(() => AcceptCallUseCase(getIt<CallRepository>()))
     ..registerLazySingleton(
       () => AcceptIncomingCallUseCase(

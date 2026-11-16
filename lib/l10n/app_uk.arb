@@ -299,6 +299,19 @@
   "group_chat_audioCallTitle": "Груповий аудіодзвінок",
   "group_chat_videoCallTitle": "Груповий відеодзвінок",
 
+  "callHistoryTitle": "Історія дзвінків",
+  "callHistoryEmpty": "Дзвінків поки немає",
+  "callHistoryLoadError": "Не вдалося завантажити історію дзвінків",
+  "callHistoryAudio": "аудіодзвінок",
+  "callHistoryVideo": "відеодзвінок",
+  "callHistoryIncoming": "Вхідний {type}",
+  "@callHistoryIncoming": { "placeholders": { "type": {} } },
+  "callHistoryOutgoing": "Вихідний {type}",
+  "@callHistoryOutgoing": { "placeholders": { "type": {} } },
+  "callHistoryMissed": "Пропущений {type}",
+  "@callHistoryMissed": { "placeholders": { "type": {} } },
+  "callHistoryNoDuration": "—",
+
   "chat_connectingToServer": "Сервер завантажується…",
 
   "biometricLockTitle": "Додаток заблоковано",

@@ -56,4 +56,11 @@ abstract class CallRepository {
 
   /// Fetches a call by its unique identifier.
   Future<Call?> getCallById(String callId);
+
+  /// Loads completed and attempted calls for one group or direct conversation.
+  Future<List<Call>> getCallHistory({
+    required String currentUserId,
+    String? groupId,
+    String? opponentId,
+  });
 }

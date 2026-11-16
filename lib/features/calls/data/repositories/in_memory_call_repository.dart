@@ -309,6 +309,27 @@ class InMemoryCallRepository implements CallRepository {
     return _calls[callId];
   }
 
+  @override
+  Future<List<Call>> getCallHistory({
+    required String currentUserId,
+    String? groupId,
+    String? opponentId,
+  }) async {
+    final current = normalizeCallIdentity(currentUserId);
+    final opponent = opponentId == null ? null : normalizeCallIdentity(opponentId);
+    return _calls.values.where((call) {
+      if (groupId != null) return call.isGroup && call.groupId == groupId;
+      if (opponent == null) return false;
+      final conversationMembers = {
+        normalizeCallIdentity(call.callerId),
+        ...call.calleeIds.map(normalizeCallIdentity),
+      };
+      return !call.isGroup &&
+          conversationMembers.contains(current) &&
+          conversationMembers.contains(opponent);
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
   void _notifyActiveCall(String callId, Call? call) {
     if (_activeCallControllers.containsKey(callId) && !_activeCallControllers[callId]!.isClosed) {
       _activeCallControllers[callId]!.add(call);
