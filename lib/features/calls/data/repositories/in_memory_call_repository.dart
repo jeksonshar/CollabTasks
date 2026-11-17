@@ -310,14 +310,18 @@ class InMemoryCallRepository implements CallRepository {
   }
 
   @override
-  Future<List<Call>> getCallHistory({
+  Future<CallHistoryPage> getCallHistoryPage({
     required String currentUserId,
+    required int pageSize,
     String? groupId,
     String? opponentId,
+    CallHistoryCursor? cursor,
   }) async {
+    if (pageSize < 1) throw ArgumentError.value(pageSize, 'pageSize', 'Must be positive');
+
     final current = normalizeCallIdentity(currentUserId);
     final opponent = opponentId == null ? null : normalizeCallIdentity(opponentId);
-    return _calls.values.where((call) {
+    final history = _calls.values.where((call) {
       if (groupId != null) return call.isGroup && call.groupId == groupId;
       if (opponent == null) return false;
       final conversationMembers = {
@@ -327,7 +331,28 @@ class InMemoryCallRepository implements CallRepository {
       return !call.isGroup &&
           conversationMembers.contains(current) &&
           conversationMembers.contains(opponent);
-    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }).toList()..sort(_compareHistoryCalls);
+
+    final afterCursor = cursor == null
+        ? history
+        : history.where((call) {
+            final timestamp = call.createdAt.millisecondsSinceEpoch;
+            return timestamp < cursor.createdAtMillis ||
+                (timestamp == cursor.createdAtMillis && call.id.compareTo(cursor.callId) < 0);
+          }).toList();
+    final hasMore = afterCursor.length > pageSize;
+    final pageCalls = afterCursor.take(pageSize).toList();
+    return CallHistoryPage(
+      calls: pageCalls,
+      nextCursor: hasMore && pageCalls.isNotEmpty
+          ? CallHistoryCursor.fromCall(pageCalls.last)
+          : null,
+    );
+  }
+
+  int _compareHistoryCalls(Call a, Call b) {
+    final byCreatedAt = b.createdAt.compareTo(a.createdAt);
+    return byCreatedAt != 0 ? byCreatedAt : b.id.compareTo(a.id);
   }
 
   void _notifyActiveCall(String callId, Call? call) {

@@ -17,3 +17,7 @@ class LoadCallHistory extends CallHistoryEvent {
   @override
   List<Object?> get props => [currentUserId, groupId, opponentId];
 }
+
+class LoadMoreCallHistory extends CallHistoryEvent {
+  const LoadMoreCallHistory();
+}

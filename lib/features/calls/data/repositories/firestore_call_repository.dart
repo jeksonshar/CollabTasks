@@ -635,27 +635,61 @@ class FirestoreCallRepository implements CallRepository {
   }
 
   @override
-  Future<List<Call>> getCallHistory({
+  Future<CallHistoryPage> getCallHistoryPage({
     required String currentUserId,
+    required int pageSize,
     String? groupId,
     String? opponentId,
+    CallHistoryCursor? cursor,
   }) async {
+    if (pageSize < 1) throw ArgumentError.value(pageSize, 'pageSize', 'Must be positive');
+
     final calls = _firestore.collection(_callsCollection);
-    final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents;
     if (groupId != null) {
-      final snapshot = await calls
-          .where('groupId', isEqualTo: groupId)
-          .where('isGroup', isEqualTo: true)
-          .get();
-      documents = snapshot.docs;
-    } else {
-      if (opponentId == null) return const [];
-      final queryIdentities = _authenticatedIdentityAliases();
+      final snapshot = await _historyPageQuery(
+        calls.where('groupId', isEqualTo: groupId).where('isGroup', isEqualTo: true),
+        pageSize: pageSize,
+        cursor: cursor,
+      ).get();
+      final history =
+          snapshot.docs
+              .map(_callFromHistoryDocument)
+              .where((call) => call.isGroup && call.groupId == groupId)
+              .toList()
+            ..sort(_compareHistoryCalls);
+      final hasMore = history.length > pageSize;
+      final pageCalls = history.take(pageSize).toList();
+      return CallHistoryPage(
+        calls: pageCalls,
+        nextCursor: hasMore ? CallHistoryCursor.fromCall(pageCalls.last) : null,
+      );
+    }
+
+    if (opponentId == null) return const CallHistoryPage(calls: []);
+    final queryIdentities = _authenticatedIdentityAliases().toList()..sort();
+    if (queryIdentities.isEmpty) return const CallHistoryPage(calls: []);
+
+    final currentIdentities = _identityAliases(currentUserId);
+    final opponentIdentity = _normalizeIdentity(opponentId);
+    var scanCursor = cursor;
+    while (true) {
       final queries = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
       for (final identity in queryIdentities) {
         queries
-          ..add(calls.where('callerId', isEqualTo: identity).get())
-          ..add(calls.where('calleeIds', arrayContains: identity).get());
+          ..add(
+            _historyPageQuery(
+              calls.where('callerId', isEqualTo: identity),
+              pageSize: pageSize,
+              cursor: scanCursor,
+            ).get(),
+          )
+          ..add(
+            _historyPageQuery(
+              calls.where('calleeIds', arrayContains: identity),
+              pageSize: pageSize,
+              cursor: scanCursor,
+            ).get(),
+          );
       }
       final snapshots = await Future.wait(queries);
       final byId = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
@@ -664,22 +698,60 @@ class FirestoreCallRepository implements CallRepository {
           byId[document.id] = document;
         }
       }
-      documents = byId.values.toList();
-    }
+      final rawHistory = byId.values.map(_callFromHistoryDocument).toList()
+        ..sort(_compareHistoryCalls);
+      final hasMoreRaw = snapshots.any((snapshot) => snapshot.docs.length > pageSize);
+      final history = rawHistory.where((call) {
+        if (call.isGroup) return false;
+        final calleeIds = call.calleeIds.map(_normalizeIdentity).toSet();
+        final participants = call.participants.map((p) => _normalizeIdentity(p.userId)).toSet();
+        final allMembers = {...calleeIds, ...participants, _normalizeIdentity(call.callerId)};
+        final currentIsMember = currentIdentities.any(allMembers.contains);
+        final opponentIsMember = allMembers.contains(opponentIdentity);
+        return currentIsMember && opponentIsMember;
+      }).toList()..sort(_compareHistoryCalls);
 
-    final currentIdentities = _identityAliases(currentUserId);
-    final opponentIdentity = _normalizeIdentity(opponentId ?? '');
-    final history = documents.map((document) => Call.fromMap(document.data())).where((call) {
-      if (groupId != null) return call.isGroup && call.groupId == groupId;
-      if (call.isGroup) return false;
-      final calleeIds = call.calleeIds.map(_normalizeIdentity).toSet();
-      final participants = call.participants.map((p) => _normalizeIdentity(p.userId)).toSet();
-      final allMembers = {...calleeIds, ...participants, _normalizeIdentity(call.callerId)};
-      final currentIsMember = currentIdentities.any(allMembers.contains);
-      final opponentIsMember = allMembers.contains(opponentIdentity);
-      return currentIsMember && opponentIsMember;
-    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return history;
+      if (history.length > pageSize) {
+        final pageCalls = history.take(pageSize).toList();
+        return CallHistoryPage(
+          calls: pageCalls,
+          nextCursor: CallHistoryCursor.fromCall(pageCalls.last),
+        );
+      }
+      if (history.isNotEmpty) {
+        return CallHistoryPage(
+          calls: history,
+          nextCursor: hasMoreRaw ? CallHistoryCursor.fromCall(history.last) : null,
+        );
+      }
+      if (!hasMoreRaw || rawHistory.isEmpty) return const CallHistoryPage(calls: []);
+
+      // Skip windows that contain only calls for other conversations so the UI never gets
+      // an empty page with a continuation cursor.
+      scanCursor = CallHistoryCursor.fromCall(rawHistory.last);
+    }
+  }
+
+  Query<Map<String, dynamic>> _historyPageQuery(
+    Query<Map<String, dynamic>> query, {
+    required int pageSize,
+    required CallHistoryCursor? cursor,
+  }) {
+    var ordered = query
+        .orderBy('createdAtMillis', descending: true)
+        .orderBy(FieldPath.documentId, descending: true);
+    if (cursor != null) {
+      ordered = ordered.startAfter([cursor.createdAtMillis, cursor.callId]);
+    }
+    return ordered.limit(pageSize + 1);
+  }
+
+  Call _callFromHistoryDocument(QueryDocumentSnapshot<Map<String, dynamic>> document) =>
+      Call.fromMap(document.data()).copyWith(id: document.id);
+
+  int _compareHistoryCalls(Call a, Call b) {
+    final byCreatedAt = b.createdAt.compareTo(a.createdAt);
+    return byCreatedAt != 0 ? byCreatedAt : b.id.compareTo(a.id);
   }
 
   Set<String> _authenticatedIdentityAliases() {

@@ -732,6 +732,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get callHistoryLoadError => 'Не вдалося завантажити історію дзвінків';
 
   @override
+  String get callHistoryRetry => 'Повторити';
+
+  @override
   String get callHistoryAudio => 'аудіодзвінок';
 
   @override

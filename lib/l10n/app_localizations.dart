@@ -1432,6 +1432,12 @@ abstract class AppLocalizations {
   /// **'Could not load call history'**
   String get callHistoryLoadError;
 
+  /// No description provided for @callHistoryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get callHistoryRetry;
+
   /// No description provided for @callHistoryAudio.
   ///
   /// In en, this message translates to:

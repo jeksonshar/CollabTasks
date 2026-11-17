@@ -302,6 +302,7 @@
   "callHistoryTitle": "Історія дзвінків",
   "callHistoryEmpty": "Дзвінків поки немає",
   "callHistoryLoadError": "Не вдалося завантажити історію дзвінків",
+  "callHistoryRetry": "Повторити",
   "callHistoryAudio": "аудіодзвінок",
   "callHistoryVideo": "відеодзвінок",
   "callHistoryIncoming": "Вхідний {type}",

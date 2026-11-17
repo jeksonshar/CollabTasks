@@ -53,17 +53,22 @@
   neither leave nor invite writes call-level terminal fields. A group decline changes only the declining participant.
   Missing calls, invalid transitions, and Firestore read/write failures propagate to the caller.
 - **Call History:** `GetCallHistoryUseCase` reads call documents from the existing `calls` collection through
-  `CallRepository.getCallHistory`. Group history is filtered by `groupId`. Direct history is assembled from caller and
-  callee identity queries and filtered against call participants, including participants who left and were removed from
-  `calleeIds`. Results are sorted by `createdAt` descending. No additional Firestore collection or schema migration is
-  required. Firestore Rules allow the group history query only when the authenticated UID or email belongs to the
-  matching `workingGroups/{groupId}` document. The `groupId`/`isGroup` composite index is defined in
-  `firestore.indexes.json`.
-- **History Classification:** Direction is based on the current user's normalized identity matching `callerId`. A call
-  is shown as missed when it is incoming, has no `startedAt`, and has a terminal status (`missed`, `rejected`,
-  `cancelled`, or `busy`). Existing documents do not distinguish an unanswered call from a declined call or an outgoing
-  cancellation; those records therefore share the missed label for the recipient. Duration is `endedAt - startedAt`
-  and is omitted when either timestamp is absent.
+  `CallRepository.getCallHistory`. Group history queries are scoped by `groupId` and `isGroup`; Firestore Rules permit
+  access only to members of the matching `workingGroups/{groupId}` document. Direct history queries use only the current
+  user's authenticated Firebase UID/email aliases against `callerId` and `calleeIds`, then filter the results by the
+  requested opponent and call participants. This includes participants who left and were removed from `calleeIds`.
+  Results are ordered by `createdAtMillis` descending with document ID as a stable tie-breaker. History is loaded in
+  pages of 20 records. Direct alias query windows are merged and deduplicated before returning a page; the cursor
+  preserves the stable ordering across requests. Required composite indexes are defined in `firestore.indexes.json`.
+  No additional Firestore collection, call document field, or schema migration is required.
+- **History Classification and Duration:** Direction is based on the current user's normalized identity matching
+  `callerId`. An incoming call is missed for a recipient if that recipient did not connect before the call reached a
+  terminal state. “Declined” and “unanswered” are not distinguished; no field or status is added for that distinction.
+  For group calls, classification uses the current user's own participant record, not the call-wide `startedAt`: a
+  participant who did not connect sees a missed call even if another group member connected. A participant who did
+  connect does not see it as missed. Call duration is the whole session interval, `endedAt - startedAt`; ringing and
+  answer-wait time are excluded, and individual group participation duration is not calculated. Duration is omitted
+  when either session timestamp is absent.
 - **Abrupt process termination:** Flutter cleanup cannot be relied on after Android force-stop or process kill. Cloud
   Functions seed server-timestamp heartbeats when a participant becomes connected; while connected to RTC,
   `CallLivenessCoordinator` refreshes `calls/{callId}/heartbeats/{participantId}` every 15 seconds. It also invokes
@@ -137,9 +142,13 @@
 ### Presentation Layer (UI & Bloc)
 
 - **Call History:** `CallHistoryBloc` loads the requested direct or group history through
-  `GetCallHistoryUseCase`. `CallHistoryScreen` renders a newest-first vertical list with a direction/missed icon,
-  localized audio/video description, localized date and time, and elapsed duration. The Direct chat and group chat
-  app bars expose the screen through a history icon beside their call controls.
+  `GetCallHistoryUseCase` in pages. `CallHistoryScreen` renders a newest-first vertical list with a direction/missed
+  icon, localized audio/video description, localized date and time, and whole-session duration. A terminal call is
+  marked missed for the current recipient when their own participant record has no connection; decline and no-answer
+  share this classification. The screen requests more records near the end of the list and also fills a short first
+  page. A later-page error keeps the loaded records and cursor available for retry. Initial load errors expose a
+  localized retry action, and missed-call icons use the theme error color. The Direct chat and group chat app bars
+  expose the screen through a history icon beside their call controls.
 
 - **Native Actions:** Use cases can be called from native CallKit action callbacks without requiring the in-app call UI.
 - **Responsive Group Call Grid & Controls:** `GroupCallScreen` renders 1-2 participants in single-column layout and
@@ -159,15 +168,17 @@
 
 ## 3. Testing Matrix
 
-- [ ] **Unit:** Verify repository calls, RTC session result, alert stop, and CallKit dismissal.
-- [ ] **Agora UID:** Verify fixed SHA-256 UID vectors, stable results in separate mapper instances, verified local
-  email/UID aliases, explicit roster collision errors, and token/session/join UID equality.
-- [ ] **RTC:** Verify video-to-audio session cleanup, media track publication, and mute/speaker reset. Verify a system
-  camera pause does not override a manual camera-off choice.
-- [ ] **Liveness:** Verify heartbeat writes during a normal backgrounded call; confirm the 10-second server
-  reconciliation ends a direct call or marks only stale group participants `left` after the 30-second heartbeat
-  threshold. Verify Agora offline events immediately hide a group participant, the two-minute scheduled fallback cleans
-  up when no peer survives, and a `left` participant can be invited again.
+| Behavior or component                         | Test file                                                          | Cases covered                                                                                                                                                                                   |
+|:----------------------------------------------|:-------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Call.isMissedFor` and session duration       | `test/features/calls/domain/call_history_classification_test.dart` | Direct terminal outcomes share the missed classification; group outcome is per participant connection; whole-session duration excludes ringing and does not calculate per-participant duration. |
+| Firestore Direct and group history queries    | `test/features/calls/data/firestore_call_repository_test.dart`     | Authenticated UID/email aliases, opponent filtering, alias deduplication, stable ordering and cursor boundaries, and group page boundaries.                                                     |
+| In-memory history pages                       | `test/features/calls/data/firestore_call_repository_test.dart`     | Page size, cursor continuation, stable ordering, and page boundary behavior.                                                                                                                    |
+| `GetCallHistoryUseCase` and `CallHistoryBloc` | `test/features/calls/ui/call_history_bloc_test.dart`               | Initial page request, append, boundary deduplication, and preserving loaded rows/cursor after a later-page error.                                                                               |
+| `CallHistoryScreen`                           | `test/features/calls/ui/call_history_screen_test.dart`             | Initial load and retry, missed icon/error color, list/empty state, near-end and short-page loading, and later-page retry.                                                                       |
+| History localization                          | `test/features/calls/ui/call_history_screen_test.dart`             | Retry action rendered using generated localization; source strings are in `lib/l10n/app_{en,ru,uk}.arb`.                                                                                        |
+| Firestore call-history authorization          | `firestore-rules-tests/calls.rules.test.cjs`                       | Authenticated Direct history access, peer-only query denial, group member access, and non-member denial.                                                                                        |
+| Firestore query indexes                       | `firestore.indexes.json`                                           | Source definitions cover caller/callee alias queries and group query ordering. Deploying index configuration is a separate operation.                                                           |
+| Other call behavior                           | `test/features/calls/`                                             | Repository calls, RTC session result, alert stop, CallKit dismissal, Agora UID mapping, RTC cleanup, and liveness behavior.                                                                     |
 
 ## 4. Data Flow & State Machine (Mermaid)
 

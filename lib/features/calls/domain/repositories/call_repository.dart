@@ -57,10 +57,31 @@ abstract class CallRepository {
   /// Fetches a call by its unique identifier.
   Future<Call?> getCallById(String callId);
 
-  /// Loads completed and attempted calls for one group or direct conversation.
-  Future<List<Call>> getCallHistory({
+  /// Loads one page of completed and attempted calls for a group or direct conversation.
+  Future<CallHistoryPage> getCallHistoryPage({
     required String currentUserId,
+    required int pageSize,
     String? groupId,
     String? opponentId,
+    CallHistoryCursor? cursor,
   });
+}
+
+class CallHistoryCursor {
+  const CallHistoryCursor({required this.createdAtMillis, required this.callId});
+
+  factory CallHistoryCursor.fromCall(Call call) =>
+      CallHistoryCursor(createdAtMillis: call.createdAt.millisecondsSinceEpoch, callId: call.id);
+
+  final int createdAtMillis;
+  final String callId;
+}
+
+class CallHistoryPage {
+  const CallHistoryPage({required this.calls, this.nextCursor});
+
+  final List<Call> calls;
+  final CallHistoryCursor? nextCursor;
+
+  bool get hasMore => nextCursor != null;
 }

@@ -40,13 +40,33 @@ class Call extends Equatable {
   bool isOutgoingFor(String userId) =>
       normalizeCallIdentity(callerId) == normalizeCallIdentity(userId);
 
-  bool isMissedFor(String userId) =>
-      !isOutgoingFor(userId) &&
-      startedAt == null &&
-      (status == CallStatus.missed ||
-          status == CallStatus.rejected ||
-          status == CallStatus.cancelled ||
-          status == CallStatus.busy);
+  bool isMissedFor(String userId) {
+    if (isOutgoingFor(userId) || !_isTerminal) return false;
+
+    if (!isGroup) return startedAt == null;
+
+    final normalizedUserId = normalizeCallIdentity(userId);
+    CallParticipant? participant;
+    for (final callParticipant in participants) {
+      if (normalizeCallIdentity(callParticipant.userId) == normalizedUserId) {
+        participant = callParticipant;
+        break;
+      }
+    }
+    if (participant == null) return false;
+
+    final participantConnected =
+        participant.joinedAt != null || participant.status == CallParticipantStatus.connected;
+    return !participantConnected;
+  }
+
+  bool get _isTerminal =>
+      endedAt != null ||
+      status == CallStatus.ended ||
+      status == CallStatus.rejected ||
+      status == CallStatus.cancelled ||
+      status == CallStatus.missed ||
+      status == CallStatus.busy;
 
   Duration? get duration {
     if (startedAt == null || endedAt == null) return null;

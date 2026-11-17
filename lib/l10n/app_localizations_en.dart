@@ -730,6 +730,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get callHistoryLoadError => 'Could not load call history';
 
   @override
+  String get callHistoryRetry => 'Retry';
+
+  @override
   String get callHistoryAudio => 'audio call';
 
   @override

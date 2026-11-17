@@ -728,6 +728,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get callHistoryLoadError => 'Не удалось загрузить историю звонков';
 
   @override
+  String get callHistoryRetry => 'Повторить';
+
+  @override
   String get callHistoryAudio => 'аудиозвонок';
 
   @override

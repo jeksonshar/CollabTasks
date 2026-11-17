@@ -304,6 +304,7 @@
   "callHistoryTitle": "История звонков",
   "callHistoryEmpty": "Звонков пока нет",
   "callHistoryLoadError": "Не удалось загрузить историю звонков",
+  "callHistoryRetry": "Повторить",
   "callHistoryAudio": "аудиозвонок",
   "callHistoryVideo": "видеозвонок",
   "callHistoryIncoming": "Входящий {type}",

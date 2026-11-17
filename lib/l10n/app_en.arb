@@ -304,6 +304,7 @@
   "callHistoryTitle": "Call history",
   "callHistoryEmpty": "No calls yet",
   "callHistoryLoadError": "Could not load call history",
+  "callHistoryRetry": "Retry",
   "callHistoryAudio": "audio call",
   "callHistoryVideo": "video call",
   "callHistoryIncoming": "Incoming {type}",

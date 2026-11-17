@@ -4,6 +4,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collab_tasks/features/calls/data/remote/agora/agora_uid_mapper.dart';
 import 'package:collab_tasks/features/calls/data/repositories/firestore_call_repository.dart';
+import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_repository.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_status.dart';
@@ -22,6 +23,94 @@ class _MockDocumentSnapshot extends Mock implements DocumentSnapshot<Map<String,
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class _MockUser extends Mock implements User {}
+
+class _HistoryQuery extends Fake implements Query<Map<String, dynamic>> {
+  _HistoryQuery(this.documents);
+
+  final List<MapEntry<String, Map<String, dynamic>>> documents;
+  final orderByFields = <({Object field, bool descending})>[];
+  List<Object?>? cursorValues;
+  int? resultLimit;
+
+  @override
+  Query<Map<String, dynamic>> where(
+    Object field, {
+    Object? isEqualTo,
+    Object? isNotEqualTo,
+    Object? isLessThan,
+    Object? isLessThanOrEqualTo,
+    Object? isGreaterThan,
+    Object? isGreaterThanOrEqualTo,
+    Object? arrayContains,
+    Iterable<Object?>? arrayContainsAny,
+    Iterable<Object?>? whereIn,
+    Iterable<Object?>? whereNotIn,
+    bool? isNull,
+  }) => this;
+
+  @override
+  Query<Map<String, dynamic>> orderBy(Object field, {bool descending = false}) {
+    orderByFields.add((field: field, descending: descending));
+    return this;
+  }
+
+  @override
+  Query<Map<String, dynamic>> startAfter(Iterable<Object?> values) {
+    cursorValues = values.toList();
+    return this;
+  }
+
+  @override
+  Query<Map<String, dynamic>> limit(int limit) {
+    resultLimit = limit;
+    return this;
+  }
+
+  @override
+  Future<QuerySnapshot<Map<String, dynamic>>> get([GetOptions? options]) async {
+    final sorted = List<MapEntry<String, Map<String, dynamic>>>.from(documents)
+      ..sort((a, b) {
+        final timestampA = (a.value['createdAtMillis'] as num).toInt();
+        final timestampB = (b.value['createdAtMillis'] as num).toInt();
+        final byTimestamp = timestampB.compareTo(timestampA);
+        return byTimestamp != 0 ? byTimestamp : b.key.compareTo(a.key);
+      });
+    final after = cursorValues;
+    final afterCursor = after == null
+        ? sorted
+        : sorted.where((entry) {
+            final timestamp = (entry.value['createdAtMillis'] as num).toInt();
+            final cursorTimestamp = after[0] as int;
+            final cursorId = after[1] as String;
+            return timestamp < cursorTimestamp ||
+                (timestamp == cursorTimestamp && entry.key.compareTo(cursorId) < 0);
+          }).toList();
+    return _HistoryQuerySnapshot(
+      resultLimit == null ? afterCursor : afterCursor.take(resultLimit!).toList(),
+    );
+  }
+}
+
+class _HistoryQuerySnapshot extends Fake implements QuerySnapshot<Map<String, dynamic>> {
+  _HistoryQuerySnapshot(this.documents);
+
+  final List<MapEntry<String, Map<String, dynamic>>> documents;
+
+  @override
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> get docs =>
+      documents.map((entry) => _HistoryDocumentSnapshot(entry.key, entry.value)).toList();
+}
+
+class _HistoryDocumentSnapshot extends Fake implements QueryDocumentSnapshot<Map<String, dynamic>> {
+  _HistoryDocumentSnapshot(this.id, this.documentData);
+
+  @override
+  final String id;
+  final Map<String, dynamic> documentData;
+
+  @override
+  Map<String, dynamic> data() => documentData;
+}
 
 class _StatefulDocumentSnapshot extends Fake implements DocumentSnapshot<Map<String, dynamic>> {
   _StatefulDocumentSnapshot(this.documentData, {this.documentExists = true});
@@ -136,6 +225,25 @@ void main() {
     ).toMap();
   }
 
+  Call historyCall({
+    required String id,
+    required String callerId,
+    required List<String> calleeIds,
+    DateTime? createdAt,
+    bool isGroup = false,
+    String? groupId,
+  }) => Call(
+    id: id,
+    callerId: callerId,
+    callerName: 'History caller',
+    calleeIds: calleeIds,
+    type: CallType.audio,
+    status: CallStatus.ended,
+    isGroup: isGroup,
+    groupId: groupId,
+    createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(1000),
+  );
+
   setUp(() {
     collection = _MockCollection();
     documentReference = _MockDocumentReference();
@@ -158,6 +266,205 @@ void main() {
       return snapshot;
     });
     repository = FirestoreCallRepository(firestore: firestore, auth: auth, uidMapper: uidMapper);
+  });
+
+  test(
+    'Direct history pages query authenticated aliases, filter the peer, and deduplicate overlaps',
+    () async {
+      final queryFilters = <({String field, Object? isEqualTo, Object? arrayContains})>[];
+      final historyQueries = <_HistoryQuery>[];
+      final matchingCall = historyCall(
+        id: 'outgoing-match',
+        callerId: 'callee-uid',
+        calleeIds: const ['peer@example.com'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(3000),
+      );
+      final differentPeerCall = historyCall(
+        id: 'outgoing-other-peer',
+        callerId: 'callee-uid',
+        calleeIds: const ['other@example.com'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(2500),
+      );
+      final aliasDuplicate = historyCall(
+        id: 'incoming-alias-duplicate',
+        callerId: 'peer@example.com',
+        calleeIds: const ['callee-uid', 'callee@example.com'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(2000),
+      );
+      final olderCall = historyCall(
+        id: 'incoming-older',
+        callerId: 'peer@example.com',
+        calleeIds: const ['callee-uid', 'callee@example.com'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+      );
+
+      when(
+        () => collection.where(
+          any(),
+          isEqualTo: any(named: 'isEqualTo'),
+          arrayContains: any(named: 'arrayContains'),
+        ),
+      ).thenAnswer((invocation) {
+        final field = invocation.positionalArguments.single as String;
+        final isEqualTo = invocation.namedArguments[#isEqualTo];
+        final arrayContains = invocation.namedArguments[#arrayContains];
+        queryFilters.add((field: field, isEqualTo: isEqualTo, arrayContains: arrayContains));
+
+        final List<MapEntry<String, Map<String, dynamic>>> documents = switch ((
+          field,
+          isEqualTo,
+          arrayContains,
+        )) {
+          ('callerId', 'callee-uid', null) => [
+            MapEntry(matchingCall.id, matchingCall.toMap()),
+            MapEntry(differentPeerCall.id, differentPeerCall.toMap()),
+          ],
+          ('calleeIds', null, 'callee-uid') => [
+            MapEntry(aliasDuplicate.id, aliasDuplicate.toMap()),
+            MapEntry(olderCall.id, olderCall.toMap()),
+          ],
+          ('callerId', 'callee@example.com', null) => const [],
+          ('calleeIds', null, 'callee@example.com') => [
+            MapEntry(aliasDuplicate.id, aliasDuplicate.toMap()),
+            MapEntry(olderCall.id, olderCall.toMap()),
+          ],
+          _ => const <MapEntry<String, Map<String, dynamic>>>[],
+        };
+        final query = _HistoryQuery(documents);
+        historyQueries.add(query);
+        return query;
+      });
+
+      final firstPage = await repository.getCallHistoryPage(
+        currentUserId: 'callee-uid',
+        pageSize: 2,
+        opponentId: 'peer@example.com',
+      );
+      final secondPage = await repository.getCallHistoryPage(
+        currentUserId: 'callee-uid',
+        pageSize: 2,
+        opponentId: 'peer@example.com',
+        cursor: firstPage.nextCursor,
+      );
+
+      expect(
+        queryFilters,
+        containsAll([
+          (field: 'callerId', isEqualTo: 'callee-uid', arrayContains: null),
+          (field: 'calleeIds', isEqualTo: null, arrayContains: 'callee-uid'),
+          (field: 'callerId', isEqualTo: 'callee@example.com', arrayContains: null),
+          (field: 'calleeIds', isEqualTo: null, arrayContains: 'callee@example.com'),
+        ]),
+      );
+      expect(queryFilters, hasLength(8));
+      expect(
+        queryFilters.every(
+          (filter) =>
+              filter.isEqualTo != 'peer@example.com' && filter.arrayContains != 'peer@example.com',
+        ),
+        isTrue,
+      );
+      expect(firstPage.calls.map((call) => call.id), [
+        'outgoing-match',
+        'incoming-alias-duplicate',
+      ]);
+      expect(firstPage.hasMore, isTrue);
+      expect(secondPage.calls.map((call) => call.id), ['incoming-older']);
+      expect(secondPage.hasMore, isFalse);
+      expect(historyQueries, hasLength(8));
+      for (final query in historyQueries) {
+        expect(query.orderByFields.map((order) => order.descending), [true, true]);
+        expect(query.resultLimit, 3);
+      }
+      for (final query in historyQueries.skip(4)) {
+        expect(query.cursorValues, [2000, 'incoming-alias-duplicate']);
+      }
+    },
+  );
+
+  test('group history pages use a deterministic timestamp and document-id cursor', () async {
+    final newestCall = historyCall(
+      id: 'group-b',
+      callerId: callerId,
+      calleeIds: const [calleeId],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(5000),
+      isGroup: true,
+      groupId: 'group-history',
+    );
+    final olderCall = historyCall(
+      id: 'group-a',
+      callerId: callerId,
+      calleeIds: const [calleeId],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(5000),
+      isGroup: true,
+      groupId: 'group-history',
+    );
+    final issuedQueries = <_HistoryQuery>[];
+    when(
+      () => collection.where(
+        any(),
+        isEqualTo: any(named: 'isEqualTo'),
+        arrayContains: any(named: 'arrayContains'),
+      ),
+    ).thenAnswer((_) {
+      final query = _HistoryQuery([
+        MapEntry(newestCall.id, newestCall.toMap()),
+        MapEntry(olderCall.id, olderCall.toMap()),
+      ]);
+      issuedQueries.add(query);
+      return query;
+    });
+
+    final firstPage = await repository.getCallHistoryPage(
+      currentUserId: callerId,
+      groupId: 'group-history',
+      pageSize: 1,
+    );
+    final secondPage = await repository.getCallHistoryPage(
+      currentUserId: callerId,
+      groupId: 'group-history',
+      pageSize: 1,
+      cursor: firstPage.nextCursor,
+    );
+
+    expect(firstPage.calls.map((call) => call.id), ['group-b']);
+    expect(secondPage.calls.map((call) => call.id), ['group-a']);
+    expect(secondPage.hasMore, isFalse);
+    expect(issuedQueries, hasLength(2));
+    expect(issuedQueries[0].resultLimit, 2);
+    expect(issuedQueries[0].orderByFields.map((order) => order.descending), [true, true]);
+    expect(issuedQueries[1].cursorValues, [5000, 'group-b']);
+  });
+
+  test('in-memory history pages preserve the ordering across cursor boundaries', () async {
+    final inMemoryRepository = InMemoryCallRepository();
+    for (final callId in ['call-a', 'call-b', 'call-c']) {
+      await inMemoryRepository.startCall(
+        callId: callId,
+        callerId: 'caller@example.com',
+        callerName: 'Caller',
+        calleeIds: ['callee@example.com'],
+        type: CallType.audio,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+
+    final firstPage = await inMemoryRepository.getCallHistoryPage(
+      currentUserId: 'callee@example.com',
+      opponentId: 'caller@example.com',
+      pageSize: 2,
+    );
+    final secondPage = await inMemoryRepository.getCallHistoryPage(
+      currentUserId: 'callee@example.com',
+      opponentId: 'caller@example.com',
+      pageSize: 2,
+      cursor: firstPage.nextCursor,
+    );
+
+    expect(firstPage.calls.map((call) => call.id), ['call-c', 'call-b']);
+    expect(firstPage.hasMore, isTrue);
+    expect(secondPage.calls.map((call) => call.id), ['call-a']);
+    expect(secondPage.hasMore, isFalse);
   });
 
   test('getCallSession signs and returns the same UID for the local participant alias', () async {
