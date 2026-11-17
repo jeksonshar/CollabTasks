@@ -252,16 +252,20 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
 
     if (state.isOpponentTyping) {
       return Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           _buildSubtitleIndicator(Colors.green),
           const SizedBox(width: 12),
-          Text(
-            localization.direct_chat_typingStatus,
-            style: TextStyle(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              color: theme.colorScheme.primary,
+          Flexible(
+            child: Text(
+              localization.direct_chat_typingStatus,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ),
         ],
@@ -291,13 +295,17 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
     }
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
       children: [
         _buildSubtitleIndicator(dotColor),
         const SizedBox(width: 12),
-        Text(
-          statusText,
-          style: TextStyle(fontSize: 12, color: isOnline ? Colors.green : subtitleColor),
+        Flexible(
+          child: Text(
+            statusText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: isOnline ? Colors.green : subtitleColor),
+          ),
         ),
       ],
     );
