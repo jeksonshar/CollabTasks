@@ -150,6 +150,22 @@ void main() {
     expect(find.byIcon(Icons.call_received), findsOneWidget);
   });
 
+  testWidgets('shows the duration placeholder when session timestamps are missing', (tester) async {
+    final callWithoutDuration = Call(
+      id: 'call-without-duration',
+      callerId: opponentId,
+      callerName: 'Peer',
+      calleeIds: const [currentUserId],
+      type: CallType.audio,
+      status: CallStatus.missed,
+      createdAt: DateTime(2026, 11, 17, 10),
+    );
+
+    await tester.pumpWidget(buildTestableScreen(loadedState([callWithoutDuration])));
+
+    expect(find.text('—'), findsOneWidget);
+  });
+
   testWidgets('requests another page as the call list approaches its end', (tester) async {
     final calls = List.generate(
       CallHistoryBloc.pageSize,

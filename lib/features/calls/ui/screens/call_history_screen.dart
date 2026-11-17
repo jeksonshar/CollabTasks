@@ -1,5 +1,6 @@
 import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
+import 'package:collab_tasks/features/calls/domain/models/call_type.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/call_history_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/call_history_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/call_history_state.dart';
@@ -59,65 +60,63 @@ class CallHistoryScreen extends StatelessWidget {
                 ),
               );
             }
-            final loadedState = state as CallHistoryLoaded;
-            final calls = loadedState.calls;
-            if (calls.isEmpty) return Center(child: Text(l.callHistoryEmpty));
-            final hasFooter =
-                loadedState.hasMore || loadedState.isLoadingMore || loadedState.pageError != null;
-            void maybeLoadMore(double extentAfter) {
-              if (extentAfter < 250 &&
-                  loadedState.hasMore &&
-                  !loadedState.isLoadingMore &&
-                  loadedState.pageError == null) {
-                context.read<CallHistoryBloc>().add(const LoadMoreCallHistory());
-              }
-            }
-
-            return NotificationListener<ScrollMetricsNotification>(
-              onNotification: (notification) {
-                maybeLoadMore(notification.metrics.extentAfter);
-                return false;
-              },
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  maybeLoadMore(notification.metrics.extentAfter);
-                  return false;
-                },
-                child: ListView.separated(
-                  itemCount: calls.length + (hasFooter ? 1 : 0),
-                  separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-                  itemBuilder: (context, index) {
-                    if (index >= calls.length) {
-                      if (loadedState.pageError != null) {
-                        return Center(
-                          child: TextButton.icon(
-                            onPressed: () =>
-                                context.read<CallHistoryBloc>().add(const LoadMoreCallHistory()),
-                            icon: const Icon(Icons.refresh),
-                            label: Text(l.callHistoryRetry),
-                          ),
-                        );
-                      }
-                      if (loadedState.isLoadingMore) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      return const SizedBox(height: 1);
-                    }
-                    return _CallHistoryTile(
-                      call: calls[index],
-                      currentUserId: currentUserId,
-                      locale: Localizations.localeOf(context).toLanguageTag(),
-                      l: l,
-                    );
-                  },
-                ),
-              ),
-            );
+            return _buildLoadedState(context, state as CallHistoryLoaded, l);
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadedState(BuildContext context, CallHistoryLoaded state, AppLocalizations l) {
+    final calls = state.calls;
+    if (calls.isEmpty) return Center(child: Text(l.callHistoryEmpty));
+
+    final hasFooter = state.hasMore || state.isLoadingMore || state.pageError != null;
+    void maybeLoadMore(double extentAfter) {
+      if (extentAfter < 250 && state.hasMore && !state.isLoadingMore && state.pageError == null) {
+        context.read<CallHistoryBloc>().add(const LoadMoreCallHistory());
+      }
+    }
+
+    return NotificationListener<Notification>(
+      onNotification: (notification) {
+        final extentAfter = switch (notification) {
+          ScrollMetricsNotification(:final metrics) => metrics.extentAfter,
+          ScrollNotification(:final metrics) => metrics.extentAfter,
+          _ => null,
+        };
+        if (extentAfter != null) maybeLoadMore(extentAfter);
+        return false;
+      },
+      child: ListView.separated(
+        itemCount: calls.length + (hasFooter ? 1 : 0),
+        separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
+        itemBuilder: (context, index) {
+          if (index >= calls.length) {
+            if (state.pageError != null) {
+              return Center(
+                child: TextButton.icon(
+                  onPressed: () => context.read<CallHistoryBloc>().add(const LoadMoreCallHistory()),
+                  icon: const Icon(Icons.refresh),
+                  label: Text(l.callHistoryRetry),
+                ),
+              );
+            }
+            if (state.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return const SizedBox(height: 1);
+          }
+          return _CallHistoryTile(
+            call: calls[index],
+            currentUserId: currentUserId,
+            locale: Localizations.localeOf(context).toLanguageTag(),
+            l: l,
+          );
+        },
       ),
     );
   }
@@ -153,7 +152,7 @@ class _CallHistoryTile extends StatelessWidget {
     final date = CallHistoryFormatter.date(call.createdAt, locale);
     final time = CallHistoryFormatter.time(call.createdAt, locale);
     final duration = CallHistoryFormatter.duration(call);
-    final kind = call.type.name == 'video' ? l.callHistoryVideo : l.callHistoryAudio;
+    final kind = call.type == CallType.video ? l.callHistoryVideo : l.callHistoryAudio;
     final description = missed
         ? l.callHistoryMissed(kind)
         : outgoing
