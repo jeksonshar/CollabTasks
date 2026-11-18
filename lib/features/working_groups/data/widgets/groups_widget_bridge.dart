@@ -42,6 +42,18 @@ class GroupsWidgetBridge {
     }
   }
 
+  static Future<bool> acknowledgeNavigation(String requestId) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _channel.invokeMethod<bool>('acknowledgeGroupsWidgetNavigation', requestId) ??
+          false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   static Future<void> updateGroups({
     required List<WorkingGroup> groups,
     required Map<String, List<GroupParticipant>> participantsByGroupId,
@@ -136,6 +148,7 @@ bool _isCurrentUser(
 
 class GroupsWidgetNavigationRequest {
   const GroupsWidgetNavigationRequest({
+    this.requestId,
     this.openGroups = false,
     this.participantGroupId,
     this.participantId,
@@ -143,6 +156,7 @@ class GroupsWidgetNavigationRequest {
     this.taskId,
   });
 
+  final String? requestId;
   final bool openGroups;
   final String? participantGroupId;
   final String? participantId;
@@ -151,6 +165,7 @@ class GroupsWidgetNavigationRequest {
 
   factory GroupsWidgetNavigationRequest.fromMap(Map<Object?, Object?> map) {
     return GroupsWidgetNavigationRequest(
+      requestId: map['requestId'] as String?,
       openGroups: map['openGroups'] == true,
       participantGroupId: map['participantGroupId'] as String?,
       participantId: map['participantId'] as String?,

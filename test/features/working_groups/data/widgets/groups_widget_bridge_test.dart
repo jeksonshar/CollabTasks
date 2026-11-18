@@ -27,6 +27,7 @@ void main() {
         if (call.method == 'takeInitialGroupsWidgetNavigation') {
           return initialNavigation;
         }
+        if (call.method == 'acknowledgeGroupsWidgetNavigation') return true;
         return null;
       },
     );
@@ -180,6 +181,7 @@ void main() {
 
     test('parses initial participant and task navigation payloads', () async {
       initialNavigation = {
+        'requestId': 'request-initial',
         'openGroups': true,
         'participantGroupId': 'group-1',
         'participantId': 'user-1',
@@ -190,11 +192,64 @@ void main() {
       final request = await GroupsWidgetBridge.takeInitialNavigation();
 
       expect(request?.openGroups, isTrue);
+      expect(request?.requestId, 'request-initial');
       expect(request?.participantGroupId, 'group-1');
       expect(request?.participantId, 'user-1');
       expect(request?.taskGroupId, 'group-2');
       expect(request?.taskId, 'task-42');
       expect(calls.single.method, 'takeInitialGroupsWidgetNavigation');
+    });
+
+    test('publishes navigation requests received from the Android host', () async {
+      GroupsWidgetBridge.initialize();
+      final requestFuture = GroupsWidgetBridge.navigationRequests.first;
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        _channel.name,
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('widgetNavigation', {
+            'requestId': 'request-42',
+            'participantGroupId': 'group-7',
+            'participantId': 'group-7:user-9',
+          }),
+        ),
+        null,
+      );
+
+      final request = await requestFuture;
+      expect(request.requestId, 'request-42');
+      expect(request.participantGroupId, 'group-7');
+      expect(request.participantId, 'group-7:user-9');
+      expect(request.taskId, isNull);
+    });
+
+    test('acknowledges a handled navigation request by ID', () async {
+      final acknowledged = await GroupsWidgetBridge.acknowledgeNavigation('request-42');
+
+      expect(acknowledged, isTrue);
+      expect(calls.single.method, 'acknowledgeGroupsWidgetNavigation');
+      expect(calls.single.arguments, 'request-42');
+    });
+
+    test('ignores unknown incoming methods and non-map navigation payloads', () async {
+      GroupsWidgetBridge.initialize();
+      final requests = <GroupsWidgetNavigationRequest>[];
+      final subscription = GroupsWidgetBridge.navigationRequests.listen(requests.add);
+
+      Future<void> send(MethodCall call) async {
+        await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .handlePlatformMessage(
+              _channel.name,
+              const StandardMethodCodec().encodeMethodCall(call),
+              null,
+            );
+      }
+
+      await send(const MethodCall('unknownMethod', {'openGroups': true}));
+      await send(const MethodCall('widgetNavigation', 'invalid'));
+
+      expect(requests, isEmpty);
+      await subscription.cancel();
     });
 
     test('does not invoke Android channel methods on non-Android platforms', () async {

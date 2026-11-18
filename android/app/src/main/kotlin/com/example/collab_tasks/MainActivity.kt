@@ -80,9 +80,18 @@ class MainActivity : FlutterFragmentActivity() {
         groupsWidgetChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "takeInitialGroupsWidgetNavigation" -> {
-                    val navigation = groupsWidgetNavigation(intent)
-                    clearGroupsWidgetNavigation(intent)
-                    result.success(navigation)
+                    val store = groupsWidgetNavigationStore()
+                    val navigation = groupsWidgetNavigation(intent)?.let { incoming ->
+                        store.enqueue(incoming).also { clearGroupsWidgetNavigation(intent) }
+                    } ?: store.pending()
+                    result.success(navigation?.toMethodChannelArguments())
+                }
+
+                "acknowledgeGroupsWidgetNavigation" -> {
+                    val requestId = call.arguments as? String
+                    result.success(
+                        requestId != null && groupsWidgetNavigationStore().acknowledge(requestId),
+                    )
                 }
 
                 "updateGroups" -> {
@@ -121,26 +130,32 @@ class MainActivity : FlutterFragmentActivity() {
 
         val groupsNavigation = groupsWidgetNavigation(intent)
         if (groupsNavigation != null) {
-            groupsWidgetChannel?.invokeMethod("widgetNavigation", groupsNavigation)
+            val pendingNavigation = groupsWidgetNavigationStore().enqueue(groupsNavigation)
             clearGroupsWidgetNavigation(intent)
+            groupsWidgetChannel?.invokeMethod(
+                "widgetNavigation",
+                pendingNavigation.toMethodChannelArguments(),
+            )
         }
     }
 
-    private fun groupsWidgetNavigation(sourceIntent: Intent?): HashMap<String, Any?>? {
+    private fun groupsWidgetNavigation(sourceIntent: Intent?): GroupsWidgetNavigation? {
         val openGroups = sourceIntent?.getBooleanExtra(EXTRA_GROUPS_OPEN_HOME, false) == true
         val participantGroupId = sourceIntent?.getStringExtra(EXTRA_GROUPS_PARTICIPANT_GROUP_ID)
         val participantId = sourceIntent?.getStringExtra(EXTRA_GROUPS_PARTICIPANT_ID)
         val taskGroupId = sourceIntent?.getStringExtra(EXTRA_GROUPS_TASK_GROUP_ID)
         val taskId = sourceIntent?.getStringExtra(EXTRA_GROUPS_TASK_ID)
         if (!openGroups && participantGroupId == null && taskGroupId == null) return null
-        return hashMapOf(
-            "openGroups" to openGroups,
-            "participantGroupId" to participantGroupId,
-            "participantId" to participantId,
-            "taskGroupId" to taskGroupId,
-            "taskId" to taskId,
+        return GroupsWidgetNavigation(
+            openGroups = openGroups,
+            participantGroupId = participantGroupId,
+            participantId = participantId,
+            taskGroupId = taskGroupId,
+            taskId = taskId,
         )
     }
+
+    private fun groupsWidgetNavigationStore() = GroupsWidgetNavigationStore(applicationContext)
 
     private fun clearGroupsWidgetNavigation(sourceIntent: Intent?) {
         sourceIntent?.removeExtra(EXTRA_GROUPS_OPEN_HOME)

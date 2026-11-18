@@ -209,9 +209,7 @@ private fun GroupsWidgetContent(context: Context, groups: List<WidgetGroup>, exp
             Box(modifier = GlanceModifier.defaultWeight().fillMaxWidth().clickable(openGroupsAction)) {
                 LazyColumn(modifier = GlanceModifier.fillMaxWidth()) {
                     items(items = groups, itemId = { it.id.hashCode().toLong() }) { group ->
-                        Box(
-                            modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp)
-                        ) {
+                        Box(modifier = GlanceModifier.fillMaxWidth().padding(top = 8.dp)) {
                             GroupWidgetSection(context, group, group.id in expandedIds)
                         }
                     }
@@ -226,8 +224,7 @@ private fun GroupsWidgetContent(context: Context, groups: List<WidgetGroup>, exp
 private fun GroupWidgetSection(context: Context, group: WidgetGroup, isExpanded: Boolean) {
     val toggleAction = actionRunCallback<ToggleGroupExpansionAction>(actionParametersOf(groupIdParameter to group.id))
     Column(
-        modifier = GlanceModifier
-            .fillMaxWidth()
+        modifier = GlanceModifier.fillMaxWidth()
             .background(widgetColor(AndroidColor.rgb(36, 37, 45)))
             .cornerRadius(12.dp),
     ) {
@@ -377,7 +374,11 @@ private fun ParticipantWidgetRow(groupId: String, participant: WidgetParticipant
 
 @GlanceComposable
 @androidx.compose.runtime.Composable
-private fun GroupTaskWidgetRow(context: Context, groupId: String, task: WidgetGroupTask) {
+private fun GroupTaskWidgetRow(
+    context: Context,
+    groupId: String,
+    task: WidgetGroupTask,
+) {
     val action =
         actionStartActivity<MainActivity>(actionParametersOf(taskGroupParameter to groupId, taskIdParameter to task.id))
     val priorityColor = when (task.priority) {

@@ -38,6 +38,8 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
   final Map<String, List<GroupParticipant>> _participantsByGroupId = {};
   final Map<String, List<GroupTask>> _tasksByGroupId = {};
   final Set<String> _syncingGroupIds = {};
+  final Set<String> _handledNavigationRequestIds = {};
+  final Set<String> _inFlightNavigationRequestIds = {};
   AuthUser? _currentUser;
   List<WorkingGroup> _groups = const [];
 
@@ -141,32 +143,63 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
 
   Future<void> _handleNavigation(GroupsWidgetNavigationRequest navigation) async {
     if (!mounted) return;
-    if (navigation.openGroups) {
-      widget.onOpenGroups();
-      return;
+    final requestId = navigation.requestId;
+    if (requestId != null) {
+      if (_inFlightNavigationRequestIds.contains(requestId)) return;
+      if (_handledNavigationRequestIds.contains(requestId)) {
+        await GroupsWidgetBridge.acknowledgeNavigation(requestId);
+        return;
+      }
+      _inFlightNavigationRequestIds.add(requestId);
     }
 
-    final participantGroupId = navigation.participantGroupId;
-    final participantCompositeId = navigation.participantId;
-    if (participantGroupId != null && participantCompositeId != null) {
-      await _openParticipantChat(participantGroupId, participantCompositeId);
-      return;
-    }
+    try {
+      if (navigation.openGroups) {
+        widget.onOpenGroups();
+        return;
+      }
 
-    final taskGroupId = navigation.taskGroupId;
-    final taskId = navigation.taskId;
-    if (taskGroupId != null && taskId != null) {
-      await _openGroupTask(taskGroupId, taskId);
+      final participantGroupId = navigation.participantGroupId;
+      final participantCompositeId = navigation.participantId;
+      if (participantGroupId != null && participantCompositeId != null) {
+        _openParticipantChat(participantGroupId, participantCompositeId);
+        return;
+      }
+
+      final taskGroupId = navigation.taskGroupId;
+      final taskId = navigation.taskId;
+      if (taskGroupId != null && taskId != null) {
+        await _openGroupTask(taskGroupId, taskId);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('[GroupsWidget] Failed to handle navigation request: $error\n$stackTrace');
+    } finally {
+      if (requestId != null) {
+        _inFlightNavigationRequestIds.remove(requestId);
+        _handledNavigationRequestIds.add(requestId);
+        if (_handledNavigationRequestIds.length > 32) {
+          _handledNavigationRequestIds.remove(_handledNavigationRequestIds.first);
+        }
+        await GroupsWidgetBridge.acknowledgeNavigation(requestId);
+      }
     }
   }
 
-  Future<void> _openParticipantChat(String groupId, String participantCompositeId) async {
+  void _openParticipantChat(String groupId, String participantCompositeId) {
     final navigator = Navigator.of(context);
     final loadingRoute = MaterialPageRoute<void>(
       builder: (_) => const _WidgetNavigationLoadingScreen(),
     );
     unawaited(navigator.push(loadingRoute));
+    unawaited(_resolveParticipantChat(navigator, loadingRoute, groupId, participantCompositeId));
+  }
 
+  Future<void> _resolveParticipantChat(
+    NavigatorState navigator,
+    MaterialPageRoute<void> loadingRoute,
+    String groupId,
+    String participantCompositeId,
+  ) async {
     try {
       final result = await getIt<GetOrCreateDirectChatUseCase>()(
         groupId: groupId,
@@ -197,10 +230,12 @@ class _GroupsWidgetBlocListenerState extends State<GroupsWidgetBlocListener> {
       }
       final matchedTask = task;
       if (!mounted || matchedTask == null) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              WorkingGroupTaskDetailsScreen(task: matchedTask, participants: participants),
+      unawaited(
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                WorkingGroupTaskDetailsScreen(task: matchedTask, participants: participants),
+          ),
         ),
       );
     } catch (error, stackTrace) {
