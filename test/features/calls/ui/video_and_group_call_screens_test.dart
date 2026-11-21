@@ -2,6 +2,7 @@ import 'package:collab_tasks/di/service_locator.dart';
 import 'package:collab_tasks/features/calls/data/repositories/in_memory_call_repository.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_rtc_service.dart';
 import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dart';
+import 'package:collab_tasks/features/calls/data/services/call_picture_in_picture_service.dart';
 import 'package:collab_tasks/features/calls/data/services/fake_call_permissions_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_participant.dart';
@@ -36,6 +37,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/screens/direct/audio_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/direct/video_call_screen.dart';
 import 'package:collab_tasks/features/calls/ui/screens/group/group_call_screen.dart';
+import 'package:collab_tasks/features/calls/ui/widgets/call_picture_in_picture.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -97,6 +99,7 @@ void main() {
       ..registerLazySingleton<CallRepository>(() => callRepository)
       ..registerLazySingleton<CallPermissionsService>(() => fakePermissionsService)
       ..registerLazySingleton<RtcService>(() => fakeRtcService)
+      ..registerFactory(() => CallPictureInPictureService(rtcService: getIt<RtcService>()))
       ..registerLazySingleton<RtcVideoViewFactory>(() => const FakeVideoViewFactory())
       ..registerLazySingleton(() => StartCallUseCase(getIt<CallRepository>()))
       ..registerLazySingleton(() => AcceptCallUseCase(getIt<CallRepository>()))
@@ -146,6 +149,66 @@ void main() {
     callRepository.dispose();
     await fakeRtcService.dispose();
     await getIt.reset();
+  });
+
+  testWidgets('compact direct audio call exposes restore, mute, and end actions', (tester) async {
+    var restored = false;
+    var microphoneToggled = false;
+    var callEnded = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SizedBox(
+          width: 420,
+          height: 260,
+          child: CallPictureInPicture(
+            displayName: 'Alex',
+            isVideo: false,
+            isGroup: false,
+            isMicrophoneMuted: false,
+            onRestore: () => restored = true,
+            onToggleMicrophone: () => microphoneToggled = true,
+            onEndOrLeave: () => callEnded = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Alex'), findsOneWidget);
+    await tester.tap(find.byTooltip('Return to call'));
+    await tester.tap(find.byTooltip('Mute'));
+    await tester.tap(find.byTooltip('End Call'));
+    expect(restored, isTrue);
+    expect(microphoneToggled, isTrue);
+    expect(callEnded, isTrue);
+  });
+
+  testWidgets('compact group audio call labels its terminal action as leave', (tester) async {
+    var leftCall = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SizedBox(
+          width: 420,
+          height: 260,
+          child: CallPictureInPicture(
+            displayName: 'Team Standup',
+            isVideo: false,
+            isGroup: true,
+            isMicrophoneMuted: true,
+            onRestore: () {},
+            onToggleMicrophone: () {},
+            onEndOrLeave: () => leftCall = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Leave Call'));
+    expect(leftCall, isTrue);
   });
 
   testWidgets('AudioCallScreen pops once when the call reaches a terminal state', (tester) async {

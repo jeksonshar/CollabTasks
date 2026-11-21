@@ -390,29 +390,64 @@ class FirestoreCallRepository implements CallRepository {
 
   @override
   Future<void> updateParticipantHeartbeat({required String callId, required String userId}) async {
-    if (!_isCurrentUser(userId)) {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw StateError('Cannot refresh a call heartbeat without an authenticated user');
+    }
+
+    final tokenResult = await currentUser.getIdTokenResult();
+    final tokenEmail = tokenResult.claims?['email'];
+    final normalizedEmail = tokenEmail is String && tokenEmail.trim().isNotEmpty
+        ? _normalizeIdentity(tokenEmail)
+        : null;
+    final normalizedUserId = _normalizeIdentity(userId);
+    if (normalizedUserId != _normalizeIdentity(currentUser.uid) &&
+        normalizedUserId != normalizedEmail) {
       throw StateError('Heartbeat identity does not match the authenticated user');
     }
 
     final callRef = _firestore.collection(_callsCollection).doc(callId);
-    await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(callRef);
-      if (!snapshot.exists || snapshot.data() == null) {
-        throw StateError('Call $callId does not exist');
-      }
+    late final DocumentSnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await callRef.get();
+    } on FirebaseException catch (error) {
+      throw StateError('Heartbeat call document read failed (${error.code})');
+    } catch (error) {
+      throw StateError('Heartbeat call document read failed (${error.runtimeType})');
+    }
 
-      final call = Call.fromMap(snapshot.data()!);
-      final participantIndex = _findParticipantIndex(call, userId);
-      if (call.status != CallStatus.active ||
-          participantIndex == -1 ||
-          call.participants[participantIndex].status != CallParticipantStatus.connected) {
-        throw StateError('Only a connected participant can refresh call $callId');
-      }
+    if (!snapshot.exists || snapshot.data() == null) {
+      throw StateError('Call is unavailable for heartbeat refresh');
+    }
 
-      final participantId = _normalizeIdentity(call.participants[participantIndex].userId);
-      final heartbeatRef = callRef.collection('heartbeats').doc(participantId);
-      transaction.set(heartbeatRef, {'lastSeenAt': FieldValue.serverTimestamp()});
-    });
+    final call = Call.fromMap(snapshot.data()!);
+    if (call.status != CallStatus.active) {
+      throw StateError('Only a connected participant can refresh a call heartbeat');
+    }
+
+    final rawParticipantsByUser = snapshot.data()!['participantsByUser'];
+    if (rawParticipantsByUser is! Map) {
+      throw StateError('Call has no participant map for heartbeat authorization');
+    }
+    final participantsByUser = Map<String, dynamic>.from(rawParticipantsByUser);
+    final participantId = normalizedEmail != null && participantsByUser.containsKey(normalizedEmail)
+        ? normalizedEmail
+        : _normalizeIdentity(currentUser.uid);
+    final participantData = participantsByUser[participantId];
+    if (participantData is! Map ||
+        participantData['userId'] != participantId ||
+        participantData['status'] != CallParticipantStatus.connected.name) {
+      throw StateError('Authenticated participant map entry is missing or not connected');
+    }
+
+    final heartbeatRef = callRef.collection('heartbeats').doc(participantId);
+    try {
+      await heartbeatRef.set({'lastSeenAt': FieldValue.serverTimestamp()});
+    } on FirebaseException catch (error) {
+      throw StateError('Heartbeat document write failed (${error.code})');
+    } catch (error) {
+      throw StateError('Heartbeat document write failed (${error.runtimeType})');
+    }
   }
 
   @override

@@ -1,12 +1,18 @@
 # Workflow Handoff
 
-- **Status:** Steps 1–2 complete; Step 3 layout reverted per user request.
-- **Active plan:** [`docs/plans/0012-groups-widget-review.md`](../plans/0012-groups-widget-review.md).
-- **Last completed step:** Per user request, reverted the flattened expanded-row layout, restoring `GroupWidgetSection`
-  as one rounded card with 8 dp between groups. `:app:testDebugUnitTest`, `:app:compileDebugKotlin`, and
-  `git diff --check` passed after rollback.
-- **Next action:** None for the requested rollback. Step 3 remains deferred.
-- **Changed or uncommitted files:** GroupsWidget bridge/listener tests; feature matrix; Android navigation delivery
-  store and tests; original Glance group card layout; plan 0012; ADR 0003; and this handoff. ADR 0003 remains Proposed.
-- **Known failures or blockers:** Android launcher visuals were not verified because no device is connected. Gradle
-  reports existing Kotlin/Gradle deprecation warnings. A newer tap replaces an older unacknowledged pending request.
+- **Status:** Corrected Firestore Rules deployed; Android device verification pending.
+- **Active plan:** [`docs/plans/0014-call-background-retention.md`](../plans/0014-call-background-retention.md).
+- **Last completed step:** The approved client change uses ID-token email claims and stage-specific, identity-safe
+  errors; its repository tests pass. Step 6 replaced `callSnapshot.exists` with `exists(callPath)` in the heartbeat
+  Rule, and all 19 Firestore Rules emulator tests pass. Step 7 deployed only the corrected Firestore Rules to
+  `collabtasks-fda3f`; Firebase CLI compiled, uploaded, and released them.
+- **Next action:** Install a build containing the client change and verify Android PiP beyond 30 seconds. Confirm
+  heartbeats succeed and the call remains active. Do not change Functions or the 15-second/30-second timings.
+- **Changed or uncommitted files:** `firestore.rules`, `firestore-rules-tests/calls.rules.test.cjs`,
+  `lib/features/calls/data/repositories/firestore_call_repository.dart`,
+  `test/features/calls/data/firestore_call_repository_test.dart`, `docs/calls-firestore-rules.md`,
+  `docs/features/calls.md`, plan 0014, and this handoff.
+- **Known limitations:** The fixed client code has not been verified on device. Existing Android foreground
+  services/wake locks remain. Force-stop, process death, and network loss still use the current 30-second stale cleanup.
+- **Previous checkpoint:** PiP feature implementation is tracked in [
+  `docs/plans/0013-call-picture-in-picture.md`](../plans/0013-call-picture-in-picture.md).

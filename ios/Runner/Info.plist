@@ -63,6 +63,7 @@
     <string>CollabTasks requires microphone access for audio and video calls.</string>
     <key>UIBackgroundModes</key>
     <array>
+        <string>audio</string>
         <string>voip</string>
         <string>fetch</string>
         <string>remote-notification</string>

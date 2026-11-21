@@ -855,6 +855,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get callActionUnmuteMic => 'Включить микрофон';
 
   @override
+  String get callActionRestoreCall => 'Вернуться к звонку';
+
+  @override
   String get callActionEnableCamera => 'Включить камеру';
 
   @override

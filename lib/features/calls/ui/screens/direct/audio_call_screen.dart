@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/calls/data/services/call_picture_in_picture_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
+import 'package:collab_tasks/features/calls/ui/widgets/call_picture_in_picture.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,9 +28,98 @@ class AudioCallScreen extends StatefulWidget {
   State<AudioCallScreen> createState() => _AudioCallScreenState();
 }
 
-class _AudioCallScreenState extends State<AudioCallScreen> {
+class _AudioCallScreenState extends State<AudioCallScreen> with WidgetsBindingObserver {
   Timer? _durationTimer;
   int _elapsedSeconds = 0;
+  late final CallPictureInPictureService _pictureInPictureService;
+  StreamSubscription<CallPictureInPictureEvent>? _pictureInPictureSubscription;
+  Future<bool>? _pictureInPictureEntry;
+  bool _pictureInPictureEntryRequested = false;
+  bool _isInPictureInPicture = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pictureInPictureService = getIt<CallPictureInPictureService>();
+    WidgetsBinding.instance.addObserver(this);
+    _pictureInPictureSubscription = _pictureInPictureService.events.listen(
+      _onPictureInPictureEvent,
+      onError: (Object _) {},
+    );
+  }
+
+  void _onPictureInPictureEvent(CallPictureInPictureEvent event) {
+    if (!mounted) return;
+    if (event.type == CallPictureInPictureEventType.modeChanged) {
+      setState(() => _isInPictureInPicture = event.isInPictureInPicture ?? false);
+      return;
+    }
+    switch (event.action) {
+      case CallPictureInPictureAction.restore:
+        setState(() => _isInPictureInPicture = false);
+        break;
+      case CallPictureInPictureAction.toggleMicrophone:
+        context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
+        break;
+      case CallPictureInPictureAction.endCall:
+      case CallPictureInPictureAction.leaveCall:
+        _onEndCallPressed();
+        break;
+      case null:
+        break;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.inactive) return;
+    if (lifecycleState == AppLifecycleState.resumed) {
+      _pictureInPictureEntryRequested = false;
+      _pictureInPictureEntry = null;
+      if (_isInPictureInPicture) setState(() => _isInPictureInPicture = false);
+      context.read<CallsBloc>().add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    if (lifecycleState != AppLifecycleState.hidden && lifecycleState != AppLifecycleState.paused) {
+      context.read<CallsBloc>().add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    unawaited(_enterPictureInPictureOrForwardLifecycle(lifecycleState));
+  }
+
+  Future<void> _enterPictureInPictureOrForwardLifecycle(AppLifecycleState lifecycleState) async {
+    final bloc = context.read<CallsBloc>();
+    final call = bloc.state.activeCall;
+    if (bloc.state.status != CallsStatus.active || call == null) {
+      bloc.add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    if (!_pictureInPictureEntryRequested) {
+      _pictureInPictureEntryRequested = true;
+      _pictureInPictureEntry = _pictureInPictureService.enterPictureInPicture(
+        _pictureInPictureConfiguration(bloc.state),
+      );
+    }
+    final entered = await _pictureInPictureEntry;
+    if (!mounted) return;
+    if (entered == true) {
+      if (!_isInPictureInPicture) setState(() => _isInPictureInPicture = true);
+    } else {
+      bloc.add(AppLifecycleChanged(lifecycleState));
+    }
+  }
+
+  CallPictureInPictureConfiguration _pictureInPictureConfiguration(CallsState state) {
+    final localization = AppLocalizations.of(context)!;
+    return CallPictureInPictureConfiguration(
+      callId: state.activeCall?.id ?? widget.callId,
+      displayName: widget.opponentName ?? localization.callUserFallback,
+      avatarUrl: widget.opponentAvatarUrl,
+      isVideo: false,
+      isGroup: false,
+      session: state.session,
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -36,6 +128,9 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   }
 
   void _syncCallTimer(CallsState state) {
+    if (state.status == CallsStatus.active && state.activeCall != null) {
+      unawaited(_pictureInPictureService.prepare(_pictureInPictureConfiguration(state)));
+    }
     if (state.status == CallsStatus.active &&
         state.rtcConnectionState == RtcConnectionState.connected) {
       _startTimerIfNeeded();
@@ -46,7 +141,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _durationTimer?.cancel();
+    unawaited(_pictureInPictureSubscription?.cancel());
+    unawaited(_pictureInPictureService.close());
     super.dispose();
   }
 
@@ -126,6 +224,21 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         }
       },
       builder: (context, state) {
+        if (_isInPictureInPicture) {
+          return Scaffold(
+            body: CallPictureInPicture(
+              displayName: displayName,
+              avatarUrl: widget.opponentAvatarUrl,
+              isVideo: false,
+              isGroup: false,
+              isMicrophoneMuted: state.isMicrophoneMuted,
+              onRestore: () => unawaited(_pictureInPictureService.restoreCall()),
+              onToggleMicrophone: () =>
+                  context.read<CallsBloc>().add(const ToggleMicrophoneRequested()),
+              onEndOrLeave: _onEndCallPressed,
+            ),
+          );
+        }
         final isRemoteSpeaking = state.participantMediaStates.any(
           (p) => !p.isLocal && p.isSpeaking,
         );

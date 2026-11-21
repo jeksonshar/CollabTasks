@@ -15,6 +15,8 @@ const {
     getDocs,
     query,
     setDoc,
+    serverTimestamp,
+    Timestamp,
     updateDoc,
     where,
 } = require('firebase/firestore');
@@ -244,6 +246,81 @@ describe('Firestore /calls security rules', () => {
             status: 'ended',
             endedAtMillis: 3000,
         }));
+    });
+
+    it('allows only a connected email-keyed participant to create a heartbeat', async () => {
+        const base = callDocument();
+        await seedCall({
+            status: 'active',
+            startedAtMillis: 2000,
+            participantsByUser: {
+                ...base.participantsByUser,
+                'callee@example.com': {
+                    ...base.participantsByUser['callee@example.com'],
+                    status: 'connected',
+                    joinedAtMillis: 2000,
+                },
+            },
+        });
+
+        const calleeDb = userDb('callee-uid', 'callee@example.com');
+        const allowedHeartbeat = doc(calleeDb, 'calls', callId, 'heartbeats', 'callee@example.com');
+        await assertSucceeds(setDoc(allowedHeartbeat, {lastSeenAt: serverTimestamp()}));
+
+        const wrongAliasHeartbeat = doc(calleeDb, 'calls', callId, 'heartbeats', 'callee-uid');
+        await assertFails(setDoc(wrongAliasHeartbeat, {lastSeenAt: serverTimestamp()}));
+
+        const strangerDb = userDb('stranger-uid', 'stranger@example.com');
+        const strangerHeartbeat = doc(strangerDb, 'calls', callId, 'heartbeats', 'callee@example.com');
+        await assertFails(setDoc(strangerHeartbeat, {lastSeenAt: serverTimestamp()}));
+    });
+
+    it('allows a connected UID-keyed participant to create a heartbeat when no email key exists', async () => {
+        const base = callDocument();
+        await seedCall({
+            calleeIds: ['callee-uid'],
+            status: 'active',
+            startedAtMillis: 2000,
+            participantsByUser: {
+                'caller@example.com': base.participantsByUser['caller@example.com'],
+                'callee-uid': {
+                    ...base.participantsByUser['callee@example.com'],
+                    userId: 'callee-uid',
+                    status: 'connected',
+                    joinedAtMillis: 2000,
+                },
+            },
+        });
+
+        const calleeDb = userDb('callee-uid', 'callee@example.com');
+        const heartbeat = doc(calleeDb, 'calls', callId, 'heartbeats', 'callee-uid');
+        await assertSucceeds(setDoc(heartbeat, {lastSeenAt: serverTimestamp()}));
+    });
+
+    it('allows a connected participant to refresh an old heartbeat', async () => {
+        const base = callDocument();
+        await seedCall({
+            status: 'active',
+            startedAtMillis: 2000,
+            participantsByUser: {
+                ...base.participantsByUser,
+                'callee@example.com': {
+                    ...base.participantsByUser['callee@example.com'],
+                    status: 'connected',
+                    joinedAtMillis: 2000,
+                },
+            },
+        });
+
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'calls', callId, 'heartbeats', 'callee@example.com'), {
+                lastSeenAt: Timestamp.fromMillis(Date.now() - 10_000),
+            });
+        });
+
+        const calleeDb = userDb('callee-uid', 'callee@example.com');
+        const heartbeat = doc(calleeDb, 'calls', callId, 'heartbeats', 'callee@example.com');
+        await assertSucceeds(setDoc(heartbeat, {lastSeenAt: serverTimestamp()}));
     });
 
     it('allows a caller to create only their own valid ringing call', async () => {

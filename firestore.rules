@@ -294,9 +294,10 @@ service cloud.firestore {
 
       match /heartbeats/{participantId} {
         function connectedHeartbeatOwner() {
-          let callSnapshot = get(/databases/$(database)/documents/calls/$(callId));
+          let callPath = /databases/$(database)/documents/calls/$(callId);
+          let callSnapshot = get(callPath);
           let call = callSnapshot.data;
-          return signedIn() && callSnapshot.exists && call.status == 'active' &&
+          return signedIn() && exists(callPath) && call.status == 'active' &&
             call.participantsByUser is map &&
             participantId == participantKeyFor(call.participantsByUser) &&
             call.participantsByUser.get(participantId, null) is map &&

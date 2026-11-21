@@ -1666,6 +1666,12 @@ abstract class AppLocalizations {
   /// **'Unmute'**
   String get callActionUnmuteMic;
 
+  /// No description provided for @callActionRestoreCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to call'**
+  String get callActionRestoreCall;
+
   /// No description provided for @callActionEnableCamera.
   ///
   /// In en, this message translates to:

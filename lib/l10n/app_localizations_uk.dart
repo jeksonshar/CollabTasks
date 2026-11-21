@@ -859,6 +859,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get callActionUnmuteMic => 'Увімкнути мікрофон';
 
   @override
+  String get callActionRestoreCall => 'Повернутися до дзвінка';
+
+  @override
   String get callActionEnableCamera => 'Увімкнути камеру';
 
   @override

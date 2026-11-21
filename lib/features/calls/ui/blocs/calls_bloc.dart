@@ -544,7 +544,8 @@ class CallsBloc extends Bloc<CallsEvent, CallsState> {
         }
         break;
       case AppLifecycleState.detached:
-        add(const EndCallRequested());
+        // A detached Flutter view does not mean the call has ended. The call
+        // should remain active until the user ends/leaves it or the peer exits.
         break;
       case AppLifecycleState.hidden:
         break;

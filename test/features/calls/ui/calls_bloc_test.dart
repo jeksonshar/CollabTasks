@@ -931,6 +931,62 @@ void main() {
     );
 
     blocTest<CallsBloc, CallsState>(
+      'detached lifecycle keeps a direct video call active',
+      build: buildBloc,
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        isCameraEnabled: true,
+        isMicrophoneMuted: true,
+        activeCall: Call(
+          id: 'call-detached-direct',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2'],
+          type: CallType.video,
+          status: CallStatus.active,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const AppLifecycleChanged(AppLifecycleState.detached)),
+      expect: () => <CallsState>[],
+      verify: (bloc) {
+        expect(bloc.state.status, CallsStatus.active);
+        expect(bloc.state.activeCall?.id, 'call-detached-direct');
+        expect(bloc.state.isCameraEnabled, isTrue);
+        expect(bloc.state.isMicrophoneMuted, isTrue);
+        expect(fakeRtcService.leaveCallCount, 0);
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
+      'detached lifecycle keeps a group audio call active',
+      build: buildBloc,
+      seed: () => CallsState(
+        status: CallsStatus.active,
+        isMicrophoneMuted: false,
+        activeCall: Call(
+          id: 'call-detached-group',
+          callerId: 'user-1',
+          callerName: 'User 1',
+          calleeIds: const ['user-2', 'user-3'],
+          type: CallType.audio,
+          status: CallStatus.active,
+          isGroup: true,
+          createdAt: DateTime.now(),
+        ),
+      ),
+      act: (bloc) => bloc.add(const AppLifecycleChanged(AppLifecycleState.detached)),
+      expect: () => <CallsState>[],
+      verify: (bloc) {
+        expect(bloc.state.status, CallsStatus.active);
+        expect(bloc.state.activeCall?.id, 'call-detached-group');
+        expect(bloc.state.activeCall?.isGroup, isTrue);
+        expect(bloc.state.isMicrophoneMuted, isFalse);
+        expect(fakeRtcService.leaveCallCount, 0);
+      },
+    );
+
+    blocTest<CallsBloc, CallsState>(
       'system pause does not re-enable a camera disabled manually by the user',
       build: buildBloc,
       seed: () => CallsState(

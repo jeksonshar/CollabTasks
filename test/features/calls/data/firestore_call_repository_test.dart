@@ -24,6 +24,8 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 class _MockUser extends Mock implements User {}
 
+class _MockIdTokenResult extends Mock implements IdTokenResult {}
+
 class _HistoryQuery extends Fake implements Query<Map<String, dynamic>> {
   _HistoryQuery(this.documents);
 
@@ -181,6 +183,10 @@ void main() {
   late _MockDocumentReference documentReference;
   late _MockFirebaseAuth auth;
   late _MockUser user;
+  late _MockIdTokenResult tokenResult;
+  late _MockCollection heartbeatCollection;
+  late _MockDocumentReference heartbeatDocumentReference;
+  late List<String> heartbeatDocumentIds;
   late _StatefulTransaction transaction;
   late AgoraUidMapper uidMapper;
   late FirestoreCallRepository repository;
@@ -192,12 +198,13 @@ void main() {
     CallParticipantStatus calleeStatus = CallParticipantStatus.ringing,
     DateTime? calleeJoinedAt,
     List<String>? calleeIds,
+    String calleeParticipantId = calleeId,
   }) {
     return Call(
       id: callId,
       callerId: callerId,
       callerName: 'Caller',
-      calleeIds: calleeIds ?? [calleeId],
+      calleeIds: calleeIds ?? [calleeParticipantId],
       type: CallType.video,
       status: status,
       isGroup: isGroup,
@@ -211,7 +218,7 @@ void main() {
           joinedAt: createdAt,
         ),
         CallParticipant(
-          userId: calleeId,
+          userId: calleeParticipantId,
           displayName: 'Callee',
           status: calleeStatus,
           joinedAt:
@@ -249,6 +256,10 @@ void main() {
     documentReference = _MockDocumentReference();
     auth = _MockFirebaseAuth();
     user = _MockUser();
+    tokenResult = _MockIdTokenResult();
+    heartbeatCollection = _MockCollection();
+    heartbeatDocumentReference = _MockDocumentReference();
+    heartbeatDocumentIds = [];
     uidMapper = AgoraUidMapper();
     storedData = initialCall();
     transaction = _StatefulTransaction(storedData);
@@ -259,6 +270,14 @@ void main() {
     when(() => user.uid).thenReturn('callee-uid');
     when(() => user.email).thenReturn(calleeId);
     when(() => user.getIdToken()).thenAnswer((_) async => 'firebase-id-token');
+    when(() => user.getIdTokenResult()).thenAnswer((_) async => tokenResult);
+    when(() => tokenResult.claims).thenReturn({'email': calleeId});
+    when(() => documentReference.collection('heartbeats')).thenReturn(heartbeatCollection);
+    when(() => heartbeatCollection.doc(any())).thenAnswer((invocation) {
+      heartbeatDocumentIds.add(invocation.positionalArguments.single as String);
+      return heartbeatDocumentReference;
+    });
+    when(() => heartbeatDocumentReference.set(any())).thenAnswer((_) async {});
     when(() => documentReference.get()).thenAnswer((_) async {
       final snapshot = _MockDocumentSnapshot();
       when(() => snapshot.exists).thenReturn(true);
@@ -266,6 +285,72 @@ void main() {
       return snapshot;
     });
     repository = FirestoreCallRepository(firestore: firestore, auth: auth, uidMapper: uidMapper);
+  });
+
+  test('heartbeat key follows the ID-token email claim instead of cached User.email', () async {
+    when(() => user.email).thenReturn('cached@example.com');
+    storedData = initialCall(
+      status: CallStatus.active,
+      calleeStatus: CallParticipantStatus.connected,
+    );
+
+    await repository.updateParticipantHeartbeat(callId: callId, userId: 'callee-uid');
+
+    expect(heartbeatDocumentIds, [calleeId]);
+  });
+
+  test('heartbeat key falls back to Firebase UID when the token email key is absent', () async {
+    when(() => tokenResult.claims).thenReturn({'email': 'other@example.com'});
+    storedData = initialCall(
+      status: CallStatus.active,
+      calleeStatus: CallParticipantStatus.connected,
+      calleeParticipantId: 'callee-uid',
+      calleeIds: const ['callee-uid'],
+    );
+
+    await repository.updateParticipantHeartbeat(callId: callId, userId: 'callee-uid');
+
+    expect(heartbeatDocumentIds, ['callee-uid']);
+  });
+
+  test('heartbeat read denial is distinguishable and does not expose identity values', () async {
+    when(
+      () => documentReference.get(),
+    ).thenThrow(FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied'));
+
+    await expectLater(
+      repository.updateParticipantHeartbeat(callId: callId, userId: calleeId),
+      throwsA(
+        isA<StateError>()
+            .having((error) => error.message, 'message', contains('call document read failed'))
+            .having((error) => error.message, 'message', contains('permission-denied'))
+            .having((error) => error.message, 'message', isNot(contains(calleeId)))
+            .having((error) => error.message, 'message', isNot(contains('callee-uid'))),
+      ),
+    );
+    expect(heartbeatDocumentIds, isEmpty);
+  });
+
+  test('heartbeat write denial is distinguishable and does not expose identity values', () async {
+    storedData = initialCall(
+      status: CallStatus.active,
+      calleeStatus: CallParticipantStatus.connected,
+    );
+    when(
+      () => heartbeatDocumentReference.set(any()),
+    ).thenThrow(FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied'));
+
+    await expectLater(
+      repository.updateParticipantHeartbeat(callId: callId, userId: calleeId),
+      throwsA(
+        isA<StateError>()
+            .having((error) => error.message, 'message', contains('document write failed'))
+            .having((error) => error.message, 'message', contains('permission-denied'))
+            .having((error) => error.message, 'message', isNot(contains(calleeId)))
+            .having((error) => error.message, 'message', isNot(contains('callee-uid'))),
+      ),
+    );
+    expect(heartbeatDocumentIds, [calleeId]);
   });
 
   test(

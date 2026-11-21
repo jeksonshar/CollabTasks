@@ -855,6 +855,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get callActionUnmuteMic => 'Unmute';
 
   @override
+  String get callActionRestoreCall => 'Return to call';
+
+  @override
   String get callActionEnableCamera => 'Enable Camera';
 
   @override

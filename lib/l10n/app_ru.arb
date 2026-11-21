@@ -349,6 +349,7 @@
   "callUserFallback": "Пользователь",
   "callActionMuteMic": "Выключить микрофон",
   "callActionUnmuteMic": "Включить микрофон",
+  "callActionRestoreCall": "Вернуться к звонку",
   "callActionEnableCamera": "Включить камеру",
   "callActionDisableCamera": "Выключить камеру",
   "callActionSwitchCamera": "Переключить камеру",

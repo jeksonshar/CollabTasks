@@ -138,6 +138,24 @@
   mute and speakerphone to off and configures camera tracks from the session media type; the current speakerphone route
   is applied after Agora confirms channel entry. `leaveSession` resets SDK media, routing, and the in-memory participant
   mapping. Background camera suspension remains distinct from the user's manual camera toggle.
+- **Picture in Picture and Background Lifecycle:** `AudioCallScreen`, `VideoCallScreen`, and `GroupCallScreen` request a
+  compact call presentation when the app is hidden or paused. If PiP entry succeeds, the screen keeps the call active
+  and
+  does not dispatch the lifecycle event that would suspend video; unsupported/failed entry still forwards lifecycle
+  handling to `CallsBloc`. The Bloc does not end a call on `detached`. `CallPictureInPictureService` owns the Agora PiP
+  controller for video and the Android native bridge for audio-only PiP. Android PiP provides restore, microphone
+  toggle,
+  and the context-appropriate end/leave action. iOS video uses Agora PiP, but iOS does not expose these app-defined
+  controls; iOS audio-only PiP is unsupported. iOS background audio mode is enabled so audio can continue while the app
+  is backgrounded. Preparing PiP for any active Android RTC call starts the app-owned ongoing-call foreground service,
+  independent of whether CallKit started its own service. It holds a partial CPU wake lock so the existing 15-second
+  client heartbeat continues during PiP; call-service teardown stops the service and releases the lock. Server
+  reconciliation still treats a heartbeat older than 30 seconds as stale. Force-stop, process death, or network loss
+  can stop heartbeats and still trigger the existing stale-call cleanup. Remote hangup and user end/leave continue
+  through the existing Bloc terminal cleanup. `FirestoreCallRepository` selects the heartbeat document key from the raw
+  participant map using the authenticated ID-token email claim first, then Firebase UID, matching Firestore Security
+  Rules. It checks that the selected participant is connected, reads the call document separately from the heartbeat
+  write, and reports the rejected operation and Firebase error code without logging raw email or UID values.
 
 ### Presentation Layer (UI & Bloc)
 
@@ -158,6 +176,9 @@
   participants, a prominent status badge with spinner renders below the center avatar. The bottom controls bar uses an
   evenly-spaced full-width row with compact padding, ensuring comfortable button distribution across the entire screen
   width without unwanted margins.
+- **Compact Call Surface:** While in Android PiP, the Flutter call screen renders the shared compact participant view
+  and controls. Restore returns to the existing call screen; microphone and direct-end/group-leave actions are routed to
+  `CallsBloc`. For video PiP, Agora supplies the video surface on supported platforms.
 - **Feature Localization (l10n/i18n):** All presentation layer components (`IncomingCallDialog`, `AudioCallScreen`,
   `VideoCallScreen`, `GroupCallScreen`) strictly consume localized text from `AppLocalizations` across English (`en`),
   Russian (`ru`), and Ukrainian (`uk`). Localized strings cover incoming call alerts, call and RTC connection states
@@ -168,17 +189,22 @@
 
 ## 3. Testing Matrix
 
-| Behavior or component                         | Test file                                                          | Cases covered                                                                                                                                                                                   |
-|:----------------------------------------------|:-------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Call.isMissedFor` and session duration       | `test/features/calls/domain/call_history_classification_test.dart` | Direct terminal outcomes share the missed classification; group outcome is per participant connection; whole-session duration excludes ringing and does not calculate per-participant duration. |
-| Firestore Direct and group history queries    | `test/features/calls/data/firestore_call_repository_test.dart`     | Authenticated UID/email aliases, opponent filtering, alias deduplication, stable ordering and cursor boundaries, and group page boundaries.                                                     |
-| In-memory history pages                       | `test/features/calls/data/firestore_call_repository_test.dart`     | Page size, cursor continuation, stable ordering, and page boundary behavior.                                                                                                                    |
-| `GetCallHistoryUseCase` and `CallHistoryBloc` | `test/features/calls/ui/call_history_bloc_test.dart`               | Initial page request, append, boundary deduplication, and preserving loaded rows/cursor after a later-page error.                                                                               |
-| `CallHistoryScreen`                           | `test/features/calls/ui/call_history_screen_test.dart`             | Initial load and retry, missed icon/error color, list/empty state, near-end and short-page loading, and later-page retry.                                                                       |
-| History localization                          | `test/features/calls/ui/call_history_screen_test.dart`             | Retry action rendered using generated localization; source strings are in `lib/l10n/app_{en,ru,uk}.arb`.                                                                                        |
-| Firestore call-history authorization          | `firestore-rules-tests/calls.rules.test.cjs`                       | Authenticated Direct history access, peer-only query denial, group member access, and non-member denial.                                                                                        |
-| Firestore query indexes                       | `firestore.indexes.json`                                           | Source definitions cover caller/callee alias queries and group query ordering. Deploying index configuration is a separate operation.                                                           |
-| Other call behavior                           | `test/features/calls/`                                             | Repository calls, RTC session result, alert stop, CallKit dismissal, Agora UID mapping, RTC cleanup, and liveness behavior.                                                                     |
+| Behavior or component                          | Test file                                                                                                    | Cases covered                                                                                                                                                                                                                                                                        |
+|:-----------------------------------------------|:-------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Call.isMissedFor` and session duration        | `test/features/calls/domain/call_history_classification_test.dart`                                           | Direct terminal outcomes share the missed classification; group outcome is per participant connection; whole-session duration excludes ringing and does not calculate per-participant duration.                                                                                      |
+| Firestore Direct and group history queries     | `test/features/calls/data/firestore_call_repository_test.dart`                                               | Authenticated UID/email aliases, opponent filtering, alias deduplication, stable ordering and cursor boundaries, and group page boundaries.                                                                                                                                          |
+| In-memory history pages                        | `test/features/calls/data/firestore_call_repository_test.dart`                                               | Page size, cursor continuation, stable ordering, and page boundary behavior.                                                                                                                                                                                                         |
+| `GetCallHistoryUseCase` and `CallHistoryBloc`  | `test/features/calls/ui/call_history_bloc_test.dart`                                                         | Initial page request, append, boundary deduplication, and preserving loaded rows/cursor after a later-page error.                                                                                                                                                                    |
+| `CallHistoryScreen`                            | `test/features/calls/ui/call_history_screen_test.dart`                                                       | Initial load and retry, missed icon/error color, list/empty state, near-end and short-page loading, and later-page retry.                                                                                                                                                            |
+| History localization                           | `test/features/calls/ui/call_history_screen_test.dart`                                                       | Retry action rendered using generated localization; source strings are in `lib/l10n/app_{en,ru,uk}.arb`.                                                                                                                                                                             |
+| Firestore call-history authorization           | `firestore-rules-tests/calls.rules.test.cjs`                                                                 | Authenticated Direct history access, peer-only query denial, group member access, and non-member denial.                                                                                                                                                                             |
+| Firestore query indexes                        | `firestore.indexes.json`                                                                                     | Source definitions cover caller/callee alias queries and group query ordering. Deploying index configuration is a separate operation.                                                                                                                                                |
+| Other call behavior                            | `test/features/calls/`                                                                                       | Repository calls, RTC session result, alert stop, CallKit dismissal, Agora UID mapping, RTC cleanup, and liveness behavior.                                                                                                                                                          |
+| Background call lifecycle                      | `test/features/calls/ui/calls_bloc_test.dart`                                                                | A detached Flutter view does not end a direct video or group audio call; active RTC state and user media choices remain.                                                                                                                                                             |
+| PiP controls and compact call screen           | `test/features/calls/ui/video_and_group_call_screens_test.dart`                                              | Compact surface controls restore the call, toggle microphone, end a direct call, or leave a group call.                                                                                                                                                                              |
+| PiP service and native channel contract        | `test/features/calls/data/services/call_picture_in_picture_service_test.dart`                                | Android audio PiP setup, action parsing, and unsupported backend behavior.                                                                                                                                                                                                           |
+| Heartbeat participant-key alignment            | `test/features/calls/data/firestore_call_repository_test.dart`; `firestore-rules-tests/calls.rules.test.cjs` | Repository tests verify ID-token email claim selection, UID fallback, and stage-specific client errors; Rules emulator tests verify allowed heartbeat create/refresh and denied wrong-alias/stranger writes. Both suites pass. Android PiP beyond 30 seconds remains a device check. |
+| Native PiP and Android call foreground service | Android/iOS device scenario                                                                                  | Not run: verify app-owned service starts for incoming/outgoing direct/group calls, holds wake lock during PiP, stops on call end, preserves the 15-second heartbeat below the unchanged 30-second stale threshold; verify force-stop cleanup and iOS background media.               |
 
 ## 4. Data Flow & State Machine (Mermaid)
 
@@ -192,6 +218,13 @@ graph TD
     UC --> Alert[CallAlertService]
     Repo --> Session[CallSession RTC Credentials]
     Bloc -->|CallAcceptedState| Screen[Audio or Video Call Screen]
+    Screen -->|Background lifecycle| PipService[CallPictureInPictureService]
+    PipService -->|Video PiP| AgoraPip[Agora PiP Controller]
+    PipService -->|Android audio PiP and actions| NativePip[Android MainActivity]
+    AgoraPip --> SystemPip[System PiP Window]
+    NativePip --> SystemPip
+    SystemPip -->|Restore, mute, end or leave| Screen
+    Screen -->|Call action| Bloc
     Screen -->|EndCallRequested| Bloc
     Chat[Direct or Group Chat] -->|History action| HistoryScreen[CallHistoryScreen]
     HistoryScreen --> HistoryBloc[CallHistoryBloc]

@@ -36,6 +36,20 @@ participants remain connected. `onCallUpdated` performs those aggregate checks w
 call rejected after every callee declines, or ends an active call when its last eligible participant leaves. These
 server-side aggregate outcomes are asynchronous relative to the participant update.
 
+Heartbeat documents are stored at `calls/{callId}/heartbeats/{participantId}`. The Rules select `participantId` by
+preferring the authenticated user's lowercased ID-token email claim when that key exists in `participantsByUser`,
+otherwise by Firebase UID. `FirestoreCallRepository.updateParticipantHeartbeat` reads the email from the same token
+claims, selects the matching raw participant-map key, and verifies that the selected record's `userId` equals its map
+key and its status is `connected` before writing a server timestamp. It reads the call document and writes the heartbeat
+as separate operations so a permission error identifies which operation was rejected. Error messages include only the
+operation and Firebase error code, never the participant email or UID. The Rules allow only that authenticated
+connected participant to create or refresh their own heartbeat document; do not choose the heartbeat path from a
+decoded participant value or a potentially stale `User.email` when it may differ from the ID-token claim.
+
+`connectedHeartbeatOwner()` checks parent-call existence with `exists(callPath)`. A value returned by `get(callPath)`
+exposes its fields through `.data` and has no `.exists` property. Heartbeat creation and refresh remain restricted to an
+authenticated connected participant whose selected email-or-UID key matches their participant record.
+
 Legacy call documents remain readable through `Call.fromMap()` fallback. Their existing array schema cannot safely use
 the new participant transition rules; allow active calls to finish before deploying the new Rules and client together.
 
@@ -44,7 +58,9 @@ the new participant transition rules; allow active calls to finish before deploy
 Run
 `firebase emulators:exec --only firestore --project demo-collabtasks-rules "npm --prefix firestore-rules-tests test"`
 from the repository root. The test suite loads the checked-in `firestore.rules` and covers authenticated membership,
-forbidden writes, call transitions, and the two incoming-call query shapes.
+forbidden writes, call transitions, the two incoming-call query shapes, and heartbeat creation/refresh for email-keyed
+and UID-keyed participants. It also verifies rejection of a connected member using the wrong alias and of a stranger.
+The suite passed all 19 tests after the parent-call existence check was corrected.
 
 ## Index
 

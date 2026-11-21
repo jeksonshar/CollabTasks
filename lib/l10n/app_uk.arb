@@ -347,6 +347,7 @@
   "callUserFallback": "Користувач",
   "callActionMuteMic": "Вимкнути мікрофон",
   "callActionUnmuteMic": "Увімкнути мікрофон",
+  "callActionRestoreCall": "Повернутися до дзвінка",
   "callActionEnableCamera": "Увімкнути камеру",
   "callActionDisableCamera": "Вимкнути камеру",
   "callActionSwitchCamera": "Перемкнути камеру",

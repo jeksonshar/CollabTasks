@@ -1,11 +1,21 @@
 package com.example.collab_tasks
 
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.util.Rational
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.agora.agora_rtc_ng.AgoraPIPFlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,15 +23,112 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 
-class MainActivity : FlutterFragmentActivity() {
+class MainActivity : AgoraPIPFlutterFragmentActivity() {
     private val channelName = "com.collab_tasks/task_widget"
     private val groupsChannelName = "com.collab_tasks/groups_widget"
     private var taskWidgetChannel: MethodChannel? = null
     private var groupsWidgetChannel: MethodChannel? = null
+    private var callPictureInPictureEventSink: EventChannel.EventSink? = null
+    private var callPictureInPictureConfigured = false
+    private var isGroupPictureInPictureCall = false
+    private var callPictureInPictureReceiverRegistered = false
+
+    private val callPictureInPictureReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = when (intent?.action) {
+                ACTION_PIP_TOGGLE_MICROPHONE -> "toggleMicrophone"
+                ACTION_PIP_END_CALL -> if (isGroupPictureInPictureCall) "leaveCall" else "endCall"
+                else -> return
+            }
+            callPictureInPictureEventSink?.success(mapOf("type" to "action", "action" to action))
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         taskWidgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CALL_PICTURE_IN_PICTURE_EVENTS_CHANNEL,
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                callPictureInPictureEventSink = events
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    events.success(
+                        mapOf(
+                            "type" to "modeChanged",
+                            "isInPictureInPicture" to isInPictureInPictureMode,
+                        ),
+                    )
+                }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                callPictureInPictureEventSink = null
+            }
+        })
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CALL_PICTURE_IN_PICTURE_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "configureCallActions" -> {
+                    val arguments = call.arguments as? Map<*, *>
+                    isGroupPictureInPictureCall = arguments?.get("isGroup") as? Boolean == true
+                    callPictureInPictureConfigured = true
+                    result.success(true)
+                }
+
+                "startCallBackgroundService" -> {
+                    val arguments = call.arguments as? Map<*, *>
+                    val serviceIntent = Intent(this, CallBackgroundService::class.java).apply {
+                        putExtra(
+                            CallBackgroundService.EXTRA_DISPLAY_NAME,
+                            arguments?.get("displayName") as? String,
+                        )
+                    }
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            ContextCompat.startForegroundService(this, serviceIntent)
+                        } else {
+                            startService(serviceIntent)
+                        }
+                        result.success(true)
+                    } catch (error: Exception) {
+                        result.error("call_background_service_start_failed", error.message, null)
+                    }
+                }
+
+                "stopCallBackgroundService" -> {
+                    stopService(Intent(this, CallBackgroundService::class.java))
+                    result.success(null)
+                }
+
+                "enterAudioPictureInPicture" -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        result.success(false)
+                    } else {
+                        try {
+                            val parameters = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .setActions(pictureInPictureActions())
+                                .build()
+                            result.success(enterPictureInPictureMode(parameters))
+                        } catch (_: IllegalArgumentException) {
+                            result.success(false)
+                        }
+                    }
+                }
+
+                "restoreCallActivity" -> {
+                    restoreCallActivity()
+                    result.success(null)
+                }
+
+                else -> result.notImplemented()
+            }
+        }
+        registerCallPictureInPictureReceiver()
         taskWidgetChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "takeInitialWidgetNavigation" -> {
@@ -114,6 +221,13 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.action == ACTION_PIP_RESTORE) {
+            intent.action = null
+            callPictureInPictureEventSink?.success(
+                mapOf("type" to "action", "action" to "restore"),
+            )
+            return
+        }
         val openHome = intent.getBooleanExtra(EXTRA_OPEN_HOME, false)
         val refreshTasks = intent.getBooleanExtra(EXTRA_REFRESH_TASKS, false)
         val taskId = intent.getStringExtra(EXTRA_TASK_ID)
@@ -137,6 +251,126 @@ class MainActivity : FlutterFragmentActivity() {
                 pendingNavigation.toMethodChannelArguments(),
             )
         }
+    }
+
+    override fun setPictureInPictureParams(params: PictureInPictureParams) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !callPictureInPictureConfigured) {
+            super.setPictureInPictureParams(params)
+            return
+        }
+
+        val builder = PictureInPictureParams.Builder()
+        params.aspectRatio?.let { builder.setAspectRatio(it) }
+        params.sourceRectHint?.let { builder.setSourceRectHint(it) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(params.isAutoEnterEnabled)
+        }
+        builder.setActions(pictureInPictureActions())
+        super.setPictureInPictureParams(builder.build())
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        callPictureInPictureEventSink?.success(
+            mapOf(
+                "type" to "modeChanged",
+                "isInPictureInPicture" to isInPictureInPictureMode,
+            ),
+        )
+    }
+
+    override fun onDestroy() {
+        if (callPictureInPictureReceiverRegistered) {
+            unregisterReceiver(callPictureInPictureReceiver)
+            callPictureInPictureReceiverRegistered = false
+        }
+        super.onDestroy()
+    }
+
+    private fun registerCallPictureInPictureReceiver() {
+        if (callPictureInPictureReceiverRegistered) return
+        val filter = IntentFilter().apply {
+            addAction(ACTION_PIP_TOGGLE_MICROPHONE)
+            addAction(ACTION_PIP_END_CALL)
+        }
+        ContextCompat.registerReceiver(
+            this,
+            callPictureInPictureReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        callPictureInPictureReceiverRegistered = true
+    }
+
+    private fun pictureInPictureActions(): List<RemoteAction> {
+        val locale = WidgetLocalization.languageCode(applicationContext)
+        val restoreLabel = when (locale) {
+            "ru" -> "Вернуться к звонку"
+            "uk" -> "Повернутися до дзвінка"
+            else -> "Return to call"
+        }
+        val microphoneLabel = when (locale) {
+            "ru" -> "Микрофон"
+            "uk" -> "Мікрофон"
+            else -> "Microphone"
+        }
+        val endLabel = when (locale) {
+            "ru" -> if (isGroupPictureInPictureCall) "Покинуть звонок" else "Завершить звонок"
+            "uk" -> if (isGroupPictureInPictureCall) "Залишити дзвінок" else "Завершити дзвінок"
+            else -> if (isGroupPictureInPictureCall) "Leave call" else "End call"
+        }
+        return listOf(
+            RemoteAction(
+                Icon.createWithResource(this, android.R.drawable.ic_menu_view),
+                restoreLabel,
+                restoreLabel,
+                restoreCallPendingIntent(),
+            ),
+            RemoteAction(
+                Icon.createWithResource(this, android.R.drawable.ic_lock_silent_mode_off),
+                microphoneLabel,
+                microphoneLabel,
+                pictureInPictureBroadcastPendingIntent(ACTION_PIP_TOGGLE_MICROPHONE, 702),
+            ),
+            RemoteAction(
+                Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
+                endLabel,
+                endLabel,
+                pictureInPictureBroadcastPendingIntent(ACTION_PIP_END_CALL, 703),
+            ),
+        )
+    }
+
+    private fun restoreCallPendingIntent(): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java)
+            .setAction(ACTION_PIP_RESTORE)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return PendingIntent.getActivity(
+            this,
+            701,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun pictureInPictureBroadcastPendingIntent(action: String, requestCode: Int): PendingIntent {
+        val intent = Intent(action).setPackage(packageName)
+        return PendingIntent.getBroadcast(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun restoreCallActivity() {
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
     }
 
     private fun groupsWidgetNavigation(sourceIntent: Intent?): GroupsWidgetNavigation? {
@@ -166,6 +400,13 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     companion object {
+        private const val CALL_PICTURE_IN_PICTURE_CHANNEL = "com.collab_tasks/call_picture_in_picture"
+        private const val CALL_PICTURE_IN_PICTURE_EVENTS_CHANNEL =
+            "com.collab_tasks/call_picture_in_picture/events"
+        private const val ACTION_PIP_RESTORE = "com.collab_tasks.action.PIP_RESTORE"
+        private const val ACTION_PIP_TOGGLE_MICROPHONE = "com.collab_tasks.action.PIP_TOGGLE_MICROPHONE"
+        private const val ACTION_PIP_END_CALL = "com.collab_tasks.action.PIP_END_CALL"
+
         private val SUPPORTED_WIDGET_LANGUAGES = setOf("en", "ru", "uk")
 
         const val EXTRA_TASK_ID = "com.collab_tasks.extra.TASK_ID"

@@ -13,10 +13,13 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 
 class CallkitNotificationService : Service() {
+
+    private var callWakeLock: PowerManager.WakeLock? = null
 
     companion object {
 
@@ -61,6 +64,18 @@ class CallkitNotificationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        acquireCallWakeLock()
+    }
+
+    private fun acquireCallWakeLock() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        callWakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "$packageName:CallkitNotificationService"
+        ).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -237,6 +252,10 @@ class CallkitNotificationService : Service() {
 
 
     override fun onDestroy() {
+        callWakeLock?.let { wakeLock ->
+            if (wakeLock.isHeld) wakeLock.release()
+        }
+        callWakeLock = null
         super.onDestroy()
         // Don't destroy the notification manager here as it's shared across the app
         // The plugin will handle cleanup when all engines are detached

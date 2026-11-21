@@ -110,29 +110,6 @@ class ToggleGroupExpansionAction : ActionCallback {
     }
 }
 
-private data class WidgetGroup(
-    val id: String,
-    val title: String,
-    val description: String,
-    val participants: List<WidgetParticipant>,
-    val tasks: List<WidgetGroupTask>,
-)
-
-private data class WidgetParticipant(
-    val id: String,
-    val userId: String,
-    val name: String,
-    val isCurrentUser: Boolean,
-)
-
-private data class WidgetGroupTask(
-    val id: String,
-    val title: String,
-    val priority: Int,
-    val isCompleted: Boolean,
-    val assignedUserName: String?,
-)
-
 private fun String?.toWidgetGroups(): List<WidgetGroup> = runCatching {
     val json = JSONArray(this ?: "[]")
     List(json.length()) { index ->

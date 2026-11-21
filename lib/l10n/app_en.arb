@@ -349,6 +349,7 @@
   "callUserFallback": "User",
   "callActionMuteMic": "Mute",
   "callActionUnmuteMic": "Unmute",
+  "callActionRestoreCall": "Return to call",
   "callActionEnableCamera": "Enable Camera",
   "callActionDisableCamera": "Disable Camera",
   "callActionSwitchCamera": "Switch Camera",

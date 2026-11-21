@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:collab_tasks/di/service_locator.dart';
+import 'package:collab_tasks/features/calls/data/services/call_picture_in_picture_service.dart';
 import 'package:collab_tasks/features/calls/domain/models/call_error_type.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_connection_state.dart';
 import 'package:collab_tasks/features/calls/domain/models/rtc_participant_media_state.dart';
@@ -7,6 +9,7 @@ import 'package:collab_tasks/features/calls/ui/blocs/calls_bloc.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_event.dart';
 import 'package:collab_tasks/features/calls/ui/blocs/calls_state.dart';
 import 'package:collab_tasks/features/calls/ui/utils/call_wakelock_manager.dart';
+import 'package:collab_tasks/features/calls/ui/widgets/call_picture_in_picture.dart';
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -33,17 +36,102 @@ class VideoCallScreen extends StatefulWidget {
 class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingObserver {
   Timer? _durationTimer;
   int _elapsedSeconds = 0;
+  late final CallPictureInPictureService _pictureInPictureService;
+  StreamSubscription<CallPictureInPictureEvent>? _pictureInPictureSubscription;
+  Future<bool>? _pictureInPictureEntry;
+  bool _pictureInPictureEntryRequested = false;
+  bool _isInPictureInPicture = false;
 
   @override
   void initState() {
     super.initState();
+    _pictureInPictureService = getIt<CallPictureInPictureService>();
     WidgetsBinding.instance.addObserver(this);
+    _pictureInPictureSubscription = _pictureInPictureService.events.listen(
+      _onPictureInPictureEvent,
+      onError: (Object _) {},
+    );
     unawaited(CallWakelockManager.acquire());
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    context.read<CallsBloc>().add(AppLifecycleChanged(state));
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.inactive) return;
+    if (lifecycleState == AppLifecycleState.resumed) {
+      _pictureInPictureEntryRequested = false;
+      _pictureInPictureEntry = null;
+      if (_isInPictureInPicture) setState(() => _isInPictureInPicture = false);
+      context.read<CallsBloc>().add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    if (lifecycleState != AppLifecycleState.hidden && lifecycleState != AppLifecycleState.paused) {
+      context.read<CallsBloc>().add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    unawaited(_enterPictureInPictureOrForwardLifecycle(lifecycleState));
+  }
+
+  Future<void> _enterPictureInPictureOrForwardLifecycle(AppLifecycleState lifecycleState) async {
+    final bloc = context.read<CallsBloc>();
+    final call = bloc.state.activeCall;
+    if (bloc.state.status != CallsStatus.active || call == null) {
+      bloc.add(AppLifecycleChanged(lifecycleState));
+      return;
+    }
+    final localUserId = bloc.state.currentUserId ?? '';
+    final remoteParticipantId =
+        widget.opponentId ?? call.calleeIds.firstWhere((id) => id != localUserId, orElse: () => '');
+    if (!_pictureInPictureEntryRequested) {
+      _pictureInPictureEntryRequested = true;
+      _pictureInPictureEntry = _pictureInPictureService.enterPictureInPicture(
+        _pictureInPictureConfiguration(bloc.state, remoteParticipantId),
+      );
+    }
+    final entered = await _pictureInPictureEntry;
+    if (!mounted) return;
+    if (entered == true) {
+      if (!_isInPictureInPicture) setState(() => _isInPictureInPicture = true);
+    } else {
+      bloc.add(AppLifecycleChanged(lifecycleState));
+    }
+  }
+
+  CallPictureInPictureConfiguration _pictureInPictureConfiguration(
+    CallsState state,
+    String? remoteParticipantId,
+  ) {
+    final localization = AppLocalizations.of(context)!;
+    return CallPictureInPictureConfiguration(
+      callId: state.activeCall?.id ?? widget.callId,
+      displayName: widget.opponentName ?? localization.callUserFallback,
+      avatarUrl: widget.opponentAvatarUrl,
+      remoteParticipantId: remoteParticipantId,
+      isVideo: true,
+      isGroup: false,
+      session: state.session,
+    );
+  }
+
+  void _onPictureInPictureEvent(CallPictureInPictureEvent event) {
+    if (!mounted) return;
+    if (event.type == CallPictureInPictureEventType.modeChanged) {
+      setState(() => _isInPictureInPicture = event.isInPictureInPicture ?? false);
+      return;
+    }
+    switch (event.action) {
+      case CallPictureInPictureAction.restore:
+        setState(() => _isInPictureInPicture = false);
+        break;
+      case CallPictureInPictureAction.toggleMicrophone:
+        context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
+        break;
+      case CallPictureInPictureAction.endCall:
+      case CallPictureInPictureAction.leaveCall:
+        _onEndCallPressed();
+        break;
+      case null:
+        break;
+    }
   }
 
   @override
@@ -53,6 +141,17 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   }
 
   void _syncCallTimer(CallsState state) {
+    if (state.status == CallsStatus.active && state.activeCall != null) {
+      final localUserId = state.currentUserId ?? '';
+      final remoteParticipantId =
+          widget.opponentId ??
+          state.activeCall!.calleeIds.firstWhere((id) => id != localUserId, orElse: () => '');
+      unawaited(
+        _pictureInPictureService.prepare(
+          _pictureInPictureConfiguration(state, remoteParticipantId),
+        ),
+      );
+    }
     if (state.status == CallsStatus.active &&
         state.rtcConnectionState == RtcConnectionState.connected) {
       _startTimerIfNeeded();
@@ -65,6 +164,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _durationTimer?.cancel();
+    unawaited(_pictureInPictureSubscription?.cancel());
+    unawaited(_pictureInPictureService.close());
     unawaited(CallWakelockManager.release());
     super.dispose();
   }
@@ -162,6 +263,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
         final isRemoteVideoActive =
             remoteMediaState.isVideoEnabled &&
             state.rtcConnectionState == RtcConnectionState.connected;
+
+        if (_isInPictureInPicture) {
+          return Scaffold(
+            body: CallPictureInPicture(
+              displayName: displayName,
+              avatarUrl: widget.opponentAvatarUrl,
+              remoteParticipantId: opponentId,
+              isVideo: true,
+              isGroup: false,
+              isMicrophoneMuted: state.isMicrophoneMuted,
+              onRestore: () => unawaited(_pictureInPictureService.restoreCall()),
+              onToggleMicrophone: () =>
+                  context.read<CallsBloc>().add(const ToggleMicrophoneRequested()),
+              onEndOrLeave: _onEndCallPressed,
+            ),
+          );
+        }
 
         final canAutoPop = state.status == CallsStatus.idle || state.status == CallsStatus.error;
 

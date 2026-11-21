@@ -38,6 +38,7 @@ import 'package:collab_tasks/features/calls/data/rtc/fake_video_view_factory.dar
 import 'package:collab_tasks/features/calls/data/services/call_alert_service_impl.dart';
 import 'package:collab_tasks/features/calls/data/services/call_kit_service_impl.dart';
 import 'package:collab_tasks/features/calls/data/services/call_permissions_service_impl.dart';
+import 'package:collab_tasks/features/calls/data/services/call_picture_in_picture_service.dart';
 import 'package:collab_tasks/features/calls/domain/repositories/call_repository.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_alert_service.dart';
 import 'package:collab_tasks/features/calls/domain/services/call_kit_service.dart';
@@ -488,6 +489,7 @@ void setupLocator(SharedPreferences sharedPreferences) {
         RtcBackend.liveKit => throw UnimplementedError('LiveKit RtcService is not implemented yet'),
       },
     )
+    ..registerFactory(() => CallPictureInPictureService(rtcService: getIt<RtcService>()))
     ..registerLazySingleton<RtcVideoViewFactory>(
       () => switch (rtcBackend) {
         RtcBackend.agora => AgoraVideoViewFactory(getIt<RtcService>() as AgoraRtcService),

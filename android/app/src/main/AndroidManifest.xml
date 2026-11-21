@@ -41,6 +41,7 @@
         <activity
                 android:name=".MainActivity"
                 android:clearTaskOnLaunch="true"
+                android:supportsPictureInPicture="true"
                 android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
                 android:exported="true"
                 android:hardwareAccelerated="true"
@@ -74,6 +75,11 @@
                         tools:ignore="AppLinkUrlError"/>
             </intent-filter>
         </activity>
+
+        <service
+                android:name=".CallBackgroundService"
+                android:exported="false"
+                android:foregroundServiceType="phoneCall"/>
 
         <receiver
                 android:name=".TaskHomeWidgetReceiver"
