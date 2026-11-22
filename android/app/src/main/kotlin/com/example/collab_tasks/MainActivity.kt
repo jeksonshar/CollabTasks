@@ -10,6 +10,7 @@ import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.util.Log
 import android.util.Rational
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -32,6 +33,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     private var callPictureInPictureConfigured = false
     private var isGroupPictureInPictureCall = false
     private var isCallMicrophoneMuted = false
+    private var audioPictureInPicturePrepared = false
     private var callPictureInPictureParams: PictureInPictureParams? = null
     private var callPictureInPictureReceiverRegistered = false
 
@@ -78,8 +80,27 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                     val arguments = call.arguments as? Map<*, *>
                     isGroupPictureInPictureCall = arguments?.get("isGroup") as? Boolean == true
                     isCallMicrophoneMuted = arguments?.get("isMicrophoneMuted") as? Boolean == true
+                    audioPictureInPicturePrepared = false
                     callPictureInPictureConfigured = true
                     result.success(true)
+                }
+// for video calls prepare PiP execute by Agora (AgoraPipController), for audio calls Agora PiP-controller doesn't use
+                "prepareAudioPictureInPicture" -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        result.success(false)
+                    } else {
+                        try {
+                            val parameters = buildAudioPictureInPictureParams(autoEnterEnabled = true)
+                            callPictureInPictureParams = parameters
+                            audioPictureInPicturePrepared = true
+                            setPictureInPictureParams(parameters)
+                            result.success(true)
+                        } catch (error: IllegalArgumentException) {
+                            audioPictureInPicturePrepared = false
+                            Log.e(TAG_CALL_PIP, "Failed to prepare audio PiP parameters", error)
+                            result.success(false)
+                        }
+                    }
                 }
 
                 "updateCallMicrophoneState" -> {
@@ -110,6 +131,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                 }
 
                 "stopCallBackgroundService" -> {
+                    audioPictureInPicturePrepared = false
                     stopService(Intent(this, CallBackgroundService::class.java))
                     result.success(null)
                 }
@@ -119,13 +141,15 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                         result.success(false)
                     } else {
                         try {
-                            val parameters = PictureInPictureParams.Builder()
-                                .setAspectRatio(Rational(16, 9))
-                                .setActions(pictureInPictureActions())
-                                .build()
+                            if (isInPictureInPictureMode) {
+                                result.success(true)
+                                return@setMethodCallHandler
+                            }
+                            val parameters = buildAudioPictureInPictureParams()
                             callPictureInPictureParams = parameters
                             result.success(enterPictureInPictureMode(parameters))
                         } catch (_: IllegalArgumentException) {
+                            Log.w(TAG_CALL_PIP, "Android rejected audio PiP entry")
                             result.success(false)
                         }
                     }
@@ -135,6 +159,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                     val shouldFinish = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                             isInPictureInPictureMode
                     callPictureInPictureParams = null
+                    audioPictureInPicturePrepared = false
                     result.success(null)
                     if (shouldFinish) {
                         window.decorView.post {
@@ -285,6 +310,18 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
         super.setPictureInPictureParams(builder.build())
     }
 
+    private fun buildAudioPictureInPictureParams(
+        autoEnterEnabled: Boolean = false,
+    ): PictureInPictureParams {
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(10, 16))
+            .setActions(pictureInPictureActions())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(autoEnterEnabled)
+        }
+        return builder.build()
+    }
+
     override fun onPictureInPictureModeChanged(
         isInPictureInPictureMode: Boolean,
         newConfig: Configuration,
@@ -296,6 +333,24 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                 "isInPictureInPicture" to isInPictureInPictureMode,
             ),
         )
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ||
+            !audioPictureInPicturePrepared ||
+            isInPictureInPictureMode
+        ) return
+
+        val parameters = callPictureInPictureParams ?: return
+        try {
+            if (!enterPictureInPictureMode(parameters)) {
+                Log.w(TAG_CALL_PIP, "Android declined legacy audio PiP entry")
+            }
+        } catch (error: IllegalArgumentException) {
+            Log.e(TAG_CALL_PIP, "Failed to enter legacy audio PiP", error)
+        }
     }
 
     override fun onDestroy() {
@@ -391,6 +446,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     }
 
     companion object {
+        private const val TAG_CALL_PIP = "CallPiP"
         private const val CALL_PICTURE_IN_PICTURE_CHANNEL = "com.collab_tasks/call_picture_in_picture"
         private const val CALL_PICTURE_IN_PICTURE_EVENTS_CHANNEL =
             "com.collab_tasks/call_picture_in_picture/events"

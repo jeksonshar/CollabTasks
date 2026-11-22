@@ -17,6 +17,7 @@ void main() {
         return switch (call.method) {
           'configureCallActions' ||
           'startCallBackgroundService' ||
+          'prepareAudioPictureInPicture' ||
           'enterAudioPictureInPicture' => true,
           _ => null,
         };
@@ -45,10 +46,12 @@ void main() {
     expect(calls.map((call) => call.method), [
       'configureCallActions',
       'startCallBackgroundService',
+      'prepareAudioPictureInPicture',
       'enterAudioPictureInPicture',
     ]);
     expect(calls.first.arguments, {'isGroup': true, 'isMicrophoneMuted': false});
     expect(calls[1].arguments, {'displayName': 'Alex'});
+    expect(calls[2].arguments, isNull);
     expect(calls.last.arguments, isNull);
 
     const mutedConfiguration = CallPictureInPictureConfiguration(
@@ -67,7 +70,7 @@ void main() {
     expect(calls.last.arguments, {'isMicrophoneMuted': false});
 
     await service.close();
-    expect(calls.map((call) => call.method).toList().sublist(5), [
+    expect(calls.map((call) => call.method).toList().sublist(6), [
       'stopCallBackgroundService',
       'dismissCallPictureInPicture',
     ]);

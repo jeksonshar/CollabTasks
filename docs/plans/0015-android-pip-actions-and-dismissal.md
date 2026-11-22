@@ -1,7 +1,7 @@
 # Plan: Android PiP Actions and Call Dismissal
 
 - **ID:** 0015
-- **Status:** Steps 1–4 implemented; focused Flutter tests and Android/iOS PiP device verification pending
+- **Status:** Steps 1–5 implemented; focused Flutter tests and Android/iOS PiP device verification pending
 - **Created:** 2026-11-22
 - **Goal:** Make Android call PiP controls match Android's supported interaction model and close the PiP window when a
   call ends.
@@ -25,6 +25,9 @@
 - Flutter controls rendered in the Android PiP activity cannot receive taps; Android actions must use `RemoteAction`.
   Apple's video-call PiP view controller also does not receive touch events, so the shared Flutter action row is not
   a usable iOS PiP control surface either.
+- Android audio PiP currently creates its `PictureInPictureParams` only after Flutter receives `hidden` or `paused`.
+  The audio parameters do not enable Android 12+ auto-enter, and MainActivity does not enter prepared audio PiP from
+  `onUserLeaveHint` on Android 8–11. Video PiP differs: Agora prepares PiP parameters while the call screen is active.
 - Preserve the user's local PiP changes: Android aspect ratio `10:16`, preferred content size `800x1080`, and the
   compact widget's current participant-label layout.
 
@@ -42,26 +45,28 @@
   the existing PiP action when `CallsBloc` state changes without restarting the call foreground service.
 - Remove the obsolete custom restore action/bridge/event path, unused audio PiP method arguments, and unused avatar
   field from the PiP service configuration. Keep the cleanup limited to call PiP code.
+- Prepare Android audio PiP parameters while the call remains active. Enable system auto-enter on Android 12+ and enter
+  from `onUserLeaveHint` on Android 8–11, retaining the Dart lifecycle-triggered method as an idempotent fallback.
 - Do not change Firestore rules, heartbeat intervals, call persistence, dependencies, or the user's aspect ratio and
   preferred dimensions.
 
 ## Files in scope
 
-| File                                                                          | Intended change                                                                                                  |
-|:------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------|
-| `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`        | Handle PiP dismissal; update microphone action icon/label; remove obsolete restore bridge.                       |
-| `android/app/src/main/res/drawable/ic_pip_mic.xml`                            | Add the enabled-microphone system action icon.                                                                   |
-| `android/app/src/main/res/drawable/ic_pip_mic_off.xml`                        | Add the muted-microphone system action icon.                                                                     |
-| `lib/features/calls/data/services/call_picture_in_picture_service.dart`       | Add mute-state updates; remove stale restore bridge, unused restoreCall method, audio payload, and avatar field. |
-| `lib/features/calls/ui/widgets/call_picture_in_picture.dart`                  | Render PiP participant/video content without noninteractive Flutter action controls.                             |
-| `lib/features/calls/ui/screens/direct/video_call_screen.dart`                 | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                    |
-| `lib/features/calls/ui/screens/direct/audio_call_screen.dart`                 | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                    |
-| `lib/features/calls/ui/screens/group/group_call_screen.dart`                  | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                    |
-| `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Cover content-only shared PiP rendering and forwarding Bloc mute changes into PiP configuration.                 |
-| `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Cover PiP dismissal and changing native microphone state without service restart.                                |
-| `docs/features/calls.md`                                                      | Document system PiP controls, microphone state icon, and PiP close behavior.                                     |
-| `docs/plans/0015-android-pip-actions-and-dismissal.md`                        | Track implementation, acceptance, and verification.                                                              |
-| `docs/memory/handoff.md`                                                      | Record the active plan and recovery checkpoint.                                                                  |
+| File                                                                          | Intended change                                                                                                   |
+|:------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
+| `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`        | Handle PiP dismissal; update microphone action icon/label; prepare audio PiP auto-enter and legacy entry.         |
+| `android/app/src/main/res/drawable/ic_pip_mic.xml`                            | Add the enabled-microphone system action icon.                                                                    |
+| `android/app/src/main/res/drawable/ic_pip_mic_off.xml`                        | Add the muted-microphone system action icon.                                                                      |
+| `lib/features/calls/data/services/call_picture_in_picture_service.dart`       | Add mute-state updates; prepare audio PiP before backgrounding; remove stale restore bridge, payload, and avatar. |
+| `lib/features/calls/ui/widgets/call_picture_in_picture.dart`                  | Render PiP participant/video content without noninteractive Flutter action controls.                              |
+| `lib/features/calls/ui/screens/direct/video_call_screen.dart`                 | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                     |
+| `lib/features/calls/ui/screens/direct/audio_call_screen.dart`                 | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                     |
+| `lib/features/calls/ui/screens/group/group_call_screen.dart`                  | Remove Flutter PiP action controls and their callbacks; forward mute changes.                                     |
+| `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Cover content-only shared PiP rendering and forwarding Bloc mute changes into PiP configuration.                  |
+| `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Cover early audio PiP preparation, PiP dismissal, and microphone state refresh without service restart.           |
+| `docs/features/calls.md`                                                      | Document system PiP controls, microphone state icon, PiP dismissal, and audio PiP entry timing.                   |
+| `docs/plans/0015-android-pip-actions-and-dismissal.md`                        | Track implementation, acceptance, and verification.                                                               |
+| `docs/memory/handoff.md`                                                      | Record the active plan and recovery checkpoint.                                                                   |
 
 ## Steps
 
@@ -89,6 +94,13 @@
   controls. Replaced obsolete widget-action assertions with content-only PiP coverage, kept mute forwarding coverage,
   and updated feature documentation. Focused tests were not run. Files: shared PiP widget, three call screens, PiP
   service (`restoreCall` removed), screen test, `docs/features/calls.md`, this plan, and `docs/memory/handoff.md`.
+- [x] **Step 5 — Prepare Android audio PiP before minimizing.** Configure and store native audio PiP parameters while
+  the call is active. Set `autoEnterEnabled` for Android 12+ and use `onUserLeaveHint` to enter on Android 8–11. Keep
+  the existing lifecycle method call as an idempotent fallback and report success if native PiP already started.
+  Updated the service channel test and documented the version-specific entry path. Tests and device verification were
+  not run. Files: `MainActivity.kt`, `call_picture_in_picture_service.dart`,
+  `test/features/calls/data/services/call_picture_in_picture_service_test.dart`, `docs/features/calls.md`, this plan,
+  and `docs/memory/handoff.md`.
 
 ## Acceptance checks
 
@@ -99,6 +111,8 @@
 - The native microphone action visibly distinguishes enabled from muted state and stays synchronized with successful
   Bloc mute changes for direct audio/video and group calls.
 - Updating the microphone action does not restart the Android call foreground service or alter PiP aspect/dimensions.
+- Android audio calls prepare PiP parameters before the app backgrounds; Android 12+ uses system auto-enter and
+  Android 8–11 enter from `onUserLeaveHint`. The lifecycle fallback recognizes an Activity already in PiP.
 - No obsolete custom Android restore action, restore event handling, ignored audio PiP configuration payload, or
   unused avatar field in the service configuration remains.
 - A terminal call state closes the PiP window; the native dismissal is limited to the case where the host Activity is
@@ -110,21 +124,21 @@
 
 ## Testing matrix
 
-| Component                   | Layer                | Test file(s)                                                                  | Behaviors and cases                                                                                                                                                  |
-|:----------------------------|:---------------------|:------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Compact PiP content         | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Shared PiP renders call content without app-defined action controls; Android native actions remain available.                                                        |
-| PiP service teardown        | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Native PiP dismissal is requested on close and service cleanup remains safe.                                                                                         |
-| PiP microphone action state | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Initial and changed mute state updates the native PiP action without restarting the foreground service.                                                              |
-| Call screen mute forwarding | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Bloc microphone changes trigger a PiP service configuration update.                                                                                                  |
-| Native PiP                  | Android device       | Manual platform scenario                                                      | Tap PiP to expose system controls; verify built-in restore, native mute and direct end/group leave actions, and PiP dismissal after local or remote call completion. |
+| Component                   | Layer                | Test file(s)                                                                  | Behaviors and cases                                                                                                                         |
+|:----------------------------|:---------------------|:------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
+| Compact PiP content         | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Shared PiP renders call content without app-defined action controls; Android native actions remain available.                               |
+| PiP service teardown        | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Native PiP dismissal is requested on close and service cleanup remains safe.                                                                |
+| PiP microphone action state | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Initial and changed mute state updates the native PiP action without restarting the foreground service.                                     |
+| Call screen mute forwarding | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Bloc microphone changes trigger a PiP service configuration update.                                                                         |
+| Native PiP                  | Android device       | Manual platform scenario                                                      | Verify audio PiP entry on Android 8–11 and 12+; verify system controls, video PiP, and PiP dismissal after local or remote call completion. |
 
 ## Recovery checkpoint
 
-- **Last completed step:** Steps 1–4 implemented and documented. `:app:compileDebugKotlin` succeeded before Step 4,
-  including the new microphone vector resources. Focused Flutter tests from earlier steps repeatedly stalled without
-  output and were interrupted; Step 4 tests have not been run. Native device verification remains pending.
-- **Next action:** Run focused PiP widget tests when the Flutter runner starts normally, then verify Android native
-  actions, iOS system restoration, and call-end dismissal on devices.
+- **Last completed step:** Steps 1–5 implemented and documented. `:app:compileDebugKotlin` succeeded after Step 5,
+  including Flutter build compilation. Focused Flutter tests from earlier steps repeatedly stalled without output and
+  were interrupted; the updated audio PiP service test was not run. Native device verification remains pending.
+- **Next action:** Run the focused audio PiP service test when the Flutter runner starts normally, then verify audio PiP
+  entry on Android 8–11 and Android 12+ devices.
 - **Changed or uncommitted files:** `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`,
   `android/app/src/main/res/drawable/ic_pip_mic.xml`, `android/app/src/main/res/drawable/ic_pip_mic_off.xml`,
   `lib/features/calls/data/services/call_picture_in_picture_service.dart`, the shared PiP widget, three call screens,

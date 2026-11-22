@@ -138,6 +138,7 @@ class CallPictureInPictureService {
 
     if (!configuration.isVideo) {
       if (_platform != TargetPlatform.android) return false;
+      if (!await _prepareNativeAudioPictureInPicture()) return false;
       _preparedKey = preparationKey;
       _isPrepared = true;
       return true;
@@ -205,6 +206,16 @@ class CallPictureInPictureService {
       // The initial action state remains available if this bridge is absent.
     } on PlatformException {
       // A PiP action refresh must not interrupt the active call.
+    }
+  }
+
+  Future<bool> _prepareNativeAudioPictureInPicture() async {
+    try {
+      return await _methods.invokeMethod<bool>('prepareAudioPictureInPicture') ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
     }
   }
 
