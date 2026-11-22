@@ -119,6 +119,7 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
       remoteParticipantId: remoteParticipantId,
       isVideo: widget.callType == CallType.video,
       isGroup: true,
+      isMicrophoneMuted: state.isMicrophoneMuted,
       session: state.session,
     );
   }
@@ -130,9 +131,6 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
       return;
     }
     switch (event.action) {
-      case CallPictureInPictureAction.restore:
-        setState(() => _isInPictureInPicture = false);
-        break;
       case CallPictureInPictureAction.toggleMicrophone:
         context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
         break;
@@ -286,7 +284,9 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               current.errorType != null &&
               previous.errorType != current.errorType) ||
           (current.status == CallsStatus.active &&
-              previous.participantMediaStates != current.participantMediaStates),
+              previous.participantMediaStates != current.participantMediaStates) ||
+          (current.status == CallsStatus.active &&
+              previous.isMicrophoneMuted != current.isMicrophoneMuted),
       listener: (context, state) {
         _syncCallTimer(state);
 
@@ -372,12 +372,6 @@ class _GroupCallScreenState extends State<GroupCallScreen> with WidgetsBindingOb
               displayName: compactParticipant?.displayName ?? widget.groupName,
               remoteParticipantId: compactParticipant?.userId,
               isVideo: widget.callType == CallType.video,
-              isGroup: true,
-              isMicrophoneMuted: state.isMicrophoneMuted,
-              onRestore: () => unawaited(_pictureInPictureService.restoreCall()),
-              onToggleMicrophone: () =>
-                  context.read<CallsBloc>().add(const ToggleMicrophoneRequested()),
-              onEndOrLeave: _onLeaveCallPressed,
             ),
           );
         }

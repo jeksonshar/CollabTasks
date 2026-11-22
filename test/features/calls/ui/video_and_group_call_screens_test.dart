@@ -41,6 +41,7 @@ import 'package:collab_tasks/features/calls/ui/widgets/call_picture_in_picture.d
 import 'package:collab_tasks/features/calls/ui/widgets/rtc_video_view.dart';
 import 'package:collab_tasks/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -151,11 +152,9 @@ void main() {
     await getIt.reset();
   });
 
-  testWidgets('compact direct audio call exposes restore, mute, and end actions', (tester) async {
-    var restored = false;
-    var microphoneToggled = false;
-    var callEnded = false;
-
+  testWidgets('compact direct audio PiP renders participant content without action controls', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -163,30 +162,18 @@ void main() {
         home: SizedBox(
           width: 420,
           height: 260,
-          child: CallPictureInPicture(
-            displayName: 'Alex',
-            isVideo: false,
-            isGroup: false,
-            isMicrophoneMuted: false,
-            onRestore: () => restored = true,
-            onToggleMicrophone: () => microphoneToggled = true,
-            onEndOrLeave: () => callEnded = true,
-          ),
+          child: CallPictureInPicture(displayName: 'Alex', isVideo: false),
         ),
       ),
     );
 
-    expect(find.text('Alex'), findsOneWidget);
-    await tester.tap(find.byTooltip('Return to call'));
-    await tester.tap(find.byTooltip('Mute'));
-    await tester.tap(find.byTooltip('End Call'));
-    expect(restored, isTrue);
-    expect(microphoneToggled, isTrue);
-    expect(callEnded, isTrue);
+    expect(find.text('A'), findsOneWidget);
+    expect(find.byType(IconButton), findsNothing);
   });
 
-  testWidgets('compact group audio call labels its terminal action as leave', (tester) async {
-    var leftCall = false;
+  testWidgets('compact group audio PiP renders participant content without action controls', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -194,21 +181,91 @@ void main() {
         home: SizedBox(
           width: 420,
           height: 260,
-          child: CallPictureInPicture(
-            displayName: 'Team Standup',
-            isVideo: false,
-            isGroup: true,
-            isMicrophoneMuted: true,
-            onRestore: () {},
-            onToggleMicrophone: () {},
-            onEndOrLeave: () => leftCall = true,
-          ),
+          child: CallPictureInPicture(displayName: 'Team Standup', isVideo: false),
         ),
       ),
     );
 
-    await tester.tap(find.byTooltip('Leave Call'));
-    expect(leftCall, isTrue);
+    expect(find.text('T'), findsOneWidget);
+    expect(find.byType(IconButton), findsNothing);
+  });
+
+  testWidgets('AudioCallScreen forwards microphone changes to the prepared PiP service', (
+    tester,
+  ) async {
+    const methodChannel = MethodChannel('test/call_picture_in_picture_screen');
+    const eventChannel = EventChannel('test/call_picture_in_picture_screen/events');
+    final nativeCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      methodChannel,
+      (call) async {
+        nativeCalls.add(call);
+        return switch (call.method) {
+          'configureCallActions' || 'startCallBackgroundService' => true,
+          _ => null,
+        };
+      },
+    );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, null),
+    );
+    await getIt.unregister<CallPictureInPictureService>();
+    getIt.registerFactory(
+      () => CallPictureInPictureService(
+        rtcService: getIt<RtcService>(),
+        platform: TargetPlatform.android,
+        methodChannel: methodChannel,
+        eventChannel: eventChannel,
+      ),
+    );
+
+    final activeCall = Call(
+      id: 'call-audio-mic-sync',
+      callerId: 'user-caller',
+      callerName: 'Alice',
+      calleeIds: const ['user-me'],
+      type: CallType.audio,
+      status: CallStatus.active,
+      createdAt: DateTime.now(),
+    );
+    callsBloc.emitState(
+      CallsState(
+        status: CallsStatus.active,
+        currentUserId: 'user-me',
+        activeCall: activeCall,
+        rtcConnectionState: RtcConnectionState.connected,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<CallsBloc>.value(
+          value: callsBloc,
+          child: const AudioCallScreen(callId: 'call-audio-mic-sync', opponentName: 'Alice'),
+        ),
+      ),
+    );
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+    await tester.pump();
+
+    callsBloc.emitState(callsBloc.state.copyWith(isMicrophoneMuted: true));
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+
+    expect(
+      nativeCalls.any(
+        (call) =>
+            call.method == 'updateCallMicrophoneState' &&
+            (call.arguments as Map)['isMicrophoneMuted'] == true,
+      ),
+      isTrue,
+    );
+    expect(nativeCalls.where((call) => call.method == 'startCallBackgroundService'), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('AudioCallScreen pops once when the call reaches a terminal state', (tester) async {

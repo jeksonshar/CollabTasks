@@ -104,10 +104,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
     return CallPictureInPictureConfiguration(
       callId: state.activeCall?.id ?? widget.callId,
       displayName: widget.opponentName ?? localization.callUserFallback,
-      avatarUrl: widget.opponentAvatarUrl,
       remoteParticipantId: remoteParticipantId,
       isVideo: true,
       isGroup: false,
+      isMicrophoneMuted: state.isMicrophoneMuted,
       session: state.session,
     );
   }
@@ -119,9 +119,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
       return;
     }
     switch (event.action) {
-      case CallPictureInPictureAction.restore:
-        setState(() => _isInPictureInPicture = false);
-        break;
       case CallPictureInPictureAction.toggleMicrophone:
         context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
         break;
@@ -226,7 +223,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
                   previous.rtcConnectionState != current.rtcConnectionState)) ||
           (current.status == CallsStatus.active &&
               current.errorType != null &&
-              previous.errorType != current.errorType),
+              previous.errorType != current.errorType) ||
+          (current.status == CallsStatus.active &&
+              previous.isMicrophoneMuted != current.isMicrophoneMuted),
       listener: (context, state) {
         _syncCallTimer(state);
 
@@ -271,12 +270,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> with WidgetsBindingOb
               avatarUrl: widget.opponentAvatarUrl,
               remoteParticipantId: opponentId,
               isVideo: true,
-              isGroup: false,
-              isMicrophoneMuted: state.isMicrophoneMuted,
-              onRestore: () => unawaited(_pictureInPictureService.restoreCall()),
-              onToggleMicrophone: () =>
-                  context.read<CallsBloc>().add(const ToggleMicrophoneRequested()),
-              onEndOrLeave: _onEndCallPressed,
             ),
           );
         }

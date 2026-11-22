@@ -55,9 +55,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> with WidgetsBindingOb
       return;
     }
     switch (event.action) {
-      case CallPictureInPictureAction.restore:
-        setState(() => _isInPictureInPicture = false);
-        break;
       case CallPictureInPictureAction.toggleMicrophone:
         context.read<CallsBloc>().add(const ToggleMicrophoneRequested());
         break;
@@ -114,9 +111,9 @@ class _AudioCallScreenState extends State<AudioCallScreen> with WidgetsBindingOb
     return CallPictureInPictureConfiguration(
       callId: state.activeCall?.id ?? widget.callId,
       displayName: widget.opponentName ?? localization.callUserFallback,
-      avatarUrl: widget.opponentAvatarUrl,
       isVideo: false,
       isGroup: false,
+      isMicrophoneMuted: state.isMicrophoneMuted,
       session: state.session,
     );
   }
@@ -204,7 +201,9 @@ class _AudioCallScreenState extends State<AudioCallScreen> with WidgetsBindingOb
                   previous.rtcConnectionState != current.rtcConnectionState)) ||
           (current.status == CallsStatus.active &&
               current.errorType != null &&
-              previous.errorType != current.errorType),
+              previous.errorType != current.errorType) ||
+          (current.status == CallsStatus.active &&
+              previous.isMicrophoneMuted != current.isMicrophoneMuted),
       listener: (context, state) {
         _syncCallTimer(state);
 
@@ -230,12 +229,6 @@ class _AudioCallScreenState extends State<AudioCallScreen> with WidgetsBindingOb
               displayName: displayName,
               avatarUrl: widget.opponentAvatarUrl,
               isVideo: false,
-              isGroup: false,
-              isMicrophoneMuted: state.isMicrophoneMuted,
-              onRestore: () => unawaited(_pictureInPictureService.restoreCall()),
-              onToggleMicrophone: () =>
-                  context.read<CallsBloc>().add(const ToggleMicrophoneRequested()),
-              onEndOrLeave: _onEndCallPressed,
             ),
           );
         }

@@ -7,7 +7,7 @@ import 'package:collab_tasks/features/calls/domain/services/rtc_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-enum CallPictureInPictureAction { restore, toggleMicrophone, endCall, leaveCall }
+enum CallPictureInPictureAction { toggleMicrophone, endCall, leaveCall }
 
 enum CallPictureInPictureEventType { modeChanged, action }
 
@@ -36,7 +36,6 @@ class CallPictureInPictureEvent {
     if (type != 'action') return null;
 
     final action = switch (value['action']) {
-      'restore' => CallPictureInPictureAction.restore,
       'toggleMicrophone' => CallPictureInPictureAction.toggleMicrophone,
       'endCall' => CallPictureInPictureAction.endCall,
       'leaveCall' => CallPictureInPictureAction.leaveCall,
@@ -49,10 +48,10 @@ class CallPictureInPictureEvent {
 class CallPictureInPictureConfiguration {
   final String callId;
   final String displayName;
-  final String? avatarUrl;
   final String? remoteParticipantId;
   final bool isVideo;
   final bool isGroup;
+  final bool isMicrophoneMuted;
   final CallSession? session;
 
   const CallPictureInPictureConfiguration({
@@ -60,22 +59,13 @@ class CallPictureInPictureConfiguration {
     required this.displayName,
     required this.isVideo,
     required this.isGroup,
-    this.avatarUrl,
+    this.isMicrophoneMuted = false,
     this.remoteParticipantId,
     this.session,
   });
-
-  Map<String, Object?> toMap() => {
-    'callId': callId,
-    'displayName': displayName,
-    'avatarUrl': avatarUrl,
-    'remoteParticipantId': remoteParticipantId,
-    'isVideo': isVideo,
-    'isGroup': isGroup,
-  };
 }
 
-/// Owns Agora's PiP controller and the Android audio-call PiP bridge.
+/// Owns Agora PiP and Android call PiP integration.
 class CallPictureInPictureService {
   static const MethodChannel _methodChannel = MethodChannel(
     'com.collab_tasks/call_picture_in_picture',
@@ -103,13 +93,12 @@ class CallPictureInPictureService {
   bool _closed = false;
 
   CallPictureInPictureService({
-    required RtcService rtcService,
+    required this._rtcService,
     AgoraPipController? controller,
     TargetPlatform? platform,
     MethodChannel? methodChannel,
     EventChannel? eventChannel,
-  }) : _rtcService = rtcService,
-       _injectedController = controller,
+  }) : _injectedController = controller,
        _platform = platform ?? defaultTargetPlatform,
        _methods = methodChannel ?? _methodChannel,
        _eventsChannel = eventChannel ?? _eventChannel {
@@ -131,7 +120,15 @@ class CallPictureInPictureService {
       configuration.isGroup,
       configuration.remoteParticipantId ?? '',
     ].join('|');
-    if (_isPrepared && _preparedKey == preparationKey) return true;
+    if (_isPrepared && _preparedKey == preparationKey) {
+      final previousMicrophoneMuted = _configuration?.isMicrophoneMuted;
+      _configuration = configuration;
+      if (_platform == TargetPlatform.android &&
+          previousMicrophoneMuted != configuration.isMicrophoneMuted) {
+        await _updateNativeMicrophoneState(configuration.isMicrophoneMuted);
+      }
+      return true;
+    }
     _configuration = configuration;
 
     if (_platform == TargetPlatform.android &&
@@ -177,11 +174,7 @@ class CallPictureInPictureService {
 
     if (!configuration.isVideo) {
       try {
-        return await _methods.invokeMethod<bool>(
-              'enterAudioPictureInPicture',
-              configuration.toMap(),
-            ) ??
-            false;
+        return await _methods.invokeMethod<bool>('enterAudioPictureInPicture') ?? false;
       } on MissingPluginException {
         return false;
       } on PlatformException {
@@ -203,27 +196,15 @@ class CallPictureInPictureService {
     }
   }
 
-  Future<void> restoreCall() async {
-    if (_platform == TargetPlatform.android) {
-      try {
-        await _methods.invokeMethod<void>('restoreCallActivity');
-      } on MissingPluginException {
-        // The system PiP restore control remains available if this bridge is absent.
-      }
-      return;
-    }
-    if (_configuration?.isVideo == true) {
-      try {
-        await _controller?.pipStop();
-      } on PlatformException {
-        // Native system controls remain available if restoring through Agora fails.
-      }
-      return;
-    }
+  Future<void> _updateNativeMicrophoneState(bool isMuted) async {
     try {
-      await _methods.invokeMethod<void>('restoreAudioPictureInPicture');
+      await _methods.invokeMethod<void>('updateCallMicrophoneState', {
+        'isMicrophoneMuted': isMuted,
+      });
     } on MissingPluginException {
-      // A platform without audio PiP keeps the call active in the app.
+      // The initial action state remains available if this bridge is absent.
+    } on PlatformException {
+      // A PiP action refresh must not interrupt the active call.
     }
   }
 
@@ -232,6 +213,15 @@ class CallPictureInPictureService {
     _closed = true;
     await _nativeEventSubscription?.cancel();
     await _stopAndroidCallBackgroundService();
+    if (_platform == TargetPlatform.android) {
+      try {
+        await _methods.invokeMethod<void>('dismissCallPictureInPicture');
+      } on MissingPluginException {
+        // Older native hosts may not implement PiP dismissal.
+      } on PlatformException {
+        // PiP dismissal must not prevent RTC controller cleanup.
+      }
+    }
     final controller = _controller;
     if (controller != null) {
       if (_observerRegistered) {
@@ -248,7 +238,7 @@ class CallPictureInPictureService {
     if (injectedController != null) {
       _controller = injectedController;
     } else if (_rtcService is AgoraRtcService) {
-      final engine = (_rtcService as AgoraRtcService).engine;
+      final engine = _rtcService.engine;
       if (engine != null) _controller = engine.createPipController();
     }
     final controller = _controller;
@@ -276,8 +266,8 @@ class CallPictureInPictureService {
     if (_platform == TargetPlatform.android) {
       return AgoraPipOptions(
         autoEnterEnabled: _autoEnterSupported,
-        aspectRatioX: 16,
-        aspectRatioY: 9,
+        aspectRatioX: 10,
+        aspectRatioY: 16,
         seamlessResizeEnabled: true,
         useExternalStateMonitor: false,
       );
@@ -306,8 +296,8 @@ class CallPictureInPictureService {
       autoEnterEnabled: _autoEnterSupported,
       sourceContentView: 0,
       contentView: 0,
-      preferredContentWidth: 1080,
-      preferredContentHeight: 720,
+      preferredContentWidth: 800,
+      preferredContentHeight: 1080,
       videoStreams: videoStreams,
       contentViewLayout: const AgoraPipContentViewLayout(row: 1, column: 1),
       controlStyle: 2,
@@ -318,7 +308,7 @@ class CallPictureInPictureService {
     try {
       return await _methods.invokeMethod<bool>('configureCallActions', {
             'isGroup': configuration.isGroup,
-            'displayName': configuration.displayName,
+            'isMicrophoneMuted': configuration.isMicrophoneMuted,
           }) ??
           false;
     } on MissingPluginException {

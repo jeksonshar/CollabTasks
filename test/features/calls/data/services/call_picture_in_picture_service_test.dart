@@ -14,7 +14,12 @@ void main() {
       methodChannel,
       (call) async {
         calls.add(call);
-        return true;
+        return switch (call.method) {
+          'configureCallActions' ||
+          'startCallBackgroundService' ||
+          'enterAudioPictureInPicture' => true,
+          _ => null,
+        };
       },
     );
     addTearDown(
@@ -33,17 +38,39 @@ void main() {
       displayName: 'Alex',
       isVideo: false,
       isGroup: true,
+      isMicrophoneMuted: false,
     );
 
     expect(await service.enterPictureInPicture(configuration), isTrue);
     expect(calls.map((call) => call.method), [
       'configureCallActions',
+      'startCallBackgroundService',
       'enterAudioPictureInPicture',
     ]);
-    expect(calls.first.arguments, {'isGroup': true});
-    expect(calls.last.arguments, configuration.toMap());
+    expect(calls.first.arguments, {'isGroup': true, 'isMicrophoneMuted': false});
+    expect(calls[1].arguments, {'displayName': 'Alex'});
+    expect(calls.last.arguments, isNull);
+
+    const mutedConfiguration = CallPictureInPictureConfiguration(
+      callId: 'audio-call-1',
+      displayName: 'Alex',
+      isVideo: false,
+      isGroup: true,
+      isMicrophoneMuted: true,
+    );
+    expect(await service.prepare(mutedConfiguration), isTrue);
+    expect(calls.last.method, 'updateCallMicrophoneState');
+    expect(calls.last.arguments, {'isMicrophoneMuted': true});
+    expect(calls.where((call) => call.method == 'startCallBackgroundService'), hasLength(1));
+    expect(await service.prepare(configuration), isTrue);
+    expect(calls.last.method, 'updateCallMicrophoneState');
+    expect(calls.last.arguments, {'isMicrophoneMuted': false});
 
     await service.close();
+    expect(calls.map((call) => call.method).toList().sublist(5), [
+      'stopCallBackgroundService',
+      'dismissCallPictureInPicture',
+    ]);
     await rtcService.dispose();
   });
 
@@ -86,7 +113,7 @@ void main() {
       ),
     );
     expect(
-      CallPictureInPictureEvent.fromPlatformValue({'type': 'action', 'action': 'unknown'}),
+      CallPictureInPictureEvent.fromPlatformValue({'type': 'action', 'action': 'restore'}),
       isNull,
     );
   });

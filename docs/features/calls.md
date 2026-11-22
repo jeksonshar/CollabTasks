@@ -143,10 +143,17 @@
   and
   does not dispatch the lifecycle event that would suspend video; unsupported/failed entry still forwards lifecycle
   handling to `CallsBloc`. The Bloc does not end a call on `detached`. `CallPictureInPictureService` owns the Agora PiP
-  controller for video and the Android native bridge for audio-only PiP. Android PiP provides restore, microphone
-  toggle,
-  and the context-appropriate end/leave action. iOS video uses Agora PiP, but iOS does not expose these app-defined
-  controls; iOS audio-only PiP is unsupported. iOS background audio mode is enabled so audio can continue while the app
+  controller for video and the Android native bridge for audio-only PiP. The shared PiP widget renders participant/video
+  content only; Flutter-rendered action buttons are unsupported in PiP on both Android and iOS. A tap on the Android
+  PiP window reveals the system controls:
+  the system expand action restores the call, and native actions toggle the microphone or perform the
+  context-appropriate end/leave action. The microphone action's icon and label reflect its current mute state and
+  refresh after each successful `CallsBloc` microphone change without restarting the foreground service. When call
+  cleanup completes while the Activity remains in PiP, the Android
+  host Activity finishes and the PiP window closes. Ending a call outside PiP retains the existing in-app navigation.
+  iOS video uses Agora PiP and returns to the app through the system PiP interaction; iOS does not expose app-defined
+  PiP mute/end controls. iOS audio-only PiP is unsupported. iOS background audio mode is enabled so audio can continue
+  while the app
   is backgrounded. Preparing PiP for any active Android RTC call starts the app-owned ongoing-call foreground service,
   independent of whether CallKit started its own service. It holds a partial CPU wake lock so the existing 15-second
   client heartbeat continues during PiP; call-service teardown stops the service and releases the lock. Server
@@ -176,9 +183,13 @@
   participants, a prominent status badge with spinner renders below the center avatar. The bottom controls bar uses an
   evenly-spaced full-width row with compact padding, ensuring comfortable button distribution across the entire screen
   width without unwanted margins.
-- **Compact Call Surface:** While in Android PiP, the Flutter call screen renders the shared compact participant view
-  and controls. Restore returns to the existing call screen; microphone and direct-end/group-leave actions are routed to
-  `CallsBloc`. For video PiP, Agora supplies the video surface on supported platforms.
+- **Compact Call Surface:** The shared `CallPictureInPicture` widget renders participant/video content only on Android
+  and iOS; it has no `showControls` option or app-defined action callbacks. Android displays native controls after the
+  user taps the PiP window. The built-in expand control restores the existing call screen; native microphone and direct-
+  end/group-leave actions are routed to `CallsBloc`. The native microphone action uses separate enabled and muted icons
+  and an action label matching the current state. Terminal call cleanup closes the PiP Activity when it is still in
+  PiP. iOS video PiP returns to the call through the system restore interaction and does not provide app-defined PiP
+  mute/end buttons. iOS audio-only PiP is unsupported.
 - **Feature Localization (l10n/i18n):** All presentation layer components (`IncomingCallDialog`, `AudioCallScreen`,
   `VideoCallScreen`, `GroupCallScreen`) strictly consume localized text from `AppLocalizations` across English (`en`),
   Russian (`ru`), and Ukrainian (`uk`). Localized strings cover incoming call alerts, call and RTC connection states
@@ -201,10 +212,10 @@
 | Firestore query indexes                        | `firestore.indexes.json`                                                                                     | Source definitions cover caller/callee alias queries and group query ordering. Deploying index configuration is a separate operation.                                                                                                                                                |
 | Other call behavior                            | `test/features/calls/`                                                                                       | Repository calls, RTC session result, alert stop, CallKit dismissal, Agora UID mapping, RTC cleanup, and liveness behavior.                                                                                                                                                          |
 | Background call lifecycle                      | `test/features/calls/ui/calls_bloc_test.dart`                                                                | A detached Flutter view does not end a direct video or group audio call; active RTC state and user media choices remain.                                                                                                                                                             |
-| PiP controls and compact call screen           | `test/features/calls/ui/video_and_group_call_screens_test.dart`                                              | Compact surface controls restore the call, toggle microphone, end a direct call, or leave a group call.                                                                                                                                                                              |
-| PiP service and native channel contract        | `test/features/calls/data/services/call_picture_in_picture_service_test.dart`                                | Android audio PiP setup, action parsing, and unsupported backend behavior.                                                                                                                                                                                                           |
+| PiP compact call content and screen forwarding | `test/features/calls/ui/video_and_group_call_screens_test.dart`                                              | Compact PiP renders participant content without Flutter action controls on either platform; call screens forward Bloc mute changes to Android native PiP action state.                                                                                                               |
+| PiP service and native channel contract        | `test/features/calls/data/services/call_picture_in_picture_service_test.dart`                                | Android audio PiP setup, native mic-state refresh without foreground-service restart, action parsing, dismissal request during teardown, and removal of the obsolete restore event.                                                                                                  |
 | Heartbeat participant-key alignment            | `test/features/calls/data/firestore_call_repository_test.dart`; `firestore-rules-tests/calls.rules.test.cjs` | Repository tests verify ID-token email claim selection, UID fallback, and stage-specific client errors; Rules emulator tests verify allowed heartbeat create/refresh and denied wrong-alias/stranger writes. Both suites pass. Android PiP beyond 30 seconds remains a device check. |
-| Native PiP and Android call foreground service | Android/iOS device scenario                                                                                  | Not run: verify app-owned service starts for incoming/outgoing direct/group calls, holds wake lock during PiP, stops on call end, preserves the 15-second heartbeat below the unchanged 30-second stale threshold; verify force-stop cleanup and iOS background media.               |
+| Native PiP and Android call foreground service | Android/iOS device scenario                                                                                  | Not run: verify Android PiP system controls (expand, mute, direct end/group leave), dismissal after local/remote call end, app-owned service and 15-second heartbeat below the unchanged 30-second stale threshold; verify force-stop cleanup and iOS background media.              |
 
 ## 4. Data Flow & State Machine (Mermaid)
 

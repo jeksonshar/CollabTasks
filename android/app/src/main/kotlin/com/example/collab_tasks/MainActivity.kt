@@ -31,6 +31,8 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     private var callPictureInPictureEventSink: EventChannel.EventSink? = null
     private var callPictureInPictureConfigured = false
     private var isGroupPictureInPictureCall = false
+    private var isCallMicrophoneMuted = false
+    private var callPictureInPictureParams: PictureInPictureParams? = null
     private var callPictureInPictureReceiverRegistered = false
 
     private val callPictureInPictureReceiver = object : BroadcastReceiver() {
@@ -75,8 +77,16 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                 "configureCallActions" -> {
                     val arguments = call.arguments as? Map<*, *>
                     isGroupPictureInPictureCall = arguments?.get("isGroup") as? Boolean == true
+                    isCallMicrophoneMuted = arguments?.get("isMicrophoneMuted") as? Boolean == true
                     callPictureInPictureConfigured = true
                     result.success(true)
+                }
+
+                "updateCallMicrophoneState" -> {
+                    val arguments = call.arguments as? Map<*, *>
+                    isCallMicrophoneMuted = arguments?.get("isMicrophoneMuted") as? Boolean == true
+                    callPictureInPictureParams?.let(::applyCallPictureInPictureParams)
+                    result.success(null)
                 }
 
                 "startCallBackgroundService" -> {
@@ -113,6 +123,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                                 .setAspectRatio(Rational(16, 9))
                                 .setActions(pictureInPictureActions())
                                 .build()
+                            callPictureInPictureParams = parameters
                             result.success(enterPictureInPictureMode(parameters))
                         } catch (_: IllegalArgumentException) {
                             result.success(false)
@@ -120,9 +131,16 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                     }
                 }
 
-                "restoreCallActivity" -> {
-                    restoreCallActivity()
+                "dismissCallPictureInPicture" -> {
+                    val shouldFinish = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                            isInPictureInPictureMode
+                    callPictureInPictureParams = null
                     result.success(null)
+                    if (shouldFinish) {
+                        window.decorView.post {
+                            if (!isFinishing && isInPictureInPictureMode) finish()
+                        }
+                    }
                 }
 
                 else -> result.notImplemented()
@@ -221,13 +239,6 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == ACTION_PIP_RESTORE) {
-            intent.action = null
-            callPictureInPictureEventSink?.success(
-                mapOf("type" to "action", "action" to "restore"),
-            )
-            return
-        }
         val openHome = intent.getBooleanExtra(EXTRA_OPEN_HOME, false)
         val refreshTasks = intent.getBooleanExtra(EXTRA_REFRESH_TASKS, false)
         val taskId = intent.getStringExtra(EXTRA_TASK_ID)
@@ -259,6 +270,11 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
             return
         }
 
+        callPictureInPictureParams = params
+        applyCallPictureInPictureParams(params)
+    }
+
+    private fun applyCallPictureInPictureParams(params: PictureInPictureParams) {
         val builder = PictureInPictureParams.Builder()
         params.aspectRatio?.let { builder.setAspectRatio(it) }
         params.sourceRectHint?.let { builder.setSourceRectHint(it) }
@@ -307,15 +323,15 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
 
     private fun pictureInPictureActions(): List<RemoteAction> {
         val locale = WidgetLocalization.languageCode(applicationContext)
-        val restoreLabel = when (locale) {
-            "ru" -> "Вернуться к звонку"
-            "uk" -> "Повернутися до дзвінка"
-            else -> "Return to call"
-        }
         val microphoneLabel = when (locale) {
-            "ru" -> "Микрофон"
-            "uk" -> "Мікрофон"
-            else -> "Microphone"
+            "ru" -> if (isCallMicrophoneMuted) "Включить микрофон" else "Выключить микрофон"
+            "uk" -> if (isCallMicrophoneMuted) "Увімкнути мікрофон" else "Вимкнути мікрофон"
+            else -> if (isCallMicrophoneMuted) "Unmute microphone" else "Mute microphone"
+        }
+        val microphoneIcon = if (isCallMicrophoneMuted) {
+            R.drawable.ic_pip_mic_off
+        } else {
+            R.drawable.ic_pip_mic
         }
         val endLabel = when (locale) {
             "ru" -> if (isGroupPictureInPictureCall) "Покинуть звонок" else "Завершить звонок"
@@ -324,13 +340,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
         }
         return listOf(
             RemoteAction(
-                Icon.createWithResource(this, android.R.drawable.ic_menu_view),
-                restoreLabel,
-                restoreLabel,
-                restoreCallPendingIntent(),
-            ),
-            RemoteAction(
-                Icon.createWithResource(this, android.R.drawable.ic_lock_silent_mode_off),
+                Icon.createWithResource(this, microphoneIcon),
                 microphoneLabel,
                 microphoneLabel,
                 pictureInPictureBroadcastPendingIntent(ACTION_PIP_TOGGLE_MICROPHONE, 702),
@@ -344,18 +354,6 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
         )
     }
 
-    private fun restoreCallPendingIntent(): PendingIntent {
-        val intent = Intent(this, MainActivity::class.java)
-            .setAction(ACTION_PIP_RESTORE)
-            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        return PendingIntent.getActivity(
-            this,
-            701,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
     private fun pictureInPictureBroadcastPendingIntent(action: String, requestCode: Int): PendingIntent {
         val intent = Intent(action).setPackage(packageName)
         return PendingIntent.getBroadcast(
@@ -363,13 +361,6 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
             requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    private fun restoreCallActivity() {
-        startActivity(
-            Intent(this, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
     }
 
@@ -403,7 +394,6 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
         private const val CALL_PICTURE_IN_PICTURE_CHANNEL = "com.collab_tasks/call_picture_in_picture"
         private const val CALL_PICTURE_IN_PICTURE_EVENTS_CHANNEL =
             "com.collab_tasks/call_picture_in_picture/events"
-        private const val ACTION_PIP_RESTORE = "com.collab_tasks.action.PIP_RESTORE"
         private const val ACTION_PIP_TOGGLE_MICROPHONE = "com.collab_tasks.action.PIP_TOGGLE_MICROPHONE"
         private const val ACTION_PIP_END_CALL = "com.collab_tasks.action.PIP_END_CALL"
 
