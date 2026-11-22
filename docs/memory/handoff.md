@@ -1,7 +1,7 @@
 # Workflow Handoff
 
-- **Status:** Plan 0015 Steps 1–5 implemented; focused Flutter tests and Android/iOS device verification pending. Plan
-  0014 Android device verification also remains pending.
+- **Status:** Plan 0015 Steps 1–6 implemented; Android resource/Kotlin compilation and Android/iOS device verification
+  pending. Focused Flutter tests and Plan 0014 Android device verification also remain pending.
 - **Active plan:** [
   `docs/plans/0015-android-pip-actions-and-dismissal.md`](../plans/0015-android-pip-actions-and-dismissal.md).
 - **Last completed step:** Plan 0015 Steps 1–5 use Android's built-in expand control, synchronize native microphone
@@ -9,8 +9,8 @@
   audio PiP. Audio auto-enters on Android 12+ and uses `onUserLeaveHint` on Android 8–11, with the Flutter lifecycle
   method as fallback. `:app:compileDebugKotlin` succeeded after Step 5, including Flutter build compilation. Focused
   tests and device verification were not run.
-- **Next action:** Run the focused audio PiP service test when the Flutter runner starts normally, and verify audio
-  entry on Android 8–11 and Android 12+ devices. Preserve the user's `10:16` aspect ratio,
+- **Next action:** Compile Android resources/Kotlin, then verify native PiP action labels and audio PiP entry on Android
+  8–11 and Android 12+ devices. Preserve the user's `10:16` aspect ratio,
   `800x1080` content size, and widget label layout.
 - **Changed or uncommitted files for plan 0015:**
   `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`,

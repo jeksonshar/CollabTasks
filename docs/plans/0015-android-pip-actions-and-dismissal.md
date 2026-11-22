@@ -1,7 +1,7 @@
 # Plan: Android PiP Actions and Call Dismissal
 
 - **ID:** 0015
-- **Status:** Steps 1–5 implemented; focused Flutter tests and Android/iOS PiP device verification pending
+- **Status:** Steps 1–6 implemented; Android resource/Kotlin compilation and PiP device verification pending
 - **Created:** 2026-11-22
 - **Goal:** Make Android call PiP controls match Android's supported interaction model and close the PiP window when a
   call ends.
@@ -47,6 +47,8 @@
   field from the PiP service configuration. Keep the cleanup limited to call PiP code.
 - Prepare Android audio PiP parameters while the call remains active. Enable system auto-enter on Android 12+ and enter
   from `onUserLeaveHint` on Android 8–11, retaining the Dart lifecycle-triggered method as an idempotent fallback.
+- Store the native PiP microphone and end/leave action labels in Android string resources for English, Russian, and
+  Ukrainian. Resolve them using the app-selected locale stored by `WidgetLocalization`.
 - Do not change Firestore rules, heartbeat intervals, call persistence, dependencies, or the user's aspect ratio and
   preferred dimensions.
 
@@ -54,7 +56,10 @@
 
 | File                                                                          | Intended change                                                                                                   |
 |:------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------|
-| `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`        | Handle PiP dismissal; update microphone action icon/label; prepare audio PiP auto-enter and legacy entry.         |
+| `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`        | Handle PiP dismissal; prepare audio entry; resolve localized action labels from Android resources.                |
+| `android/app/src/main/res/values/call_pip_strings.xml`                        | Add default English PiP action labels.                                                                            |
+| `android/app/src/main/res/values-ru/call_pip_strings.xml`                     | Add Russian PiP action labels.                                                                                    |
+| `android/app/src/main/res/values-uk/call_pip_strings.xml`                     | Add Ukrainian PiP action labels.                                                                                  |
 | `android/app/src/main/res/drawable/ic_pip_mic.xml`                            | Add the enabled-microphone system action icon.                                                                    |
 | `android/app/src/main/res/drawable/ic_pip_mic_off.xml`                        | Add the muted-microphone system action icon.                                                                      |
 | `lib/features/calls/data/services/call_picture_in_picture_service.dart`       | Add mute-state updates; prepare audio PiP before backgrounding; remove stale restore bridge, payload, and avatar. |
@@ -101,6 +106,12 @@
   not run. Files: `MainActivity.kt`, `call_picture_in_picture_service.dart`,
   `test/features/calls/data/services/call_picture_in_picture_service_test.dart`, `docs/features/calls.md`, this plan,
   and `docs/memory/handoff.md`.
+- [x] **Step 6 — Move native PiP action labels to string resources.** Added English, Russian, and Ukrainian resources
+  for
+  microphone mute/unmute and call end/leave labels. Read them using `WidgetLocalization.localizedContext` so PiP action
+  language follows the app's selected locale. Other `MainActivity` behavior is unchanged. Android resource/Kotlin
+  compilation and device verification are pending. Files: `MainActivity.kt`, `values/call_pip_strings.xml`,
+  `values-ru/call_pip_strings.xml`, `values-uk/call_pip_strings.xml`, this plan, and `docs/memory/handoff.md`.
 
 ## Acceptance checks
 
@@ -113,6 +124,8 @@
 - Updating the microphone action does not restart the Android call foreground service or alter PiP aspect/dimensions.
 - Android audio calls prepare PiP parameters before the app backgrounds; Android 12+ uses system auto-enter and
   Android 8–11 enter from `onUserLeaveHint`. The lifecycle fallback recognizes an Activity already in PiP.
+- PiP mute/unmute/end/leave action labels come from Android string resources for `en`, `ru`, and `uk`, selected through
+  the saved app locale rather than hardcoded Kotlin branches.
 - No obsolete custom Android restore action, restore event handling, ignored audio PiP configuration payload, or
   unused avatar field in the service configuration remains.
 - A terminal call state closes the PiP window; the native dismissal is limited to the case where the host Activity is
@@ -130,15 +143,17 @@
 | PiP service teardown        | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Native PiP dismissal is requested on close and service cleanup remains safe.                                                                |
 | PiP microphone action state | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Initial and changed mute state updates the native PiP action without restarting the foreground service.                                     |
 | Call screen mute forwarding | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Bloc microphone changes trigger a PiP service configuration update.                                                                         |
+| Native PiP labels           | Android resources    | `android/app/src/main/res/values*/call_pip_strings.xml`                       | Android resolves microphone and terminal action labels for English, Russian, and Ukrainian using the saved app locale.                      |
 | Native PiP                  | Android device       | Manual platform scenario                                                      | Verify audio PiP entry on Android 8–11 and 12+; verify system controls, video PiP, and PiP dismissal after local or remote call completion. |
 
 ## Recovery checkpoint
 
-- **Last completed step:** Steps 1–5 implemented and documented. `:app:compileDebugKotlin` succeeded after Step 5,
-  including Flutter build compilation. Focused Flutter tests from earlier steps repeatedly stalled without output and
-  were interrupted; the updated audio PiP service test was not run. Native device verification remains pending.
-- **Next action:** Run the focused audio PiP service test when the Flutter runner starts normally, then verify audio PiP
-  entry on Android 8–11 and Android 12+ devices.
+- **Last completed step:** Steps 1–6 implemented and documented. `:app:compileDebugKotlin` succeeded after Step 5,
+  including Flutter build compilation; it has not yet been rerun with the new string resources. Focused Flutter tests
+  repeatedly stalled without output and were interrupted. Native device verification remains pending.
+- **Next action:** Run Android resource/Kotlin compilation, then verify localized native action labels and audio PiP
+  entry
+  on Android 8–11 and Android 12+ devices. Focused Flutter test results remain pending.
 - **Changed or uncommitted files:** `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`,
   `android/app/src/main/res/drawable/ic_pip_mic.xml`, `android/app/src/main/res/drawable/ic_pip_mic_off.xml`,
   `lib/features/calls/data/services/call_picture_in_picture_service.dart`, the shared PiP widget, three call screens,

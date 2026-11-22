@@ -377,22 +377,19 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     }
 
     private fun pictureInPictureActions(): List<RemoteAction> {
-        val locale = WidgetLocalization.languageCode(applicationContext)
-        val microphoneLabel = when (locale) {
-            "ru" -> if (isCallMicrophoneMuted) "Включить микрофон" else "Выключить микрофон"
-            "uk" -> if (isCallMicrophoneMuted) "Увімкнути мікрофон" else "Вимкнути мікрофон"
-            else -> if (isCallMicrophoneMuted) "Unmute microphone" else "Mute microphone"
-        }
+        val localizedContext = WidgetLocalization.localizedContext(applicationContext)
+        val microphoneLabel = localizedContext.getString(
+            if (isCallMicrophoneMuted) R.string.call_pip_unmute_microphone
+            else R.string.call_pip_mute_microphone,
+        )
         val microphoneIcon = if (isCallMicrophoneMuted) {
             R.drawable.ic_pip_mic_off
         } else {
             R.drawable.ic_pip_mic
         }
-        val endLabel = when (locale) {
-            "ru" -> if (isGroupPictureInPictureCall) "Покинуть звонок" else "Завершить звонок"
-            "uk" -> if (isGroupPictureInPictureCall) "Залишити дзвінок" else "Завершити дзвінок"
-            else -> if (isGroupPictureInPictureCall) "Leave call" else "End call"
-        }
+        val endLabel = localizedContext.getString(
+            if (isGroupPictureInPictureCall) R.string.call_pip_leave_call else R.string.call_pip_end_call,
+        )
         return listOf(
             RemoteAction(
                 Icon.createWithResource(this, microphoneIcon),
