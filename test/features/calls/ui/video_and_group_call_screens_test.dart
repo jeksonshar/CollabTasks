@@ -156,7 +156,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SizedBox(
@@ -175,7 +175,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: SizedBox(
@@ -196,20 +196,28 @@ void main() {
     const methodChannel = MethodChannel('test/call_picture_in_picture_screen');
     const eventChannel = EventChannel('test/call_picture_in_picture_screen/events');
     final nativeCalls = <MethodCall>[];
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       methodChannel,
       (call) async {
         nativeCalls.add(call);
         return switch (call.method) {
-          'configureCallActions' || 'startCallBackgroundService' => true,
+          'configureCallActions' ||
+          'startCallBackgroundService' ||
+          'prepareAudioPictureInPicture' => true,
           _ => null,
         };
       },
     );
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, null),
+    messenger.setMockStreamHandler(
+      eventChannel,
+      MockStreamHandler.inline(onListen: (_, _) {}, onCancel: (_) {}),
     );
+    addTearDown(() {
+      messenger
+        ..setMockMethodCallHandler(methodChannel, null)
+        ..setMockStreamHandler(eventChannel, null);
+    });
     await getIt.unregister<CallPictureInPictureService>();
     getIt.registerFactory(
       () => CallPictureInPictureService(
