@@ -398,7 +398,7 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
                 pictureInPictureBroadcastPendingIntent(ACTION_PIP_TOGGLE_MICROPHONE, 702),
             ),
             RemoteAction(
-                Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
+                Icon.createWithResource(this, R.drawable.ic_pip_call_end),
                 endLabel,
                 endLabel,
                 pictureInPictureBroadcastPendingIntent(ACTION_PIP_END_CALL, 703),
