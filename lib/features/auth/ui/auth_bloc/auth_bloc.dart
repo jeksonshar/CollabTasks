@@ -29,6 +29,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  static const _logoutCleanupTimeout = Duration(seconds: 3);
+
   final WorkingGroupsRepository _workingGroupsRepository;
 
   AuthBloc({
@@ -376,29 +378,49 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final currentUserId = state.user?.id;
     if (currentUserId != null && _chatNotificationService != null) {
       try {
-        await _chatNotificationService.removeDeviceToken(currentUserId);
+        await _chatNotificationService
+            .removeDeviceToken(currentUserId)
+            .timeout(_logoutCleanupTimeout);
       } catch (e) {
         debugPrint('Failed to remove device token on logout: $e');
       }
     }
 
     if (_chatRemoteDataSource is WebSocketChatRemoteDataSource) {
+      StreamSubscription<String>? registrationSubscription;
       try {
-        // Запускаем регистрацию/обновление и получаем installationId для WebSocket через stream
-        await FirebaseMessaging.instance.register();
-        await FirebaseMessaging.instance.onRegistered.first.then((installationId) {
-          if (installationId.isNotEmpty) {
-            _chatRemoteDataSource.removeFcmToken(installationId);
-          }
-        });
+        final installationId = Completer<String>();
+        registrationSubscription = FirebaseMessaging.instance.onRegistered.listen(
+          (registeredId) {
+            if (!installationId.isCompleted) installationId.complete(registeredId);
+          },
+          onError: (Object error) {
+            debugPrint('Failed to observe FCM registration on logout: $error');
+            if (!installationId.isCompleted) installationId.complete('');
+          },
+        );
+        await FirebaseMessaging.instance.register().timeout(_logoutCleanupTimeout);
+        final registeredId = await installationId.future.timeout(
+          _logoutCleanupTimeout,
+          onTimeout: () => '',
+        );
+        if (registeredId.isNotEmpty) {
+          await _chatRemoteDataSource.removeFcmToken(registeredId).timeout(_logoutCleanupTimeout);
+        }
       } catch (e) {
         debugPrint('Failed to remove WebSocket FCM token on logout: $e');
+      } finally {
+        try {
+          await registrationSubscription?.cancel();
+        } catch (e) {
+          debugPrint('Failed to stop FCM registration listener on logout: $e');
+        }
       }
     }
 
     // Очищаем биометрические данные при выходе
     try {
-      await _clearBiometricDataUseCase();
+      await _clearBiometricDataUseCase().timeout(_logoutCleanupTimeout);
     } catch (e) {
       debugPrint('Failed to clear biometric data on logout: $e');
     }
