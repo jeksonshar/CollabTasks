@@ -28,7 +28,7 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.collab_tasks"
         // local_auth requires minSdk >= 23 (BiometricPrompt API).
-        minSdk = flutter.minSdkVersion
+        minSdk = 28
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -300,9 +300,14 @@ class MainActivity : AgoraPIPFlutterFragmentActivity() {
     }
 
     private fun applyCallPictureInPictureParams(params: PictureInPictureParams) {
-        val builder = PictureInPictureParams.Builder()
-        params.aspectRatio?.let { builder.setAspectRatio(it) }
-        params.sourceRectHint?.let { builder.setSourceRectHint(it) }
+        // PiP parameter getters and the copy constructor are only available from API 33.
+        // On older PiP-capable versions, rebuild from the configured call ratio instead of
+        // invoking methods that do not exist on the device framework.
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PictureInPictureParams.Builder(params)
+        } else {
+            PictureInPictureParams.Builder().setAspectRatio(Rational(10, 16))
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(params.isAutoEnterEnabled)
         }

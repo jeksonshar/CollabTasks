@@ -154,6 +154,10 @@
   Android audio calls prepare native PiP parameters while the call is active. Android 12+ uses system auto-enter;
   Android 8–11 enter from `MainActivity.onUserLeaveHint`. The Flutter lifecycle-triggered entry remains an idempotent
   fallback if the system entry has not happened yet.
+  When refreshing call actions, Android 13+ copies the supplied PiP parameters. Android 8–12 rebuild them with the
+  configured `10:16` call ratio because the framework getters and copy constructor used to inspect/copy those parameters
+  are unavailable on those older API levels. The older-version fallback cannot retain the source-rectangle transition
+  hint. Native microphone and end/leave actions are applied on both paths.
   iOS video uses Agora PiP and returns to the app through the system PiP interaction; iOS does not expose app-defined
   PiP mute/end controls. iOS audio-only PiP is unsupported. iOS background audio mode is enabled so audio can continue
   while the app
@@ -218,7 +222,7 @@
 | PiP compact call content and screen forwarding | `test/features/calls/ui/video_and_group_call_screens_test.dart`                                              | Compact PiP renders participant content without Flutter action controls on either platform; call screens forward Bloc mute changes to Android native PiP action state.                                                                                                               |
 | PiP service and native channel contract        | `test/features/calls/data/services/call_picture_in_picture_service_test.dart`                                | Android audio PiP preconfiguration precedes entry; native mic-state refresh does not restart the foreground service; action parsing and dismissal on teardown.                                                                                                                       |
 | Heartbeat participant-key alignment            | `test/features/calls/data/firestore_call_repository_test.dart`; `firestore-rules-tests/calls.rules.test.cjs` | Repository tests verify ID-token email claim selection, UID fallback, and stage-specific client errors; Rules emulator tests verify allowed heartbeat create/refresh and denied wrong-alias/stranger writes. Both suites pass. Android PiP beyond 30 seconds remains a device check. |
-| Native PiP and Android call foreground service | Android/iOS device scenario                                                                                  | Not run: verify audio PiP entry on Android 8–11 and 12+, video PiP system controls, dismissal after local/remote call end, app-owned service and 15-second heartbeat below the unchanged 30-second stale threshold; verify force-stop cleanup and iOS background media.              |
+| Native PiP and Android call foreground service | Android/iOS device scenario                                                                                  | Android 14/17: user verified native actions, call exit, and direct/group heartbeat. Android 11 parameter-getter crash fix compiled; device retest pending. Android 8–11 audio PiP, older-version dismissal, force-stop cleanup, and iOS background media remain unverified.          |
 
 ## 4. Data Flow & State Machine (Mermaid)
 
