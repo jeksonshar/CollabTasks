@@ -11,12 +11,12 @@
 
 ## 2. Directory Structure & Layer Boundaries
 
-- **`lib/domain/`**: Core business logic. Contains pure Dart models, use cases, and repository definitions.
-    - *Rule:* Zero dependencies on Flutter, Drift, or network libraries.
-- **`lib/data/`**: Infrastructure and data management. Realizes repository contracts, manages Drift database migrations,
-  handling network serialization (`toMap`/`fromMap`).
-- **`lib/ui/`**: Presentation layer. Divided into feature-centric folders containing Blocs, Screens, and custom atomic
-  design widgets.
+- **`lib/features/<feature>/domain/`**: Feature business logic, including pure Dart models, use cases, and repository
+  interfaces. This layer has no dependencies on Flutter, Drift, or network libraries.
+- **`lib/features/<feature>/data/`**: Feature infrastructure, including repository implementations, data sources,
+  Drift persistence, migrations, and network serialization (`toMap`/`fromMap`).
+- **`lib/features/<feature>/ui/`**: Feature presentation, including Blocs, screens, widgets, and dialogs.
+- **`lib/core/`**: Shared application utilities and UI infrastructure used by multiple features.
 - **`lib/di/`**: Centralized dependency injection via `GetIt` (`service_locator.dart`).
 
 ## 3. High-Level Data Flow
