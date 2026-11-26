@@ -1,7 +1,8 @@
 # Plan: Fix Call Heartbeat Permission Denial
 
 - **ID:** 0014
-- **Status:** Corrected Rules deployed; Android device verification pending
+- **Status:** Complete. Corrected Rules are deployed; Android direct/group heartbeat and PiP cleanup verification
+  passed.
 - **Created:** 2026-11-19
 - **Goal:** Keep calls active by allowing the authenticated connected participant's heartbeat write to target the same
   document key that Firestore Rules authorize.
@@ -118,11 +119,10 @@ operation that requires explicit approval after implementation and validation.
   `docs/features/calls.md`, this plan, and `docs/memory/handoff.md`.
 - [x] **Step 7 — Deploy corrected Rules.** With user approval, deployed only Firestore Rules to `collabtasks-fda3f`.
   Firebase CLI compiled, uploaded, and released `firestore.rules`; Functions, Hosting, and indexes were not deployed.
-- [ ] **Step 8 — User-device verification.** Install a build containing the approved client change, reproduce an Android
-  PiP call beyond 30 seconds, and confirm successful heartbeat writes and active call state. Verify direct/group calls
-  and remote hangup. If permission denial remains, use the stage-specific logs to determine whether a later change
-  belongs
-  to Rules or the client.
+- [x] **Step 8 — User-device verification.** The user verified direct and group calls on physical Android 14 and 17
+  devices for over one minute. In both call types, the participant heartbeat document's `lastSeenAt` updated every
+  15 seconds and no heartbeat errors occurred. Participants can leave from PiP; remote call termination and cleanup
+  also work for direct and group calls.
 
 ## Acceptance checks
 
@@ -148,8 +148,11 @@ operation that requires explicit approval after implementation and validation.
   `callSnapshot.exists` access. After changing the existence check to `exists(callPath)`,
   `firebase emulators:exec --only firestore --project demo-collabtasks-rules "npm --prefix firestore-rules-tests test"`
   passed all 19 tests.
-- **Manual:** The user's latest device attempt before the Rules correction produced `PERMISSION_DENIED`. Verify again
-  after the corrected Rules are deployed and the client build is installed.
+- **Manual before correction:** The user's device attempt produced `PERMISSION_DENIED` before the corrected Rules and
+  client build were both in place.
+- **Post-correction device report (2026-11-26):** The user verified direct and group PiP calls lasting more than one
+  minute on physical Android 14 and 17 devices. In both call types, `lastSeenAt` advanced every 15 seconds with no
+  heartbeat errors. Leaving from PiP and remote termination/cleanup work for direct and group calls.
 - **Deployment:** The initial Rules-only deployment found the server already matched the then-checked-in file and
   skipped upload. After the approved `callSnapshot.exists` correction, a second Rules-only deployment to
   `collabtasks-fda3f` compiled, uploaded, and released the corrected file. No Functions, Hosting, or indexes were
@@ -157,12 +160,10 @@ operation that requires explicit approval after implementation and validation.
 
 ## Recovery checkpoint
 
-- **Last completed step:** Client ID-token key selection and stage-specific errors are implemented; the repository test
-  suite passes. Step 6 corrected the heartbeat parent existence check to `exists(callPath)`. The Firestore Rules
-  emulator
-  suite passes all 19 tests, including email/UID key paths and denied wrong-alias/stranger writes.
-- **Next action:** Install a build containing the client change and verify Android PiP beyond 30 seconds against the
-  corrected deployed Rules. Confirm heartbeats succeed and the call remains active. Do not change Cloud Functions or
-  heartbeat/stale intervals.
-- **Known limitations:** Device evidence covers one Android direct video call. Direct/group audio/video and iOS behavior
-  still need verification after the correction.
+- **Last completed step:** All implementation and verification steps are complete. The repository test suite passes;
+  the Firestore Rules emulator suite passes all 19 tests, including email/UID key paths and denied wrong-alias/stranger
+  writes. On physical Android 14 and 17 devices, direct and group calls remained active beyond one minute, heartbeat
+  timestamps advanced every 15 seconds without errors, and leave/remote termination cleanup worked.
+- **Next action:** None for this plan. Do not change Cloud Functions or heartbeat/stale intervals.
+- **Known limitations:** Post-correction device verification was reported on Android 14 and 17. iOS heartbeat behavior
+  was not verified as part of this Android-focused plan.

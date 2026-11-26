@@ -1,7 +1,9 @@
 # Plan: Android PiP Actions and Call Dismissal
 
 - **ID:** 0015
-- **Status:** Steps 1–6 implemented; Android resource/Kotlin compilation and PiP device verification pending
+- **Status:** Steps 1–6 implemented; focused Flutter tests and PiP verification passed on Android 14 and 17.
+  Native action labels, mute/end controls, and PiP call exit were verified. Android 8–11 device/emulator verification
+  remains pending.
 - **Created:** 2026-11-22
 - **Goal:** Make Android call PiP controls match Android's supported interaction model and close the PiP window when a
   call ends.
@@ -110,8 +112,13 @@
   for
   microphone mute/unmute and call end/leave labels. Read them using `WidgetLocalization.localizedContext` so PiP action
   language follows the app's selected locale. Other `MainActivity` behavior is unchanged. Android resource/Kotlin
-  compilation and device verification are pending. Files: `MainActivity.kt`, `values/call_pip_strings.xml`,
+  compilation passed on 2026-11-26. Files:
+  `MainActivity.kt`, `values/call_pip_strings.xml`,
   `values-ru/call_pip_strings.xml`, `values-uk/call_pip_strings.xml`, this plan, and `docs/memory/handoff.md`.
+- [ ] **Step 7 — Complete platform verification.** Both focused Flutter tests passed in the user's PowerShell:
+  `video_and_group_call_screens_test.dart` and `call_picture_in_picture_service_test.dart`. Manual PiP call
+  verification passed on physical Android 14 and Android 17 devices, including native action labels, mute/end controls,
+  and leaving the call from PiP for participants. Android 8–11 verification remains pending.
 
 ## Acceptance checks
 
@@ -146,19 +153,21 @@
 | Native PiP labels           | Android resources    | `android/app/src/main/res/values*/call_pip_strings.xml`                       | Android resolves microphone and terminal action labels for English, Russian, and Ukrainian using the saved app locale.                      |
 | Native PiP                  | Android device       | Manual platform scenario                                                      | Verify audio PiP entry on Android 8–11 and 12+; verify system controls, video PiP, and PiP dismissal after local or remote call completion. |
 
+User-reported manual verification: PiP call, native action labels, mute/end controls, and leaving the call from PiP
+worked on physical Android 14 and 17 devices. Android 8–11 remains untested.
+
 ## Recovery checkpoint
 
-- **Last completed step:** Steps 1–6 implemented and documented. `:app:compileDebugKotlin` succeeded after Step 5,
-  including Flutter build compilation; it has not yet been rerun with the new string resources. Focused Flutter tests
-  repeatedly stalled without output and were interrupted. Native device verification remains pending.
-- **Next action:** Run Android resource/Kotlin compilation, then verify localized native action labels and audio PiP
-  entry
-  on Android 8–11 and Android 12+ devices. Focused Flutter test results remain pending.
-- **Changed or uncommitted files:** `android/app/src/main/kotlin/com/example/collab_tasks/MainActivity.kt`,
-  `android/app/src/main/res/drawable/ic_pip_mic.xml`, `android/app/src/main/res/drawable/ic_pip_mic_off.xml`,
-  `lib/features/calls/data/services/call_picture_in_picture_service.dart`, the shared PiP widget, three call screens,
-  both PiP test files, `docs/features/calls.md`, this plan, and `docs/memory/handoff.md`. User edits to PiP dimensions
-  and widget label layout are preserved.
+- **Last completed step:** Steps 1–6 implemented and documented. `:app:compileDebugKotlin` passed on 2026-11-26,
+  including Android resource processing and Flutter build compilation. Both focused Flutter tests passed in the user's
+  PowerShell. The user reports successful PiP call verification on physical Android 14 and 17 devices, including native
+  labels, mute/end controls, and leaving calls from PiP. Android 8–11 verification remains pending. The user's PiP
+  aspect
+  ratio, preferred content size, and widget layout remain intact.
+- **Next action:** Verify the Android 8–11 audio PiP entry path on a device or emulator. Plan 0014 heartbeat
+  verification
+  remains separately tracked.
+- **Changed or uncommitted files:** Plan 0015 implementation files have no current source diff in `git status` as of
+  2026-11-26. The user's uncommitted `AGENTS.md` changes are preserved and unrelated to Plan 0015.
 - **Known limitations:** Android requires a tap on the PiP window to reveal native controls. Neither Android nor the
-  iOS video-call PiP surface supports tappable Flutter-rendered controls. Focused test results and device verification
-  are pending.
+  iOS video-call PiP surface supports tappable Flutter-rendered controls. Android 8–11 verification remains pending.
