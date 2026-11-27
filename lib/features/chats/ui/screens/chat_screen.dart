@@ -21,6 +21,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+enum _ChatAppBarAction { videoCall, audioCall, history }
+
 class ChatScreen extends StatefulWidget {
   final String chatId;
   final String? opponentName;
@@ -129,98 +131,41 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
           }
 
           return Scaffold(
-            appBar: AppBar(
-              titleSpacing: 0,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    appBarTitle,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (state is ChatLoaded && chatBackend == ChatBackend.webSocket) ...[
-                    const SizedBox(height: 4),
-                    _buildSubtitle(context, state),
-                  ],
-                ],
-              ),
-              actions: [
-                if (state is ChatLoaded) ...[
-                  IconButton(
-                    icon: const Icon(Icons.videocam),
-                    tooltip: localization.group_details_participantVideoCall,
-                    onPressed: () {
-                      final callId = const Uuid().v4();
-                      final callerId = state.currentUserId;
-                      final calleeId = state.opponentEmail;
-                      final opponentName = widget.opponentName ?? state.opponentEmail;
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 320;
 
-                      getIt<CallsBloc>().add(
-                        StartCallRequested(
-                          callId: callId,
-                          callerId: callerId,
-                          callerName: callerId,
-                          calleeIds: [calleeId],
-                          type: CallType.video,
+                  return AppBar(
+                    titleSpacing: 0,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          appBarTitle,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      );
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => VideoCallScreen(
-                            callId: callId,
-                            opponentName: opponentName,
-                            opponentId: calleeId,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.phone),
-                    tooltip: localization.group_details_participantAudioCall,
-                    onPressed: () {
-                      final callId = const Uuid().v4();
-                      final callerId = state.currentUserId;
-                      final calleeId = state.opponentEmail;
-                      final opponentName = widget.opponentName ?? state.opponentEmail;
-
-                      getIt<CallsBloc>().add(
-                        StartCallRequested(
-                          callId: callId,
-                          callerId: callerId,
-                          callerName: callerId,
-                          calleeIds: [calleeId],
-                          type: CallType.audio,
-                        ),
-                      );
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AudioCallScreen(callId: callId, opponentName: opponentName),
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.history),
-                    tooltip: localization.callHistoryTitle,
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => CallHistoryScreen(
-                          title: localization.callHistoryTitle,
-                          currentUserId: state.currentUserId,
-                          opponentId: state.opponentEmail,
-                        ),
-                      ),
+                        if (state is ChatLoaded && chatBackend == ChatBackend.webSocket) ...[
+                          const SizedBox(height: 4),
+                          _buildSubtitle(context, state),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ],
+                    actions: state is ChatLoaded
+                        ? _buildChatAppBarActions(
+                            context: context,
+                            localization: localization,
+                            state: state,
+                            isCompact: isCompact,
+                          )
+                        : const [],
+                  );
+                },
+              ),
             ),
             body: Column(
               children: [
@@ -244,6 +189,145 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
     );
   }
 
+  List<Widget> _buildChatAppBarActions({
+    required BuildContext context,
+    required AppLocalizations localization,
+    required ChatLoaded state,
+    required bool isCompact,
+  }) {
+    void startVideoCall() {
+      final callId = const Uuid().v4();
+      final callerId = state.currentUserId;
+      final calleeId = state.opponentEmail;
+      final opponentName = widget.opponentName ?? state.opponentEmail;
+
+      getIt<CallsBloc>().add(
+        StartCallRequested(
+          callId: callId,
+          callerId: callerId,
+          callerName: callerId,
+          calleeIds: [calleeId],
+          type: CallType.video,
+        ),
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              VideoCallScreen(callId: callId, opponentName: opponentName, opponentId: calleeId),
+        ),
+      );
+    }
+
+    void startAudioCall() {
+      final callId = const Uuid().v4();
+      final callerId = state.currentUserId;
+      final calleeId = state.opponentEmail;
+      final opponentName = widget.opponentName ?? state.opponentEmail;
+
+      getIt<CallsBloc>().add(
+        StartCallRequested(
+          callId: callId,
+          callerId: callerId,
+          callerName: callerId,
+          calleeIds: [calleeId],
+          type: CallType.audio,
+        ),
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AudioCallScreen(callId: callId, opponentName: opponentName),
+        ),
+      );
+    }
+
+    void openCallHistory() {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CallHistoryScreen(
+            title: localization.callHistoryTitle,
+            currentUserId: state.currentUserId,
+            opponentId: state.opponentEmail,
+          ),
+        ),
+      );
+    }
+
+    if (isCompact) {
+      return [
+        PopupMenuButton<_ChatAppBarAction>(
+          icon: const Icon(Icons.more_vert),
+          itemBuilder: (context) => [
+            _chatActionMenuItem(
+              _ChatAppBarAction.videoCall,
+              Icons.videocam,
+              localization.group_details_participantVideoCall,
+            ),
+            _chatActionMenuItem(
+              _ChatAppBarAction.audioCall,
+              Icons.phone,
+              localization.group_details_participantAudioCall,
+            ),
+            _chatActionMenuItem(
+              _ChatAppBarAction.history,
+              Icons.history,
+              localization.callHistoryTitle,
+            ),
+          ],
+          onSelected: (action) {
+            switch (action) {
+              case _ChatAppBarAction.videoCall:
+                startVideoCall();
+                break;
+              case _ChatAppBarAction.audioCall:
+                startAudioCall();
+                break;
+              case _ChatAppBarAction.history:
+                openCallHistory();
+                break;
+            }
+          },
+        ),
+      ];
+    }
+
+    return [
+      IconButton(
+        icon: const Icon(Icons.videocam),
+        tooltip: localization.group_details_participantVideoCall,
+        onPressed: startVideoCall,
+      ),
+      IconButton(
+        icon: const Icon(Icons.phone),
+        tooltip: localization.group_details_participantAudioCall,
+        onPressed: startAudioCall,
+      ),
+      IconButton(
+        icon: const Icon(Icons.history),
+        tooltip: localization.callHistoryTitle,
+        onPressed: openCallHistory,
+      ),
+    ];
+  }
+
+  PopupMenuItem<_ChatAppBarAction> _chatActionMenuItem(
+    _ChatAppBarAction action,
+    IconData icon,
+    String label,
+  ) {
+    return PopupMenuItem<_ChatAppBarAction>(
+      value: action,
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubtitle(BuildContext context, ChatLoaded state) {
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
@@ -251,24 +335,14 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
     final localization = AppLocalizations.of(context)!;
 
     if (state.isOpponentTyping) {
-      return Row(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          _buildSubtitleIndicator(Colors.green),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              localization.direct_chat_typingStatus,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-        ],
+      return _buildSubtitleRow(
+        indicatorColor: Colors.green,
+        text: localization.direct_chat_typingStatus,
+        style: TextStyle(
+          fontSize: 12,
+          fontStyle: FontStyle.italic,
+          color: theme.colorScheme.primary,
+        ),
       );
     }
 
@@ -294,20 +368,34 @@ class _ChatScreenState extends State<ChatScreen> with RouteAware, WidgetsBinding
       }
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        _buildSubtitleIndicator(dotColor),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            statusText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: isOnline ? Colors.green : subtitleColor),
-          ),
-        ),
-      ],
+    return _buildSubtitleRow(
+      indicatorColor: dotColor,
+      text: statusText,
+      style: TextStyle(fontSize: 12, color: isOnline ? Colors.green : subtitleColor),
+    );
+  }
+
+  Widget _buildSubtitleRow({
+    required Color indicatorColor,
+    required String text,
+    required TextStyle style,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showIndicator = constraints.maxWidth >= 8;
+        final indicatorGap = constraints.maxWidth < 48 ? 2.0 : 12.0;
+
+        return Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            if (showIndicator) _buildSubtitleIndicator(indicatorColor),
+            if (showIndicator) SizedBox(width: indicatorGap),
+            Flexible(
+              child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+            ),
+          ],
+        );
+      },
     );
   }
 

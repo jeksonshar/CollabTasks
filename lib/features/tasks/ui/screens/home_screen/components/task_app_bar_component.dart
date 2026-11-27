@@ -42,46 +42,144 @@ class _TasksAppBarState extends State<TasksAppBar> {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
 
-    return AppBar(
-      title: _isSearching
-          ? TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: localization.titlePlaceholder,
-                border: InputBorder.none,
-              ),
-              onChanged: (value) {
-                context.read<TaskBloc>().add(SearchChanged(value));
-              },
-            )
-          : Text(localization.my_tasks),
-      scrolledUnderElevation: 0.0,
-      centerTitle: false,
-      actions: [
-        IconButton(icon: Icon(_isSearching ? Icons.close : Icons.search), onPressed: _toggleSearch),
-        BlocBuilder<TaskBloc, TaskState>(
-          buildWhen: (previous, current) => previous.filterType != current.filterType,
-          builder: (context, state) {
-            return _FilterMenu(filterType: state.filterType, localization: localization);
-          },
-        ),
-        BlocBuilder<TaskBloc, TaskState>(
-          buildWhen: (previous, current) =>
-              previous.sortType != current.sortType ||
-              previous.sortDirection != current.sortDirection,
-          builder: (context, state) {
-            return _SortMenu(
-              sortType: state.sortType,
-              sortDirection: state.sortDirection,
-              localization: localization,
-            );
-          },
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < kMinInteractiveDimension * 3 + 8;
+        final title = _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: localization.titlePlaceholder,
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  context.read<TaskBloc>().add(SearchChanged(value));
+                },
+              )
+            : Text(localization.my_tasks);
+
+        return AppBar(
+          title: isCompact && !_isSearching ? null : title,
+          scrolledUnderElevation: 0.0,
+          centerTitle: false,
+          actions: isCompact
+              ? [
+                  if (_isSearching)
+                    IconButton(icon: const Icon(Icons.close), onPressed: _toggleSearch)
+                  else
+                    _CompactFilterSortMenu(
+                      localization: localization,
+                      onSearchSelected: _toggleSearch,
+                    ),
+                ]
+              : [
+                  IconButton(
+                    icon: Icon(_isSearching ? Icons.close : Icons.search),
+                    onPressed: _toggleSearch,
+                  ),
+                  BlocBuilder<TaskBloc, TaskState>(
+                    buildWhen: (previous, current) => previous.filterType != current.filterType,
+                    builder: (context, state) {
+                      return _FilterMenu(filterType: state.filterType, localization: localization);
+                    },
+                  ),
+                  BlocBuilder<TaskBloc, TaskState>(
+                    buildWhen: (previous, current) =>
+                        previous.sortType != current.sortType ||
+                        previous.sortDirection != current.sortDirection,
+                    builder: (context, state) {
+                      return _SortMenu(
+                        sortType: state.sortType,
+                        sortDirection: state.sortDirection,
+                        localization: localization,
+                      );
+                    },
+                  ),
+                ],
+        );
+      },
     );
   }
 }
+
+class _CompactFilterSortMenu extends StatelessWidget {
+  final AppLocalizations localization;
+  final VoidCallback onSearchSelected;
+
+  const _CompactFilterSortMenu({required this.localization, required this.onSearchSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<TaskBloc, TaskState>(
+      buildWhen: (previous, current) =>
+          previous.filterType != current.filterType ||
+          previous.sortType != current.sortType ||
+          previous.sortDirection != current.sortDirection,
+      builder: (context, state) {
+        return PopupMenuButton<Object>(
+          icon: const Icon(Icons.tune),
+          onSelected: (selection) {
+            if (selection == _CompactAppBarAction.search) {
+              onSearchSelected();
+            } else if (selection is TaskFilterType) {
+              context.read<TaskBloc>().add(FilterChanged(selection));
+            } else if (selection is TaskSortType) {
+              context.read<TaskBloc>().add(SortChanged(selection));
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<Object>(
+              value: _CompactAppBarAction.search,
+              child: Row(
+                children: [
+                  const Icon(Icons.search, size: 18),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      localization.titlePlaceholder,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            ...TaskFilterType.values.map(
+              (filterType) => PopupMenuItem<Object>(
+                value: filterType,
+                child: Row(
+                  children: [
+                    Expanded(child: Text(filterType.label(localization))),
+                    if (filterType == state.filterType) const Icon(Icons.check, size: 18),
+                  ],
+                ),
+              ),
+            ),
+            const PopupMenuDivider(),
+            ...TaskSortType.values.map(
+              (sortType) => PopupMenuItem<Object>(
+                value: sortType,
+                child: Row(
+                  children: [
+                    Expanded(child: Text(sortType.label(localization))),
+                    Icon(
+                      sortType == state.sortType ? state.sortDirection.icon : Icons.arrow_downward,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _CompactAppBarAction { search }
 
 class _FilterMenu extends StatelessWidget {
   final TaskFilterType filterType;

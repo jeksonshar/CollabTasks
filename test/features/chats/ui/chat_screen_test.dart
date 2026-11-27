@@ -44,8 +44,8 @@ void main() {
     await getIt.reset();
   });
 
-  testWidgets('ellipsizes a long subtitle while keeping all chat actions visible', (tester) async {
-    tester.view.physicalSize = const Size(280, 800);
+  testWidgets('keeps chat actions accessible in compact and expanded app bars', (tester) async {
+    tester.view.physicalSize = const Size(118, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -63,19 +63,24 @@ void main() {
     whenListen(chatBloc, const Stream<ChatState>.empty(), initialState: state);
 
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: const [
+      const MaterialApp(
+        localizationsDelegates: [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const ChatScreen(chatId: 'chat-1'),
+        home: ChatScreen(chatId: 'chat-1'),
       ),
     );
     await tester.pump();
+    expect(tester.takeException(), isNull);
 
+    tester.view.physicalSize = const Size(280, 800);
+    await tester.pumpAndSettle();
+
+    final localization = AppLocalizations.of(tester.element(find.byType(ChatScreen)))!;
     final subtitle = tester.widget<Text>(
       find.byWidgetPredicate(
         (widget) => widget is Text && (widget.data?.startsWith('was online') ?? false),
@@ -83,11 +88,28 @@ void main() {
     );
     expect(subtitle.maxLines, 1);
     expect(subtitle.overflow, TextOverflow.ellipsis);
+    expect(find.byIcon(Icons.more_vert), findsOneWidget);
+    expect(find.byIcon(Icons.videocam), findsNothing);
+    expect(find.byIcon(Icons.phone), findsNothing);
+    expect(find.byIcon(Icons.history), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    expect(find.text(localization.group_details_participantVideoCall), findsOneWidget);
+    expect(find.text(localization.group_details_participantAudioCall), findsOneWidget);
+    expect(find.text(localization.callHistoryTitle), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tapAt(const Offset(10, 700));
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(360, 800);
+    await tester.pumpAndSettle();
 
     for (final icon in [Icons.videocam, Icons.phone, Icons.history]) {
       final action = tester.getRect(find.byIcon(icon));
       expect(action.right, lessThanOrEqualTo(tester.view.physicalSize.width));
     }
+    expect(find.byIcon(Icons.more_vert), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

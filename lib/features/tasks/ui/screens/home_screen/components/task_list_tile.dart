@@ -124,7 +124,17 @@ class _TaskListTileState extends State<TaskListTile> {
                 ),
               ),
               subtitle: statusWidgets.isNotEmpty
-                  ? Row(mainAxisSize: MainAxisSize.min, children: statusWidgets)
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final iconCount = statusWidgets.whereType<Icon>().length;
+                        final requiredWidth = iconCount * 16.0 + (iconCount - 1) * 4.0;
+                        if (constraints.maxWidth < requiredWidth) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Row(mainAxisSize: MainAxisSize.min, children: statusWidgets);
+                      },
+                    )
                   : null,
               trailing: PopupMenuButton<TaskMenuAction>(
                 icon: const Icon(Icons.more_vert),
