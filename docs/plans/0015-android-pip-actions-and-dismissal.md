@@ -1,11 +1,11 @@
 # Plan: Android PiP Actions and Call Dismissal
 
 - **ID:** 0015
-- **Status:** Steps 1–8 implemented and verified. The user reports the focused home and chat widget tests pass, and
-  direct/group PiP call termination works without rendering exceptions on physical Android 11, 14, and 17 devices and
-  an Android 9 emulator. The Android 14 chat subtitle overflow and remote participant PiP dismissal issue no longer
-  reproduce. Android 17 at 411 dp and Android 14 at 360 dp are covered by device checks. Remaining platform work is the
-  Android 9–10 audio PiP path. The user's `minSdk = 28` sets Android 9 as minimum.
+- **Status:** Complete. Steps 1–9 are implemented and verified. The user reports the focused home and chat widget tests
+  pass, and direct/group PiP call termination works without rendering exceptions on physical Android 11, 14, and 17
+  devices and an Android 9 emulator. The Android 14 chat subtitle overflow and remote participant PiP dismissal issue
+  no longer reproduce. Android 17 at 411 dp and Android 14 at 360 dp are covered by device checks. The user verified
+  that Android 9–10 audio PiP entry works. The user's `minSdk = 28` sets Android 9 as minimum.
 - **Created:** 2026-11-22
 - **Goal:** Make Android call PiP controls match Android's supported interaction model and close the PiP window when a
   call ends.
@@ -178,8 +178,8 @@
   `test/ui/screens/home_tasks_screen_test.dart`, `test/features/chats/ui/chat_screen_test.dart`,
   `docs/features/calls.md`, this plan, and `docs/memory/handoff.md`.
   Android 14/17 device verification and the remote participant PiP dismissal check are complete.
-- [ ] **Step 9 — Complete remaining platform verification.** Verify the Android 9–10 audio PiP path. Android 8 is below
-  the configured `minSdk = 28`; no further UI regression test is pending for Step 8.
+- [x] **Step 9 — Complete remaining platform verification.** The user verified that audio PiP entry works on Android
+  9–10. Android 8 is below the configured `minSdk = 28`; no further UI regression test is pending for Step 8.
 
 ## Acceptance checks
 
@@ -218,39 +218,27 @@
 | PiP microphone action state      | Data/platform bridge | `test/features/calls/data/services/call_picture_in_picture_service_test.dart` | Initial and changed mute state updates the native PiP action without restarting the foreground service.                                                                                                                                                                                                          |
 | Call screen mute forwarding      | Widget               | `test/features/calls/ui/video_and_group_call_screens_test.dart`               | Bloc microphone changes trigger a PiP service configuration update.                                                                                                                                                                                                                                              |
 | Native PiP labels                | Android resources    | `android/app/src/main/res/values*/call_pip_strings.xml`                       | Android resolves microphone and terminal action labels for English, Russian, and Ukrainian using the saved app locale.                                                                                                                                                                                           |
-| Native PiP                       | Android device       | Manual platform scenario                                                      | Android 11: direct/group call acceptance and PiP termination/cleanup pass without a rendering exception. Android 14/17: system controls and call exit verified. Pending: Android 9–10 audio PiP entry.                                                                                                           |
+| Native PiP                       | Android device       | Manual platform scenario                                                      | Android 11: direct/group call acceptance and PiP termination/cleanup pass without a rendering exception. Android 14/17: system controls and call exit verified. The user verified Android 9–10 audio PiP entry works.                                                                                            |
 | PiP dismissal to task list       | Widget / Android     | `test/ui/screens/home_tasks_screen_test.dart`; Android device scenario        | User reports the responsive home/task widget test passes. PiP termination works on Android 9/API 28, Android 11, 14, and 17; no rendering exception was observed in the reported checks.                                                                                                                         |
 | Chat AppBar during PiP dismissal | Widget / Android     | `test/features/chats/ui/chat_screen_test.dart`; Android device scenario       | User reports the responsive chat widget test passes. The compact menu works at 280 dp, direct actions remain at 360 dp, and the 118-dp status subtitle does not overflow. Android 11/14/17 physical devices and Android 9 emulator were rechecked; remote PiP dismissal no longer reproduces the reported issue. |
 
 User-reported manual verification: PiP call, native action labels, mute/end controls, and leaving the call from PiP
 worked on physical Android 14, 17, and 11 devices. Direct/group PiP call termination also works on an Android 9/API 28
-emulator. The Android 9–10 audio-only PiP entry path remains untested under the current minimum API 28.
+emulator. The user also verified that audio PiP entry works on Android 9–10 under the current minimum API 28.
 
 ## Recovery checkpoint
 
-- **Last completed step:** Steps 1–8 implemented and documented. Step 7 fixes the Android 11 `getAspectRatio()` crash
-  by avoiding API 33-only PiP parameter getters on Android 8–12. `:app:compileDebugKotlin` passed on 2026-11-26,
-  including Android resource processing and Flutter build compilation. Both focused Flutter tests passed in the user's
-  PowerShell. The user reports successful PiP call verification on physical Android 14 and 17 devices, including native
-  labels, mute/end controls, and leaving calls from PiP. The initial compact-AppBar test passed, as did direct and group
-  PiP dismissal on Android 11. Android 9/API 28 later reproduced a `RenderFlex` overflow during PiP dismissal, so Step 8
-  is reopened; the compact task AppBar uses one action menu, and the task status subtitle hides icons when they do not
-  fit. The user reports the focused home widget test passes and direct/group PiP termination works on Android 9.
-  Android 17 reproduced a ChatScreen AppBar overflow, then Android 14 exposed a status-subtitle overflow at the 118-dp
-  PiP return width. Compact actions and adaptive subtitle layout are implemented. The user reports the updated widget
-  test passes and PiP termination works on Android 9/11/14/17 without rendering exceptions, including remote PiP
-  dismissal on Android 14. Only Android 9–10 audio PiP verification remains.
-  The user's PiP
-  aspect
-  ratio, preferred content size, and widget layout remain intact.
-- **Next action:** Verify the Android 9–10 audio PiP path. The user reports the focused tests pass; the agent runner
-  repeatedly stalled without output, so do not launch Flutter tests from that runner. If another test is needed, provide
-  the exact PowerShell command and ask the user to run it. Plan
-  0014 heartbeat verification remains
-  separately tracked.
+- **Last completed step:** Steps 1–9 are implemented and documented. Step 7 fixes the Android 11
+  `getAspectRatio()` crash by avoiding API 33-only PiP parameter getters on Android 8–12. `:app:compileDebugKotlin`
+  passed on 2026-11-26, including Android resource processing and Flutter build compilation. The user reports the
+  focused Flutter tests pass; direct/group PiP termination works on Android 9, 11, 14, and 17 without rendering
+  exceptions, including remote PiP dismissal on Android 14. Android 9–10 audio PiP entry is verified. The user's PiP
+  aspect ratio, preferred content size, and widget layout remain intact.
+- **Next action:** None. Plan 0015 is complete. Plan 0014 heartbeat verification is also complete and remains recorded
+  in its own plan.
 - **Changed or uncommitted files:** `MainActivity.kt`, task and chat screen widgets, their focused tests,
   `docs/features/calls.md`, this plan, and `docs/memory/handoff.md` contain Plan 0015 changes. The user's `minSdk = 28`
   setting and unrelated `AGENTS.md` changes are preserved.
 - **Known limitations:** Android requires a tap on the PiP window to reveal native controls. Neither Android nor the
-  iOS video-call PiP surface supports tappable Flutter-rendered controls. Android 9–10 audio PiP entry remains pending
-  device verification.
+  iOS video-call PiP surface supports tappable Flutter-rendered controls. Force-stop cleanup and iOS background media
+  remain unverified.

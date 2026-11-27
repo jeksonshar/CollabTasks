@@ -154,14 +154,7 @@
   checks as “not verified”; never infer device verification from code inspection alone.
 
 ```dart
-SharedPreferences.setMockInitialValues
-(
-Map<String, Object>());
-getIt.
-reset
-(
-);
-setupLocator
-(
-);
+SharedPreferences.setMockInitialValues(Map<String, Object>());
+getIt.reset();
+setupLocator();
 ```
